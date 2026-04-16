@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Vistoria Cautelar">
+<title>Vistoria Cautelar</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f7;color:#111;min-height:100vh;overflow-x:hidden}
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+.topbar{background:#fff;border-bottom:1px solid #e5e5e5;padding:12px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+.topbar h1{font-size:17px;font-weight:600;flex:1}
+.back{background:none;border:none;cursor:pointer;color:#007aff;font-size:15px;padding:4px 8px;border-radius:6px;white-space:nowrap}
+.content{flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;max-width:600px;width:100%;margin:0 auto}
+.card{background:#fff;border-radius:12px;border:1px solid #e5e5e5;padding:16px}
+.card h2{font-size:12px;font-weight:600;color:#888;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.05em}
+.field{margin-bottom:12px}
+.field label{font-size:13px;color:#555;display:block;margin-bottom:4px;font-weight:500}
+.field input,.field select,.field textarea{width:100%;padding:11px 13px;border:1px solid #ddd;border-radius:8px;font-size:15px;background:#fff;color:#111;appearance:none;-webkit-appearance:none}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:#007aff}
+.field textarea{resize:vertical;min-height:80px}
+.btn{padding:13px 20px;border-radius:10px;font-size:15px;font-weight:500;cursor:pointer;border:1px solid #ddd;background:#fff;color:#111;width:100%;text-align:center;transition:all 0.1s}
+.btn:active{transform:scale(0.98);opacity:0.8}
+.btn.primary{background:#1c1c1e;color:#fff;border-color:#1c1c1e}
+.btn.danger{background:#fff0f0;color:#dc2626;border-color:#fca5a5}
+.btn.success{background:#f0fdf4;color:#166534;border-color:#86efac}
+.btn.small{padding:7px 13px;font-size:13px;width:auto}
+.list-item{background:#fff;border-radius:12px;border:1px solid #e5e5e5;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:8px}
+.list-item:active{background:#f5f5f7}
+.list-item .info{flex:1;min-width:0}
+.list-item .title{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list-item .sub{font-size:13px;color:#888;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list-item .arrow{color:#c7c7cc;font-size:20px;flex-shrink:0}
+.badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600;white-space:nowrap}
+.badge.master{background:#ede9fe;color:#5b21b6}
+.badge.cad{background:#e0f2fe;color:#0369a1}
+.badge.ok{background:#d1fae5;color:#065f46}
+.avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex-shrink:0}
+.photo-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.photo-card{border-radius:10px;overflow:hidden;border:1px solid #e5e5e5;position:relative;background:#000;aspect-ratio:4/3}
+.photo-card img{width:100%;height:100%;object-fit:cover;display:block}
+.photo-label{background:rgba(0,0,0,0.65);color:#fff;font-size:11px;padding:5px 8px;position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center}
+.del-btn{background:rgba(220,38,38,0.85);color:#fff;border:none;border-radius:5px;padding:3px 7px;font-size:11px;cursor:pointer}
+.camera-overlay{position:fixed;inset:0;background:#000;z-index:1000;display:flex;flex-direction:column}
+.camera-overlay video{flex:1;object-fit:cover;width:100%}
+.camera-controls{background:#000;padding:24px 20px;display:flex;justify-content:space-between;align-items:center;gap:16px}
+.shutter{width:68px;height:68px;border-radius:50%;background:#fff;border:5px solid rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0}
+.shutter:active{background:#e0e0e0;transform:scale(0.95)}
+.btn-cam{background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:10px;padding:10px 16px;font-size:14px;cursor:pointer;white-space:nowrap}
+.btn-cam:active{background:rgba(255,255,255,0.25)}
+.canvas-overlay{position:fixed;inset:0;z-index:1001;display:flex;flex-direction:column;background:#000}
+.canvas-overlay canvas{flex:1;width:100%;cursor:crosshair;touch-action:none;display:block}
+.canvas-controls{background:#111;padding:14px 16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.checklist-wrapper{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.checklist-table{width:100%;border-collapse:collapse;font-size:11px;min-width:500px}
+.checklist-table th{background:#f5f5f7;padding:7px 6px;text-align:left;font-weight:600;border:1px solid #e5e5e5;font-size:10px;white-space:nowrap}
+.checklist-table td{padding:5px 4px;border:1px solid #e5e5e5;vertical-align:middle}
+.checklist-table td select{width:100%;border:none;background:transparent;font-size:10px;color:#111;padding:2px}
+.sig-pad{border:1px solid #ddd;border-radius:10px;background:#fff;touch-action:none;width:100%;height:160px;display:block}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:flex-end;justify-content:center}
+.modal{background:#fff;border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:600px;max-height:85vh;overflow-y:auto}
+.modal h3{font-size:18px;font-weight:600;margin-bottom:18px}
+.tabs{display:flex;gap:4px;margin-bottom:16px;background:#f5f5f7;padding:4px;border-radius:10px}
+.tab{flex:1;padding:8px;border:none;border-radius:8px;background:transparent;font-size:13px;cursor:pointer;color:#888;font-weight:500}
+.tab.active{background:#fff;color:#111;font-weight:600}
+.section-header{background:#f5f5f7;padding:10px 14px;font-size:13px;font-weight:600;color:#555;border-radius:10px;margin-bottom:8px}
+.login-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px}
+.logo-box{width:76px;height:76px;background:#1c1c1e;border-radius:18px;display:flex;align-items:center;justify-content:center;margin-bottom:24px}
+.err-msg{font-size:13px;color:#dc2626;margin-bottom:10px;display:none;text-align:center}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sep{height:1px;background:#e5e5e5;margin:8px 0}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="s-login" class="screen active">
+  <div class="login-wrap">
+    <div class="logo-box">
+      <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </div>
+    <h1 style="font-size:24px;font-weight:700;margin-bottom:6px">Vistoria Cautelar</h1>
+    <p style="font-size:15px;color:#888;margin-bottom:36px">Ronaldo Pinto Arquitetura</p>
+    <div style="width:100%;max-width:360px">
+      <div class="field"><label>E-mail</label><input type="email" id="login-email" placeholder="seu@email.com" autocomplete="email"></div>
+      <div class="field"><label>Senha</label><input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"></div>
+      <div id="login-err" class="err-msg"></div>
+      <button class="btn primary" onclick="doLogin()">Entrar</button>
+    </div>
+  </div>
+  <div style="padding:16px;text-align:center;font-size:12px;color:#aaa">Vistoria Cautelar v1.0</div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="s-dash" class="screen">
+  <div class="topbar">
+    <div class="logo-box" style="width:32px;height:32px;border-radius:8px;flex-shrink:0">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+    </div>
+    <h1>Início</h1>
+    <span id="dash-role" class="badge master" style="margin-right:4px"></span>
+    <button onclick="doLogout()" style="background:none;border:none;cursor:pointer;color:#888;font-size:13px">Sair</button>
+  </div>
+  <div class="content">
+    <div id="dash-master-section" style="display:none">
+      <div class="section-header">Administração</div>
+      <div class="list-item" onclick="goTo('s-clientes')">
+        <div class="avatar" style="background:#ede9fe;color:#5b21b6">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        </div>
+        <div class="info"><div class="title">Clientes & RRTs</div><div class="sub">Gerenciar clientes e registros</div></div>
+        <span class="arrow">›</span>
+      </div>
+      <div class="list-item" onclick="goTo('s-coletores')">
+        <div class="avatar" style="background:#e0f2fe;color:#0369a1">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </div>
+        <div class="info"><div class="title">Coletores</div><div class="sub">Gerenciar bairros e coletores</div></div>
+        <span class="arrow">›</span>
+      </div>
+      <div class="list-item" onclick="goTo('s-usuarios')">
+        <div class="avatar" style="background:#d1fae5;color:#065f46">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg>
+        </div>
+        <div class="info"><div class="title">Usuários</div><div class="sub">Gerenciar técnicos cadastradores</div></div>
+        <span class="arrow">›</span>
+      </div>
+      <div class="sep"></div>
+    </div>
+    <div class="section-header">Vistorias</div>
+    <div class="list-item" onclick="goTo('s-nova-vistoria')">
+      <div class="avatar" style="background:#fef3c7;color:#92400e">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      </div>
+      <div class="info"><div class="title">Nova Vistoria</div><div class="sub">Iniciar nova vistoria cautelar</div></div>
+      <span class="arrow">›</span>
+    </div>
+    <div class="list-item" onclick="goTo('s-historico')">
+      <div class="avatar" style="background:#f3f4f6;color:#374151">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+      </div>
+      <div class="info"><div class="title">Minhas Vistorias</div><div class="sub" id="dash-count">Carregando...</div></div>
+      <span class="arrow">›</span>
+    </div>
+  </div>
+</div>
+
+<!-- CLIENTES -->
+<div id="s-clientes" class="screen">
+  <div class="topbar">
+    <button class="back" onclick="goTo('s-dash')">‹ Voltar</button>
+    <h1>Clientes & RRTs</h1>
+    <button class="btn small primary" onclick="showModal('modal-cliente')">+ Novo</button>
+  </div>
+  <div class="content" id="lista-clientes"></div>
+</div>
+
+<!-- COLETORES -->
+<div id="s-coletores" class="screen">
+  <div class="topbar">
+    <button class="back" onclick="goTo('s-dash')">‹ Voltar</button>
+    <h1>Coletores</h1>
+    <button class="btn small primary" onclick="showModal('modal-coletor')">+ Novo</button>
+  </div>
+  <div class="content" id="lista-coletores"></div>
+</div>
+
+<!-- USUÁRIOS -->
+<div id="s-usuarios" class="screen">
+  <div class="topbar">
+    <button class="back" onclick="goTo('s-dash')">‹ Voltar</button>
+    <h1>Usuários</h1>
+    <button class="btn small primary" onclick="showModal('modal-usuario')">+ Novo</button>
+  </div>
+  <div class="content" id="lista-usuarios"></div>
+</div>
+
+<!-- NOVA VISTORIA -->
+<div id="s-nova-vistoria" class="screen">
+  <div class="topbar">
+    <button class="back" onclick="goTo('s-dash')">‹ Voltar</button>
+    <h1>Nova Vistoria</h1>
+  </div>
+  <div class="content">
+    <div class="card">
+      <h2>Dados do cliente</h2>
+      <div class="field"><label>Cliente</label>
+        <select id="nv-cliente" onchange="loadColetoresByCliente()"><option value="">Selecione...</option></select>
+      </div>
+      <div class="field"><label>Coletor</label>
+        <select id="nv-coletor"><option value="">Selecione o cliente primeiro...</option></select>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Dados do responsável</h2>
+      <div class="field"><label>Nome completo *</label><input type="text" id="nv-nome" placeholder="Nome do responsável"></div>
+      <div class="field"><label>RG / CPF</label><input type="text" id="nv-doc" placeholder="000.000.000-00"></div>
+      <div class="field"><label>Telefone</label><input type="tel" id="nv-tel" placeholder="(11) 99999-9999"></div>
+    </div>
+    <div class="card">
+      <h2>Endereço</h2>
+      <div class="field"><label>Rua *</label><input type="text" id="nv-rua" placeholder="Nome da rua"></div>
+      <div class="grid2">
+        <div class="field"><label>Número *</label><input type="text" id="nv-num" placeholder="Nº"></div>
+        <div class="field"><label>Complemento</label><input type="text" id="nv-comp" placeholder="Casa 1, Ap 23..."></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Tipo de imóvel</h2>
+      <div class="field"><label>Ocupação</label>
+        <select id="nv-ocupacao">
+          <option>Residencial</option><option>Comercial</option><option>Institucional</option><option>Religioso</option><option>Outros</option>
+        </select>
+      </div>
+      <div class="field"><label>Tipo de construção</label>
+        <select id="nv-tipo">
+          <option>Térrea</option><option>Cobrada</option><option>Galpão</option><option>Outros</option>
+        </select>
+      </div>
+      <div class="field"><label>Estado de conservação</label>
+        <select id="nv-estado">
+          <option>Bom</option><option>Regular</option><option>Ruim</option><option>Péssimo</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn primary" onclick="criarVistoria()">Iniciar Vistoria →</button>
+  </div>
+</div>
+
+<!-- VISTORIA ATIVA -->
+<div id="s-vistoria" class="screen">
+  <div class="topbar">
+    <button class="back" onclick="confirmarSairVistoria()">‹ Sair</button>
+    <h1 id="v-titulo">Vistoria</h1>
+    <button class="btn small" onclick="goTo('s-checklist')" style="color:#007aff;border-color:#007aff">Checklist</button>
+  </div>
+  <div class="content">
+    <div class="card">
+      <h2>Resumo</h2>
+      <div id="v-info" style="font-size:13px;color:#555;line-height:1.9"></div>
+    </div>
+    <div class="card">
+      <h2>Capturar foto</h2>
+      <div class="field"><label>Ambiente</label>
+        <select id="v-ambiente"><option value="">Selecione o ambiente...</option></select>
+      </div>
+      <div class="field"><label>Tipo de foto</label>
+        <select id="v-tipo-foto">
+          <option value="Vista">Vista — ambiente geral</option>
+          <option value="Detalhe">Detalhe — foco na patologia</option>
+        </select>
+      </div>
+      <div class="grid2" style="margin-top:4px">
+        <button class="btn primary" onclick="abrirCamera()">
+          📷 Câmera
+        </button>
+        <button class="btn" onclick="uploadFoto()">
+          🖼️ Galeria
+        </button>
+      </div>
+    </div>
+    <div id="fotos-por-ambiente"></div>
+    <button class="btn success" onclick="goTo('s-checklist')">Ir para Checklist →</button>
+  </div>
+  <input type="file" id="file-input" accept="image/*" capture="environment" style="display:none" onchange="handleFileUpload(event)">
+</div>
+
+<!-- CHECKLIST -->
+<div id="s-checklist" class="screen">
+  <div class="topbar">
+    <button class="back" onclick="goTo('s-vistoria')">‹ Fotos</button>
+    <h1>Checklist</h1>
+    <button class="btn small" onclick="goTo('s-assinatura')" style="color:#007aff;border-color:#007aff">Assinar</button>
+  </div>
+  <div class="content">
+    <div class="card">
+      <h2>Observações gerais</h2>
+      <div class="field">
+        <textarea id="cl-obs" placeholder="Descreva observações gerais da vistoria..."></textarea>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Patologias por ambiente</h2>
+      <div class="checklist-wrapper">
+        <table class="checklist-table" id="checklist-table">
+          <thead>
+            <tr>
+              <th style="min-width:75px">Local</th>
+              <th style="min-width:85px">Estrutura</th>
+              <th style="min-width:85px">Paredes</th>
+              <th style="min-width:85px">Cobertura</th>
+              <th style="min-width:75px">Portas/Esq.</th>
+              <th style="min-width:75px">Piso/Calç.</th>
+            </tr>
+          </thead>
+          <tbody id="checklist-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <button class="btn primary" onclick="salvarChecklist()">Salvar e assinar →</button>
+  </div>
+</div>
+
+<!-- ASSINATURA -->
+<div id="s-assinatura" class="screen">
+  <div class="topbar">
+    <button class="back" onclick="goTo('s-checklist')">‹ Checklist</button>
+    <h1>Assinatura</h1>
+  </div>
+  <div class="content">
+    <div class="card">
+      <h2>Comprovante do responsável</h2>
+      <div id="assin-info" style="font-size:14px;color:#555;line-height:1.9;margin-bottom:16px;padding:12px;background:#f9f9f9;border-radius:8px"></div>
+      <p style="font-size:13px;color:#888;margin-bottom:8px;font-weight:500">Assine abaixo:</p>
+      <canvas id="sig-canvas" class="sig-pad"></canvas>
+      <div class="grid2" style="margin-top:10px">
+        <button class="btn" onclick="limparAssinatura()">Limpar</button>
+        <button class="btn primary" onclick="salvarAssinatura()">Confirmar ✓</button>
+      </div>
+    </div>
+    <div id="sig-confirmado" style="display:none;background:#d1fae5;color:#065f46;padding:12px 16px;border-radius:10px;font-size:14px;font-weight:500;text-align:center">
+      ✓ Assinatura confirmada
+    </div>
+    <button class="btn success" onclick="finalizarVistoria()" id="btn-finalizar" disabled style="opacity:0.4">
+      Gerar PDF e finalizar
+    </button>
+  </div>
+</div>
+
+<!-- HISTÓRICO -->
+<div id="s-historico" class="screen">
+  <div class="topbar">
+    <button class="back" onclick="goTo('s-dash')">‹ Voltar</button>
+    <h1>Minhas Vistorias</h1>
+  </div>
+  <div class="content" id="lista-historico"></div>
+</div>
+
+<!-- CÂMERA -->
+<div id="camera-overlay" class="camera-overlay" style="display:none">
+  <div style="background:#000;padding:12px 16px;display:flex;align-items:center;gap:12px">
+    <span style="color:#fff;font-size:13px;flex:1" id="cam-label"></span>
+    <span style="background:rgba(255,255,255,0.15);color:#fff;font-size:12px;padding:4px 10px;border-radius:20px" id="cam-tipo-badge"></span>
+  </div>
+  <video id="cam-video" autoplay playsinline muted style="flex:1;object-fit:cover;width:100%"></video>
+  <div class="camera-controls">
+    <button class="btn-cam" onclick="fecharCamera()">Cancelar</button>
+    <button class="shutter" onclick="tirarFoto()"></button>
+    <button class="btn-cam" onclick="trocarCamera()">↺ Virar</button>
+  </div>
+</div>
+
+<!-- EDITOR DE SETAS -->
+<div id="arrow-overlay" class="canvas-overlay" style="display:none">
+  <div style="background:#111;padding:12px 16px;color:#fff;font-size:14px;display:flex;justify-content:space-between;align-items:center">
+    <span style="font-weight:600">Toque para marcar patologias</span>
+    <span id="arrow-counter" style="font-size:12px;color:#aaa;background:rgba(255,255,255,0.1);padding:4px 10px;border-radius:20px">0 setas</span>
+  </div>
+  <canvas id="arrow-canvas" style="flex:1;width:100%;touch-action:none;display:block"></canvas>
+  <div class="canvas-controls">
+    <button class="btn-cam" onclick="desfazerSeta()">↩ Desfazer</button>
+    <button class="btn-cam" onclick="limparSetas()">✕ Limpar</button>
+    <button class="btn-cam" style="background:#10b981;border-color:#10b981;margin-left:auto;font-weight:600" onclick="confirmarSetas()">✓ Confirmar</button>
+  </div>
+</div>
+
+<!-- MODAIS -->
+<div id="modal-cliente" class="modal-bg" style="display:none" onclick="closeModalBg(event,'modal-cliente')">
+  <div class="modal">
+    <h3>Novo Cliente</h3>
+    <div class="field"><label>Nome do cliente *</label><input type="text" id="mc-nome" placeholder="Ex: SABESP, CAIXA..."></div>
+    <div class="field"><label>RRT *</label><input type="text" id="mc-rrt" placeholder="Ex: 14845384"></div>
+    <div class="field"><label>Responsável técnico</label><input type="text" id="mc-resp" placeholder="Nome do responsável técnico"></div>
+    <div class="grid2" style="margin-top:8px">
+      <button class="btn" onclick="closeModal('modal-cliente')">Cancelar</button>
+      <button class="btn primary" onclick="salvarCliente()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-coletor" class="modal-bg" style="display:none" onclick="closeModalBg(event,'modal-coletor')">
+  <div class="modal">
+    <h3>Novo Coletor</h3>
+    <div class="field"><label>Cliente *</label>
+      <select id="mcol-cliente"><option value="">Selecione...</option></select>
+    </div>
+    <div class="field"><label>Nome do coletor *</label><input type="text" id="mcol-nome" placeholder="Ex: Itaquera 1, Centro 2..."></div>
+    <div class="grid2" style="margin-top:8px">
+      <button class="btn" onclick="closeModal('modal-coletor')">Cancelar</button>
+      <button class="btn primary" onclick="salvarColetor()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-usuario" class="modal-bg" style="display:none" onclick="closeModalBg(event,'modal-usuario')">
+  <div class="modal">
+    <h3>Novo Usuário</h3>
+    <div class="field"><label>Nome completo *</label><input type="text" id="mu-nome" placeholder="Nome do técnico"></div>
+    <div class="field"><label>E-mail *</label><input type="email" id="mu-email" placeholder="email@dominio.com"></div>
+    <div class="field"><label>Senha *</label><input type="password" id="mu-pass" placeholder="Mínimo 6 caracteres"></div>
+    <div class="field"><label>Nível de acesso</label>
+      <select id="mu-role">
+        <option value="cadastrador">Cadastrador (técnico de campo)</option>
+        <option value="master">Master (administrador)</option>
+      </select>
+    </div>
+    <div class="grid2" style="margin-top:8px">
+      <button class="btn" onclick="closeModal('modal-usuario')">Cancelar</button>
+      <button class="btn primary" onclick="salvarUsuario()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getAuth, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, addDoc, query, where, serverTimestamp, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAwwO2yLyNVnKMLFfmKKCx64zeh7Tbgrvc",
+  authDomain: "vistoria-cautelar-71f6d.firebaseapp.com",
+  projectId: "vistoria-cautelar-71f6d",
+  storageBucket: "vistoria-cautelar-71f6d.firebasestorage.app",
+  messagingSenderId: "157244396794",
+  appId: "1:157244396794:web:c0b983583939e13e91a543"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+
+const AMBIENTES = ['Fachada','Calçada','Garagem','Corredor externo','Área de serviço','Quintal','Sala','Cozinha','Banheiro 01','Banheiro 02','Lavabo','Dormitório 01','Dormitório 02','Dormitório 03','Corredor interno','Varanda','Sacada','Depósito'];
+const PATOLOGIAS = ['—','Fissura/Trinca/Rachadura','Umidade/Infiltração','Danificado'];
+
+let currentUser = null;
+let currentRole = null;
+let currentVistoria = null;
+let fotosPendentes = {};
+let fotoAtualBlob = null;
+let fotoAtualTipo = null;
+let fotoAtualAmbiente = null;
+let cameraStream = null;
+let cameraFacingMode = 'environment';
+let arrowPoints = [];
+let arrowImage = null;
+let sigCanvas = null, sigCtx = null, sigDrawing = false;
+let assinaturaData = null;
+
+window.goTo = (id) => {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+  if(id==='s-dash') loadDash();
+  if(id==='s-clientes') loadClientes();
+  if(id==='s-coletores') loadColetores();
+  if(id==='s-usuarios') loadUsuarios();
+  if(id==='s-nova-vistoria') loadNovVistoriaForm();
+  if(id==='s-historico') loadHistorico();
+  if(id==='s-checklist') renderChecklist();
+  if(id==='s-assinatura') renderAssinatura();
+};
+
+window.showModal = (id) => {
+  if(id==='modal-coletor') populateClienteSelect('mcol-cliente');
+  document.getElementById(id).style.display = 'flex';
+};
+window.closeModal = (id) => { document.getElementById(id).style.display='none'; };
+window.closeModalBg = (e,id) => { if(e.target.id===id) closeModal(id); };
+
+onAuthStateChanged(auth, async (user) => {
+  if(user){
+    currentUser = user;
+    const snap = await getDoc(doc(db,'users',user.uid));
+    if(snap.exists()){
+      currentRole = snap.data().role;
+    } else {
+      currentRole = 'master';
+      await setDoc(doc(db,'users',user.uid),{nome:'Admin',email:user.email,role:'master',criadoEm:serverTimestamp()});
+    }
+    goTo('s-dash');
+  } else {
+    goTo('s-login');
+  }
+});
+
+window.doLogin = async () => {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const err = document.getElementById('login-err');
+  if(!email||!pass){ err.textContent='Preencha e-mail e senha'; err.style.display='block'; return; }
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+    err.style.display='none';
+  } catch(e) {
+    err.textContent='E-mail ou senha incorretos';
+    err.style.display='block';
+  }
+};
+
+window.doLogout = async () => { await signOut(auth); };
+
+function loadDash(){
+  const roleEl = document.getElementById('dash-role');
+  roleEl.textContent = currentRole==='master'?'Master':'Cadastrador';
+  roleEl.className = 'badge '+(currentRole==='master'?'master':'cad');
+  document.getElementById('dash-master-section').style.display = currentRole==='master'?'block':'none';
+  loadDashCount();
+}
+
+async function loadDashCount(){
+  try {
+    const q = query(collection(db,'vistorias'), where('userId','==',currentUser.uid));
+    const snap = await getDocs(q);
+    document.getElementById('dash-count').textContent = snap.size+' vistoria(s) registrada(s)';
+  } catch(e){ document.getElementById('dash-count').textContent='Ver histórico'; }
+}
+
+async function loadClientes(){
+  const snap = await getDocs(collection(db,'clientes'));
+  const el = document.getElementById('lista-clientes');
+  el.innerHTML='';
+  if(snap.size===0){ el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px;font-size:14px">Nenhum cliente cadastrado</p>'; return; }
+  snap.forEach(d => {
+    const cl = d.data();
+    const div = document.createElement('div');
+    div.className='list-item';
+    div.innerHTML=`<div class="avatar" style="background:#ede9fe;color:#5b21b6">${cl.nome.charAt(0).toUpperCase()}</div>
+      <div class="info"><div class="title">${cl.nome}</div><div class="sub">RRT: ${cl.rrt}${cl.resp?' · '+cl.resp:''}</div></div>
+      ${currentRole==='master'?`<button class="btn small danger" onclick="event.stopPropagation();deletarCliente('${d.id}')">Excluir</button>`:'<span class="arrow">›</span>'}`;
+    el.appendChild(div);
+  });
+}
+
+window.salvarCliente = async () => {
+  const nome = document.getElementById('mc-nome').value.trim();
+  const rrt = document.getElementById('mc-rrt').value.trim();
+  const resp = document.getElementById('mc-resp').value.trim();
+  if(!nome||!rrt) return alert('Preencha nome e RRT');
+  await addDoc(collection(db,'clientes'),{nome,rrt,resp,criadoEm:serverTimestamp()});
+  closeModal('modal-cliente');
+  ['mc-nome','mc-rrt','mc-resp'].forEach(id=>document.getElementById(id).value='');
+  loadClientes();
+};
+
+window.deletarCliente = async (id) => {
+  if(!confirm('Excluir este cliente?')) return;
+  await deleteDoc(doc(db,'clientes',id));
+  loadClientes();
+};
+
+async function loadColetores(){
+  const [snap, clSnap] = await Promise.all([getDocs(collection(db,'coletores')), getDocs(collection(db,'clientes'))]);
+  const clMap={};
+  clSnap.forEach(d=>clMap[d.id]=d.data().nome);
+  const el = document.getElementById('lista-coletores');
+  el.innerHTML='';
+  if(snap.size===0){ el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px;font-size:14px">Nenhum coletor cadastrado</p>'; return; }
+  snap.forEach(d => {
+    const col = d.data();
+    const div = document.createElement('div');
+    div.className='list-item';
+    div.innerHTML=`<div class="avatar" style="background:#e0f2fe;color:#0369a1">C</div>
+      <div class="info"><div class="title">${col.nome}</div><div class="sub">${clMap[col.clienteId]||'—'}</div></div>
+      ${currentRole==='master'?`<button class="btn small danger" onclick="event.stopPropagation();deletarColetor('${d.id}')">Excluir</button>`:'<span class="arrow">›</span>'}`;
+    el.appendChild(div);
+  });
+}
+
+window.salvarColetor = async () => {
+  const clienteId = document.getElementById('mcol-cliente').value;
+  const nome = document.getElementById('mcol-nome').value.trim();
+  if(!clienteId||!nome) return alert('Selecione o cliente e informe o nome');
+  await addDoc(collection(db,'coletores'),{nome,clienteId,criadoEm:serverTimestamp()});
+  closeModal('modal-coletor');
+  document.getElementById('mcol-nome').value='';
+  loadColetores();
+};
+
+window.deletarColetor = async (id) => {
+  if(!confirm('Excluir este coletor?')) return;
+  await deleteDoc(doc(db,'coletores',id));
+  loadColetores();
+};
+
+async function loadUsuarios(){
+  const snap = await getDocs(collection(db,'users'));
+  const el = document.getElementById('lista-usuarios');
+  el.innerHTML='';
+  snap.forEach(d => {
+    const u = d.data();
+    const div = document.createElement('div');
+    div.className='list-item';
+    div.innerHTML=`<div class="avatar" style="background:#d1fae5;color:#065f46">${(u.nome||u.email).charAt(0).toUpperCase()}</div>
+      <div class="info"><div class="title">${u.nome||'—'}</div><div class="sub">${u.email}</div></div>
+      <span class="badge ${u.role==='master'?'master':'cad'}">${u.role==='master'?'Master':'Cadastrador'}</span>`;
+    el.appendChild(div);
+  });
+}
+
+window.salvarUsuario = async () => {
+  const nome = document.getElementById('mu-nome').value.trim();
+  const email = document.getElementById('mu-email').value.trim();
+  const pass = document.getElementById('mu-pass').value;
+  const role = document.getElementById('mu-role').value;
+  if(!nome||!email||!pass) return alert('Preencha todos os campos');
+  if(pass.length<6) return alert('A senha deve ter no mínimo 6 caracteres');
+  try {
+    const uc = await createUserWithEmailAndPassword(auth, email, pass);
+    await setDoc(doc(db,'users',uc.user.uid),{nome,email,role,criadoEm:serverTimestamp()});
+    closeModal('modal-usuario');
+    ['mu-nome','mu-email','mu-pass'].forEach(id=>document.getElementById(id).value='');
+    loadUsuarios();
+    alert('Usuário criado com sucesso!');
+  } catch(e){ alert('Erro: '+e.message); }
+};
+
+async function populateClienteSelect(selectId){
+  const snap = await getDocs(collection(db,'clientes'));
+  const sel = document.getElementById(selectId);
+  sel.innerHTML='<option value="">Selecione...</option>';
+  snap.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value=d.id; opt.textContent=d.data().nome;
+    sel.appendChild(opt);
+  });
+}
+
+async function loadNovVistoriaForm(){
+  await populateClienteSelect('nv-cliente');
+  document.getElementById('nv-coletor').innerHTML='<option value="">Selecione o cliente primeiro...</option>';
+  ['nv-nome','nv-doc','nv-tel','nv-rua','nv-num','nv-comp'].forEach(id=>document.getElementById(id).value='');
+}
+
+window.loadColetoresByCliente = async () => {
+  const clienteId = document.getElementById('nv-cliente').value;
+  const sel = document.getElementById('nv-coletor');
+  if(!clienteId){ sel.innerHTML='<option value="">Selecione...</option>'; return; }
+  sel.innerHTML='<option value="">Carregando...</option>';
+  const q = query(collection(db,'coletores'), where('clienteId','==',clienteId));
+  const snap = await getDocs(q);
+  sel.innerHTML='<option value="">Selecione...</option>';
+  snap.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value=d.id; opt.textContent=d.data().nome;
+    sel.appendChild(opt);
+  });
+};
+
+window.criarVistoria = async () => {
+  const clienteId = document.getElementById('nv-cliente').value;
+  const coletorId = document.getElementById('nv-coletor').value;
+  const nome = document.getElementById('nv-nome').value.trim();
+  const docR = document.getElementById('nv-doc').value.trim();
+  const tel = document.getElementById('nv-tel').value.trim();
+  const rua = document.getElementById('nv-rua').value.trim();
+  const num = document.getElementById('nv-num').value.trim();
+  const comp = document.getElementById('nv-comp').value.trim();
+  if(!clienteId||!coletorId) return alert('Selecione o cliente e o coletor');
+  if(!nome||!rua||!num) return alert('Preencha nome, rua e número');
+
+  const [clSnap, colSnap] = await Promise.all([getDoc(doc(db,'clientes',clienteId)), getDoc(doc(db,'coletores',coletorId))]);
+  const clData = clSnap.data();
+  const colData = colSnap.data();
+  const now = new Date();
+  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const dataFormatada = meses[now.getMonth()]+'/'+String(now.getFullYear()).slice(2);
+
+  currentVistoria = {
+    clienteId, coletorId,
+    clienteNome: clData.nome,
+    clienteRRT: clData.rrt,
+    clienteResp: clData.resp||'',
+    coletorNome: colData.nome,
+    responsavel: {nome, doc: docR, tel},
+    endereco: {rua, num, comp},
+    ocupacao: document.getElementById('nv-ocupacao').value,
+    tipo: document.getElementById('nv-tipo').value,
+    estado: document.getElementById('nv-estado').value,
+    data: dataFormatada,
+    dataCompleta: now.toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'}),
+    userId: currentUser.uid,
+    checklist: {},
+    observacoes: '',
+    status: 'em_andamento'
+  };
+
+  fotosPendentes = {};
+  assinaturaData = null;
+
+  document.getElementById('v-titulo').textContent = nome.split(' ')[0];
+  document.getElementById('v-info').innerHTML = `
+    <b>${nome}</b><br>
+    ${docR?'Doc: '+docR+'<br>':''}
+    ${tel?'Tel: '+tel+'<br>':''}
+    ${rua}, ${num}${comp?' — '+comp:''}<br>
+    <span style="color:#aaa;font-size:12px">Coletor: ${colData.nome} · RRT: ${clData.rrt}</span>
+  `;
+
+  const ambiSel = document.getElementById('v-ambiente');
+  ambiSel.innerHTML='<option value="">Selecione o ambiente...</option>';
+  AMBIENTES.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value=a; opt.textContent=a;
+    ambiSel.appendChild(opt);
+  });
+
+  goTo('s-vistoria');
+  renderFotos();
+};
+
+function renderFotos(){
+  const container = document.getElementById('fotos-por-ambiente');
+  container.innerHTML='';
+  const grupos={};
+  Object.values(fotosPendentes).forEach(f => {
+    if(!grupos[f.ambiente]) grupos[f.ambiente]=[];
+    grupos[f.ambiente].push(f);
+  });
+  if(Object.keys(grupos).length===0){
+    container.innerHTML='<div class="card" style="text-align:center;color:#aaa;padding:24px;font-size:14px">Nenhuma foto capturada ainda</div>';
+    return;
+  }
+  Object.entries(grupos).forEach(([amb,fotos]) => {
+    const sec = document.createElement('div');
+    sec.className='card';
+    sec.innerHTML=`<h2>${amb} <span style="font-weight:400;text-transform:none;letter-spacing:0">(${fotos.length} foto${fotos.length>1?'s':''})</span></h2>
+      <div class="photo-grid">${fotos.map(f=>`
+        <div class="photo-card">
+          <img src="${f.dataUrl}" alt="${f.tipo}" loading="lazy">
+          <div class="photo-label">
+            <span>${f.numero} — ${f.tipo}</span>
+            <button class="del-btn" onclick="removerFoto('${f.id}')">✕</button>
+          </div>
+        </div>`).join('')}
+      </div>`;
+    container.appendChild(sec);
+  });
+}
+
+window.removerFoto = (id) => { delete fotosPendentes[id]; renderFotos(); };
+
+window.abrirCamera = async () => {
+  const ambiente = document.getElementById('v-ambiente').value;
+  if(!ambiente) return alert('Selecione o ambiente primeiro');
+  fotoAtualAmbiente = ambiente;
+  fotoAtualTipo = document.getElementById('v-tipo-foto').value;
+  document.getElementById('cam-label').textContent = ambiente;
+  document.getElementById('cam-tipo-badge').textContent = fotoAtualTipo;
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:cameraFacingMode, width:{ideal:1920}, height:{ideal:1080}},
+      audio:false
+    });
+    document.getElementById('cam-video').srcObject = cameraStream;
+    document.getElementById('camera-overlay').style.display='flex';
+  } catch(e){ alert('Câmera indisponível: '+e.message+'\n\nUse a opção Galeria para selecionar fotos.'); }
+};
+
+window.fecharCamera = () => {
+  if(cameraStream) cameraStream.getTracks().forEach(t=>t.stop());
+  document.getElementById('camera-overlay').style.display='none';
+};
+
+window.trocarCamera = async () => {
+  cameraFacingMode = cameraFacingMode==='environment'?'user':'environment';
+  if(cameraStream) cameraStream.getTracks().forEach(t=>t.stop());
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:cameraFacingMode}});
+    document.getElementById('cam-video').srcObject = cameraStream;
+  } catch(e){ alert('Não foi possível trocar a câmera'); }
+};
+
+window.tirarFoto = () => {
+  const video = document.getElementById('cam-video');
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth||1280;
+  canvas.height = video.videoHeight||720;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video,0,0);
+
+  // Timestamp overlay
+  const now = new Date();
+  const ts = now.toLocaleString('pt-BR');
+  const addr = `${currentVistoria.endereco.rua}, ${currentVistoria.endereco.num}`;
+  const fontSize = Math.max(14, Math.round(canvas.width/60));
+  ctx.fillStyle='rgba(0,0,0,0.6)';
+  ctx.fillRect(0, canvas.height-fontSize*3.5, canvas.width, fontSize*3.5);
+  ctx.fillStyle='#fff';
+  ctx.font=`bold ${fontSize}px sans-serif`;
+  ctx.fillText(ts, 12, canvas.height-fontSize*2);
+  ctx.font=`${fontSize*0.85}px sans-serif`;
+  ctx.fillText(addr, 12, canvas.height-fontSize*0.5);
+
+  fecharCamera();
+  fotoAtualBlob = canvas.toDataURL('image/jpeg',0.92);
+  abrirEditorSetas(fotoAtualBlob);
+};
+
+window.uploadFoto = () => {
+  const ambiente = document.getElementById('v-ambiente').value;
+  if(!ambiente) return alert('Selecione o ambiente primeiro');
+  fotoAtualAmbiente = ambiente;
+  fotoAtualTipo = document.getElementById('v-tipo-foto').value;
+  document.getElementById('file-input').click();
+};
+
+window.handleFileUpload = (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => { fotoAtualBlob=ev.target.result; abrirEditorSetas(fotoAtualBlob); };
+  reader.readAsDataURL(file);
+  e.target.value='';
+};
+
+function abrirEditorSetas(imgDataUrl){
+  arrowPoints=[];
+  document.getElementById('arrow-counter').textContent='0 setas';
+  document.getElementById('arrow-overlay').style.display='flex';
+  const canvas = document.getElementById('arrow-canvas');
+  const img = new Image();
+  img.onload = () => {
+    arrowImage = img;
+    const maxW = window.innerWidth;
+    const maxH = window.innerHeight-120;
+    const scale = Math.min(maxW/img.width, maxH/img.height, 1);
+    canvas.width = Math.round(img.width*scale);
+    canvas.height = Math.round(img.height*scale);
+    canvas.style.width=canvas.width+'px';
+    canvas.style.height=canvas.height+'px';
+    desenharSetas();
+  };
+  img.src = imgDataUrl;
+
+  const getPos = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return {
+      x: (src.clientX-rect.left)/rect.width,
+      y: (src.clientY-rect.top)/rect.height
+    };
+  };
+
+  canvas.ontouchend = (e) => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const src = e.changedTouches[0];
+    arrowPoints.push({
+      x:(src.clientX-rect.left)/rect.width,
+      y:(src.clientY-rect.top)/rect.height
+    });
+    document.getElementById('arrow-counter').textContent=arrowPoints.length+' seta(s)';
+    desenharSetas();
+  };
+
+  canvas.onclick = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    arrowPoints.push({x:(e.clientX-rect.left)/rect.width, y:(e.clientY-rect.top)/rect.height});
+    document.getElementById('arrow-counter').textContent=arrowPoints.length+' seta(s)';
+    desenharSetas();
+  };
+}
+
+function desenharSetas(){
+  const canvas = document.getElementById('arrow-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(arrowImage) ctx.drawImage(arrowImage,0,0,canvas.width,canvas.height);
+  arrowPoints.forEach(p => {
+    const cx = p.x*canvas.width;
+    const cy = p.y*canvas.height;
+    const size = canvas.width*0.07;
+    const angle = Math.PI*0.75;
+    const tx = cx - size*Math.cos(angle);
+    const ty = cy - size*Math.sin(angle);
+    ctx.save();
+    ctx.strokeStyle='#FF0000';
+    ctx.fillStyle='#FF0000';
+    ctx.lineWidth = Math.max(3, size*0.14);
+    ctx.lineCap='round';
+    ctx.lineJoin='round';
+    ctx.beginPath();
+    ctx.moveTo(tx,ty);
+    ctx.lineTo(cx,cy);
+    ctx.stroke();
+    const hLen = size*0.38;
+    const hAngle = 0.42;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.lineTo(cx-hLen*Math.cos(angle-hAngle), cy-hLen*Math.sin(angle-hAngle));
+    ctx.lineTo(cx-hLen*Math.cos(angle+hAngle), cy-hLen*Math.sin(angle+hAngle));
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  });
+}
+
+window.desfazerSeta = () => { arrowPoints.pop(); document.getElementById('arrow-counter').textContent=arrowPoints.length+' seta(s)'; desenharSetas(); };
+window.limparSetas = () => { arrowPoints=[]; document.getElementById('arrow-counter').textContent='0 setas'; desenharSetas(); };
+window.confirmarSetas = () => {
+  const canvas = document.getElementById('arrow-canvas');
+  const dataUrl = canvas.toDataURL('image/jpeg',0.92);
+  document.getElementById('arrow-overlay').style.display='none';
+  salvarFotoFinal(dataUrl);
+};
+
+function salvarFotoFinal(dataUrl){
+  const id = Date.now().toString();
+  const numero = Object.keys(fotosPendentes).length+1;
+  fotosPendentes[id] = {
+    id, dataUrl,
+    ambiente: fotoAtualAmbiente,
+    tipo: fotoAtualTipo,
+    numero: 'Foto '+String(numero).padStart(2,'0'),
+    timestamp: new Date().toISOString()
+  };
+  // Salvar no celular automaticamente
+  try {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `vistoria_${fotoAtualAmbiente.replace(/\s+/g,'_')}_foto${String(numero).padStart(2,'0')}.jpg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch(e){}
+  renderFotos();
+}
+
+function renderChecklist(){
+  const tbody = document.getElementById('checklist-body');
+  tbody.innerHTML='';
+  AMBIENTES.forEach(amb => {
+    const tr = document.createElement('tr');
+    const cols=['estrutura','paredes','cobertura','portas','piso'];
+    const saved = (currentVistoria?.checklist?.[amb])||{};
+    tr.innerHTML=`<td style="font-size:11px;font-weight:600;white-space:nowrap">${amb}</td>`+
+      cols.map(c=>`<td><select onchange="updateChecklist('${amb}','${c}',this.value)">${
+        PATOLOGIAS.map(p=>`<option${saved[c]===p?' selected':''}>${p}</option>`).join('')
+      }</select></td>`).join('');
+    tbody.appendChild(tr);
+  });
+  if(currentVistoria) document.getElementById('cl-obs').value=currentVistoria.observacoes||'';
+}
+
+window.updateChecklist = (amb,col,val) => {
+  if(!currentVistoria.checklist) currentVistoria.checklist={};
+  if(!currentVistoria.checklist[amb]) currentVistoria.checklist[amb]={};
+  currentVistoria.checklist[amb][col]=val;
+};
+
+window.salvarChecklist = () => {
+  if(currentVistoria) currentVistoria.observacoes=document.getElementById('cl-obs').value;
+  goTo('s-assinatura');
+};
+
+function renderAssinatura(){
+  if(currentVistoria){
+    document.getElementById('assin-info').innerHTML=`
+      <b>${currentVistoria.responsavel.nome}</b><br>
+      ${currentVistoria.responsavel.doc?'Doc: '+currentVistoria.responsavel.doc+'<br>':''}
+      ${currentVistoria.responsavel.tel?'Tel: '+currentVistoria.responsavel.tel+'<br>':''}
+      ${currentVistoria.endereco.rua}, ${currentVistoria.endereco.num}${currentVistoria.endereco.comp?' — '+currentVistoria.endereco.comp:''}<br>
+      <span style="color:#aaa;font-size:12px">Data: ${currentVistoria.dataCompleta}</span>
+    `;
+  }
+  sigCanvas = document.getElementById('sig-canvas');
+  sigCtx = sigCanvas.getContext('2d');
+  sigCanvas.width = sigCanvas.offsetWidth||300;
+  sigCanvas.height = 160;
+  sigCtx.fillStyle='#fff';
+  sigCtx.fillRect(0,0,sigCanvas.width,sigCanvas.height);
+  sigCtx.strokeStyle='#1c1c1e';
+  sigCtx.lineWidth=2.5;
+  sigCtx.lineCap='round';
+  sigCtx.lineJoin='round';
+  assinaturaData=null;
+  document.getElementById('sig-confirmado').style.display='none';
+  document.getElementById('btn-finalizar').disabled=true;
+  document.getElementById('btn-finalizar').style.opacity='0.4';
+
+  const getPos = (e) => {
+    const rect = sigCanvas.getBoundingClientRect();
+    const src = e.touches?e.touches[0]:e;
+    return {x:src.clientX-rect.left, y:src.clientY-rect.top};
+  };
+  sigCanvas.onmousedown = sigCanvas.ontouchstart = (e) => { e.preventDefault(); sigDrawing=true; const p=getPos(e); sigCtx.beginPath(); sigCtx.moveTo(p.x,p.y); };
+  sigCanvas.onmousemove = sigCanvas.ontouchmove = (e) => { e.preventDefault(); if(!sigDrawing) return; const p=getPos(e); sigCtx.lineTo(p.x,p.y); sigCtx.stroke(); };
+  sigCanvas.onmouseup = sigCanvas.ontouchend = (e) => { e.preventDefault(); sigDrawing=false; };
+}
+
+window.limparAssinatura = () => {
+  if(!sigCtx) return;
+  sigCtx.fillStyle='#fff';
+  sigCtx.fillRect(0,0,sigCanvas.width,sigCanvas.height);
+  assinaturaData=null;
+  document.getElementById('sig-confirmado').style.display='none';
+  document.getElementById('btn-finalizar').disabled=true;
+  document.getElementById('btn-finalizar').style.opacity='0.4';
+};
+
+window.salvarAssinatura = () => {
+  assinaturaData = sigCanvas.toDataURL('image/png');
+  document.getElementById('sig-confirmado').style.display='block';
+  document.getElementById('btn-finalizar').disabled=false;
+  document.getElementById('btn-finalizar').style.opacity='1';
+};
+
+window.confirmarSairVistoria = () => {
+  if(confirm('Sair da vistoria? Os dados não salvos serão perdidos.')) goTo('s-dash');
+};
+
+window.finalizarVistoria = async () => {
+  if(!assinaturaData) return alert('Confirme a assinatura primeiro');
+  const btnFin = document.getElementById('btn-finalizar');
+  btnFin.textContent='Gerando PDF...';
+  btnFin.disabled=true;
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p','mm','a4');
+    const W=210, M=10, cw=W-M*2;
+    const fotos = Object.values(fotosPendentes);
+    const ambientes = [...new Set(fotos.map(f=>f.ambiente))];
+    let fotoNum=1;
+    let primeiraPage=true;
+
+    for(const amb of ambientes){
+      const fotosAmb = fotos.filter(f=>f.ambiente===amb);
+      let i=0;
+      while(i<fotosAmb.length){
+        if(!primeiraPage) pdf.addPage();
+        primeiraPage=false;
+        addHeader(pdf,M,W,cw,currentVistoria,amb);
+        let y=M+34;
+
+        if(i===0 && fotosAmb[0].tipo==='Vista'){
+          // Foto grande de vista
+          try {
+            await addImg(pdf, fotosAmb[0].dataUrl, M, y, cw, 88);
+            addFotoLabel(pdf, 'Foto '+String(fotoNum).padStart(2,'0'), fotosAmb[0].tipo, M, y+88+5, cw);
+            fotoNum++;
+          } catch(e){}
+          y+=88+14;
+          i++;
+          // Par de detalhes
+          while(i<fotosAmb.length){
+            if(y+68>280){ pdf.addPage(); addHeader(pdf,M,W,cw,currentVistoria,amb); y=M+34; }
+            const hw=(cw-4)/2;
+            for(let k=0;k<2&&i<fotosAmb.length;k++,i++){
+              try {
+                const fx=M+k*(hw+4);
+                await addImg(pdf, fotosAmb[i].dataUrl, fx, y, hw, 64);
+                addFotoLabel(pdf, 'Foto '+String(fotoNum).padStart(2,'0'), fotosAmb[i].tipo, fx, y+64+4, hw);
+                fotoNum++;
+              } catch(e){ i++; }
+            }
+            y+=64+14;
+          }
+        } else {
+          // Pares lado a lado
+          while(i<fotosAmb.length){
+            if(y+68>280){ pdf.addPage(); addHeader(pdf,M,W,cw,currentVistoria,amb); y=M+34; }
+            const hw=(cw-4)/2;
+            for(let k=0;k<2&&i<fotosAmb.length;k++,i++){
+              try {
+                const fx=M+k*(hw+4);
+                await addImg(pdf, fotosAmb[i].dataUrl, fx, y, hw, 64);
+                addFotoLabel(pdf, 'Foto '+String(fotoNum).padStart(2,'0'), fotosAmb[i].tipo, fx, y+64+4, hw);
+                fotoNum++;
+              } catch(e){ i++; }
+            }
+            y+=64+14;
+          }
+        }
+        addFooter(pdf,W,M);
+      }
+    }
+
+    // Página checklist
+    if(!primeiraPage) pdf.addPage();
+    addHeader(pdf,M,W,cw,currentVistoria,'Checklist de Patologias');
+    let y=M+36;
+    pdf.setFontSize(9); pdf.setFont('helvetica','bold');
+    pdf.text('IDENTIFICAÇÃO DE PATOLOGIAS', M+cw/2, y, {align:'center'});
+    y+=7;
+
+    const cols=['Local','Estrutura','Paredes','Cobertura','Portas/Esq.','Piso/Calç.'];
+    const ckeys=['estrutura','paredes','cobertura','portas','piso'];
+    const colW=[30,34,34,32,28,32];
+    pdf.setFillColor(235,235,235);
+    let cx=M;
+    colW.forEach((w,i)=>{pdf.rect(cx,y,w,6,'F'); cx+=w;});
+    cx=M;
+    pdf.setFontSize(7.5); pdf.setFont('helvetica','bold');
+    cols.forEach((c,i)=>{ pdf.text(c,cx+1.5,y+4); cx+=colW[i]; });
+    y+=6;
+
+    AMBIENTES.forEach((amb,ri)=>{
+      if(y>268){ pdf.addPage(); y=20; }
+      if(ri%2===0){pdf.setFillColor(250,250,250); cx=M; colW.forEach(w=>{pdf.rect(cx,y,w,6,'F'); cx+=w;});}
+      pdf.setDrawColor(210,210,210);
+      pdf.rect(M,y,cw,6,'S');
+      cx=M;
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(7);
+      pdf.text(amb,cx+1.5,y+4); cx+=colW[0];
+      ckeys.forEach((k,ki)=>{
+        pdf.setFont('helvetica','normal');
+        const val=(currentVistoria.checklist?.[amb]?.[k])||'—';
+        const short=val==='Fissura/Trinca/Rachadura'?'Fissura/Trinca':val==='Umidade/Infiltração'?'Umid./Infiltr.':val;
+        pdf.text(short,cx+1.5,y+4); cx+=colW[ki+1];
+      });
+      y+=6;
+    });
+
+    if(currentVistoria.observacoes){
+      y+=6;
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(8);
+      pdf.text('Observações:',M,y); y+=5;
+      pdf.setFont('helvetica','normal');
+      const lines=pdf.splitTextToSize(currentVistoria.observacoes,cw);
+      pdf.text(lines,M,y); y+=lines.length*4.5+6;
+    }
+
+    y+=10;
+    pdf.setFontSize(9); pdf.setFont('helvetica','normal');
+    pdf.text('São Paulo, '+currentVistoria.dataCompleta,M,y);
+    y+=14;
+    if(assinaturaData){ try{ pdf.addImage(assinaturaData,'PNG',M,y,70,22); }catch(e){} }
+    pdf.line(M,y+24,M+85,y+24);
+    pdf.setFontSize(8);
+    pdf.text(currentVistoria.responsavel.nome,M,y+29);
+    pdf.text('Responsável pelo imóvel',M,y+33);
+    addFooter(pdf,W,M);
+
+    // Salvar no Firestore (sem as fotos para economizar)
+    const vistoriaData={
+      clienteId: currentVistoria.clienteId,
+      coletorId: currentVistoria.coletorId,
+      clienteNome: currentVistoria.clienteNome,
+      clienteRRT: currentVistoria.clienteRRT,
+      coletorNome: currentVistoria.coletorNome,
+      responsavel: currentVistoria.responsavel,
+      endereco: currentVistoria.endereco,
+      ocupacao: currentVistoria.ocupacao,
+      tipo: currentVistoria.tipo,
+      estado: currentVistoria.estado,
+      data: currentVistoria.data,
+      userId: currentUser.uid,
+      checklist: currentVistoria.checklist,
+      observacoes: currentVistoria.observacoes,
+      totalFotos: Object.keys(fotosPendentes).length,
+      status:'concluida',
+      criadoEm: serverTimestamp()
+    };
+    await addDoc(collection(db,'vistorias'),vistoriaData);
+
+    const nomeArq=`Vistoria_${currentVistoria.responsavel.nome.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'')}_${new Date().toISOString().slice(0,10)}.pdf`;
+    pdf.save(nomeArq);
+
+    alert('✅ Vistoria finalizada!\nPDF gerado e salvo.');
+    currentVistoria=null; fotosPendentes={}; assinaturaData=null;
+    goTo('s-dash');
+
+  } catch(e){
+    console.error(e);
+    alert('Erro ao gerar PDF: '+e.message);
+  } finally {
+    btnFin.textContent='Gerar PDF e finalizar';
+    btnFin.disabled=false;
+    btnFin.style.opacity='1';
+  }
+};
+
+function addImg(pdf, dataUrl, x, y, w, h){
+  return new Promise((res)=>{
+    try{ pdf.addImage(dataUrl,'JPEG',x,y,w,h,'','FAST'); }catch(e){}
+    res();
+  });
+}
+
+function addFotoLabel(pdf,num,tipo,x,y,w){
+  pdf.setFontSize(8); pdf.setFont('helvetica','bold');
+  pdf.text(num, x+w/2, y, {align:'center'});
+  pdf.setFont('helvetica','normal');
+  pdf.text(tipo, x+w/2, y+4, {align:'center'});
+}
+
+function addHeader(pdf,M,W,cw,v,local){
+  pdf.setDrawColor(180,180,180); pdf.setLineWidth(0.3);
+  pdf.rect(M,M,cw,30,'S');
+  pdf.setFontSize(12); pdf.setFont('helvetica','bold');
+  pdf.text('RELATÓRIO DE VISTORIA CAUTELAR',M+34,M+8);
+  pdf.setFontSize(9);
+  pdf.text('RRT '+v.clienteRRT, W-M-2, M+8, {align:'right'});
+  pdf.setFontSize(7.5); pdf.setFont('helvetica','normal');
+  pdf.text('Nome: '+v.responsavel.nome, M+2, M+14);
+  pdf.text('RG/CPF: '+v.responsavel.doc, M+2, M+18);
+  pdf.text('Contato: '+v.responsavel.tel, M+90, M+18);
+  pdf.text('Endereço: '+v.endereco.rua+' Nº: '+v.endereco.num+(v.endereco.comp?' Compl.: '+v.endereco.comp:''), M+2, M+22);
+  pdf.text('Coletor: '+v.coletorNome, M+2, M+26);
+  pdf.setFont('helvetica','bold');
+  pdf.text('Local: '+local, M+2, M+30);
+  pdf.text('Data: '+v.data, W-M-2, M+30, {align:'right'});
+}
+
+function addFooter(pdf,W,M){
+  pdf.setFontSize(7); pdf.setFont('helvetica','normal');
+  pdf.setTextColor(130,130,130);
+  pdf.text('RONALDO PINTO ARQUITETURA | Av. Marechal Eurico Gaspar Dutra, nº 1292 | Santana | São Paulo – SP | CEP 02239-010 | CNPJ: 22.121.094/0001-90', W/2, 291, {align:'center'});
+  pdf.setTextColor(0,0,0);
+}
+
+async function loadHistorico(){
+  const el=document.getElementById('lista-historico');
+  el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px;font-size:14px">Carregando...</p>';
+  try {
+    const q=query(collection(db,'vistorias'),where('userId','==',currentUser.uid));
+    const snap=await getDocs(q);
+    el.innerHTML='';
+    if(snap.size===0){ el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px;font-size:14px">Nenhuma vistoria registrada</p>'; return; }
+    const docs=[];
+    snap.forEach(d=>docs.push({id:d.id,...d.data()}));
+    docs.sort((a,b)=>(b.criadoEm?.seconds||0)-(a.criadoEm?.seconds||0));
+    docs.forEach(v=>{
+      const div=document.createElement('div');
+      div.className='list-item';
+      div.innerHTML=`
+        <div class="avatar" style="background:#f3f4f6;color:#374151">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+        </div>
+        <div class="info">
+          <div class="title">${v.responsavel?.nome||'—'}</div>
+          <div class="sub">${v.endereco?.rua||''}, ${v.endereco?.num||''} · ${v.totalFotos||0} foto(s) · ${v.coletorNome||''}</div>
+        </div>
+        <span class="badge ${v.status==='concluida'?'ok':'master'}">${v.status==='concluida'?'Concluída':'Em andamento'}</span>`;
+      el.appendChild(div);
+    });
+  } catch(e){ el.innerHTML='<p style="text-align:center;color:#dc2626;padding:24px;font-size:14px">Erro: '+e.message+'</p>'; }
+}
+</script>
+</body>
+</html>
