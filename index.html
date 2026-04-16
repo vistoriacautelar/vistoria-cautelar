@@ -40,8 +40,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .badge.ok{background:#d1fae5;color:#065f46}
 .avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex-shrink:0}
 .photo-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-.photo-card{border-radius:10px;overflow:hidden;border:1px solid #e5e5e5;position:relative;background:#000;aspect-ratio:4/3}
-.photo-card img{width:100%;height:100%;object-fit:cover;display:block}
+.photo-card{border-radius:10px;overflow:hidden;border:1px solid #e5e5e5;position:relative;background:#000}
+.photo-card img{width:100%;height:auto;display:block;max-height:200px;object-fit:contain}
 .photo-label{background:rgba(0,0,0,.65);color:#fff;font-size:11px;padding:4px 8px;position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center}
 .del-btn{background:rgba(220,38,38,.85);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:11px;cursor:pointer}
 .camera-overlay{position:fixed;inset:0;background:#000;z-index:1000;display:flex;flex-direction:column;overflow:hidden}
@@ -49,9 +49,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .cam-video-wrap{flex:1;position:relative;overflow:hidden;min-height:0}
 .cam-video-wrap video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .camera-controls{background:#000;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-shrink:0}
-.zoom-btns{display:flex;gap:6px}
-.zoom-btn{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:20px;padding:6px 12px;font-size:13px;cursor:pointer;-webkit-appearance:none}
-.zoom-btn.active{background:#fff;color:#000}
+.zoom-btns{display:flex;gap:6px;justify-content:center;padding:6px 0;background:#000;flex-shrink:0}
+.zoom-btn{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:20px;padding:5px 14px;font-size:13px;cursor:pointer;-webkit-appearance:none}
+.zoom-btn.active{background:#fff;color:#000;font-weight:600}
 .shutter{width:72px;height:72px;border-radius:50%;background:#fff;border:5px solid rgba(255,255,255,.4);cursor:pointer;flex-shrink:0;-webkit-appearance:none;appearance:none}
 .shutter:active{background:#ccc;transform:scale(.93)}
 .btn-cam{background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:10px;padding:10px 16px;font-size:13px;cursor:pointer;-webkit-appearance:none;white-space:nowrap}
@@ -59,10 +59,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .canvas-overlay canvas{flex:1;width:100%;touch-action:none;display:block;min-height:0}
 .canvas-controls{background:#111;padding:14px 16px;display:flex;gap:10px;align-items:center;flex-shrink:0}
 .checklist-wrapper{overflow-x:auto;-webkit-overflow-scrolling:touch}
-.checklist-table{width:100%;border-collapse:collapse;font-size:11px;min-width:480px}
-.checklist-table th{background:#f5f5f7;padding:6px 5px;text-align:left;font-weight:600;border:1px solid #e5e5e5;font-size:10px;white-space:nowrap}
-.checklist-table td{padding:4px 4px;border:1px solid #e5e5e5;vertical-align:middle}
-.checklist-table td select{width:100%;border:none;background:transparent;font-size:10px;color:#111;padding:1px}
+.checklist-table{width:100%;border-collapse:collapse;font-size:11px;min-width:500px}
+.checklist-table th{background:#f0f0f0;padding:6px 5px;text-align:left;font-weight:700;border:1px solid #ccc;font-size:10px;white-space:nowrap}
+.checklist-table td{padding:5px 4px;border:1px solid #ddd;vertical-align:top}
+.checklist-table td label{display:flex;align-items:center;gap:4px;font-size:10px;white-space:nowrap;cursor:pointer;margin-bottom:2px}
+.checklist-table td input[type=checkbox]{width:14px;height:14px;flex-shrink:0;cursor:pointer}
 .sig-pad{border:1px solid #ddd;border-radius:10px;background:#fff;touch-action:none;width:100%;height:160px;display:block}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:flex;align-items:flex-end;justify-content:center}
 .modal{background:#fff;border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:600px;max-height:88vh;overflow-y:auto}
@@ -74,6 +75,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .pass-wrap input{padding-right:44px}
 .pass-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#888;font-size:13px}
 .info-box{background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 14px;font-size:13px;color:#0369a1;margin-bottom:12px}
+.warn-box{background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:10px 14px;font-size:13px;color:#856404;margin-bottom:12px}
 </style>
 </head>
 <body>
@@ -94,7 +96,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
       <button class="btn primary" onclick="doLogin()">Entrar</button>
     </div>
   </div>
-  <div style="padding:16px;text-align:center;font-size:12px;color:#aaa">Vistoria Cautelar v1.2</div>
+  <div style="padding:16px;text-align:center;font-size:12px;color:#aaa">Vistoria Cautelar v1.3</div>
 </div>
 
 <div id="s-dash" class="screen">
@@ -108,71 +110,37 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
   <div class="content">
     <div id="dash-master-section" style="display:none">
       <div class="section-header">Administracao</div>
-      <div class="list-item" onclick="goTo('s-prestadores')">
-        <div class="avatar" style="background:#fce7f3;color:#9d174d"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
-        <div class="info"><div class="title">Prestadores</div><div class="sub">Empresas e logos dos relatorios</div></div>
-        <span style="color:#c7c7cc;font-size:20px">&#8250;</span>
-      </div>
-      <div class="list-item" onclick="goTo('s-clientes')">
-        <div class="avatar" style="background:#ede9fe;color:#5b21b6"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></div>
-        <div class="info"><div class="title">Clientes e RRTs</div><div class="sub">Gerenciar clientes e registros</div></div>
-        <span style="color:#c7c7cc;font-size:20px">&#8250;</span>
-      </div>
-      <div class="list-item" onclick="goTo('s-coletores')">
-        <div class="avatar" style="background:#e0f2fe;color:#0369a1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
-        <div class="info"><div class="title">Coletores</div><div class="sub">Gerenciar bairros e coletores</div></div>
-        <span style="color:#c7c7cc;font-size:20px">&#8250;</span>
-      </div>
-      <div class="list-item" onclick="goTo('s-usuarios')">
-        <div class="avatar" style="background:#d1fae5;color:#065f46"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg></div>
-        <div class="info"><div class="title">Usuarios</div><div class="sub">Gerenciar tecnicos cadastradores</div></div>
-        <span style="color:#c7c7cc;font-size:20px">&#8250;</span>
-      </div>
+      <div class="list-item" onclick="goTo('s-prestadores')"><div class="avatar" style="background:#fce7f3;color:#9d174d"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div><div class="info"><div class="title">Prestadores</div><div class="sub">Empresas e logos</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
+      <div class="list-item" onclick="goTo('s-clientes')"><div class="avatar" style="background:#ede9fe;color:#5b21b6"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="info"><div class="title">Clientes e RRTs</div><div class="sub">Gerenciar clientes</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
+      <div class="list-item" onclick="goTo('s-coletores')"><div class="avatar" style="background:#e0f2fe;color:#0369a1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div><div class="info"><div class="title">Coletores</div><div class="sub">Bairros e regioes</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
+      <div class="list-item" onclick="goTo('s-usuarios')"><div class="avatar" style="background:#d1fae5;color:#065f46"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg></div><div class="info"><div class="title">Usuarios</div><div class="sub">Tecnicos cadastradores</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
       <div class="sep"></div>
     </div>
     <div class="section-header">Vistorias</div>
-    <div class="list-item" onclick="goTo('s-nova-vistoria')">
-      <div class="avatar" style="background:#fef3c7;color:#92400e"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div>
-      <div class="info"><div class="title">Nova Vistoria</div><div class="sub">Iniciar nova vistoria cautelar</div></div>
-      <span style="color:#c7c7cc;font-size:20px">&#8250;</span>
-    </div>
-    <div class="list-item" onclick="goTo('s-historico')">
-      <div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg></div>
-      <div class="info"><div class="title">Minhas Vistorias</div><div class="sub" id="dash-count">Carregando...</div></div>
-      <span style="color:#c7c7cc;font-size:20px">&#8250;</span>
-    </div>
+    <div class="list-item" onclick="goTo('s-nova-vistoria')"><div class="avatar" style="background:#fef3c7;color:#92400e"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div><div class="info"><div class="title">Nova Vistoria</div><div class="sub">Iniciar vistoria cautelar</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
+    <div class="list-item" onclick="goTo('s-historico')"><div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg></div><div class="info"><div class="title">Minhas Vistorias</div><div class="sub" id="dash-count">Carregando...</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
   </div>
 </div>
 
 <div id="s-perfil" class="screen">
-  <div class="topbar">
-    <button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button>
-    <h1>Meu Perfil</h1>
-    <button class="btn small primary" onclick="salvarPerfil()">Salvar</button>
-  </div>
+  <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Meu Perfil</h1><button class="btn small primary" onclick="salvarPerfil()">Salvar</button></div>
   <div class="content">
-    <div class="card">
-      <h2>Informacoes</h2>
+    <div class="card"><h2>Informacoes</h2>
       <div class="field"><label>Nome</label><input type="text" id="perfil-nome" placeholder="Seu nome completo"></div>
       <div class="field"><label>E-mail</label><input type="email" id="perfil-email" disabled style="color:#aaa"></div>
     </div>
-    <div class="card">
-      <h2>Minha assinatura (obrigatoria para gerar PDF)</h2>
-      <p style="font-size:13px;color:#888;margin-bottom:10px">Cadastre sua assinatura uma vez. Sera aplicada automaticamente em todos os relatorios.</p>
+    <div class="card"><h2>Minha assinatura (obrigatoria para gerar PDF)</h2>
+      <p style="font-size:13px;color:#888;margin-bottom:10px">Cadastre uma vez. Sera aplicada automaticamente em todos os relatorios.</p>
       <canvas id="perfil-sig" class="sig-pad"></canvas>
       <div class="grid2" style="margin-top:10px">
         <button class="btn" onclick="limparSigPerfil()">Limpar</button>
         <button class="btn primary" onclick="salvarSigPerfil()">Salvar assinatura</button>
       </div>
-      <div id="perfil-sig-ok" style="display:none;margin-top:10px;background:#d1fae5;color:#065f46;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:500;text-align:center">&#10003; Assinatura salva com sucesso</div>
+      <div id="perfil-sig-ok" style="display:none;margin-top:10px;background:#d1fae5;color:#065f46;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:500;text-align:center">&#10003; Assinatura salva</div>
     </div>
-    <div class="card">
-      <h2>Alterar senha</h2>
+    <div class="card"><h2>Alterar senha</h2>
       <div class="field"><label>Nova senha</label>
-        <div class="pass-wrap">
-          <input type="password" id="perfil-nova-senha" placeholder="Minimo 6 caracteres">
-          <button class="pass-toggle" onclick="togglePass('perfil-nova-senha',this)" type="button">&#128065;</button>
-        </div>
+        <div class="pass-wrap"><input type="password" id="perfil-nova-senha" placeholder="Minimo 6 caracteres"><button class="pass-toggle" onclick="togglePass('perfil-nova-senha',this)" type="button">&#128065;</button></div>
       </div>
       <button class="btn" onclick="alterarSenhaPerfil()">Alterar senha</button>
     </div>
@@ -180,103 +148,61 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 </div>
 
 <div id="s-prestadores" class="screen">
-  <div class="topbar">
-    <button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button>
-    <h1>Prestadores</h1>
-    <button class="btn small primary" onclick="showModal('modal-prestador')">+ Novo</button>
-  </div>
+  <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Prestadores</h1><button class="btn small primary" onclick="showModal('modal-prestador')">+ Novo</button></div>
   <div class="content" id="lista-prestadores"></div>
 </div>
-
 <div id="s-clientes" class="screen">
-  <div class="topbar">
-    <button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button>
-    <h1>Clientes e RRTs</h1>
-    <button class="btn small primary" onclick="showModal('modal-cliente')">+ Novo</button>
-  </div>
+  <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Clientes e RRTs</h1><button class="btn small primary" onclick="showModal('modal-cliente')">+ Novo</button></div>
   <div class="content" id="lista-clientes"></div>
 </div>
-
 <div id="s-coletores" class="screen">
-  <div class="topbar">
-    <button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button>
-    <h1>Coletores</h1>
-    <button class="btn small primary" onclick="showModal('modal-coletor')">+ Novo</button>
-  </div>
+  <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Coletores</h1><button class="btn small primary" onclick="showModal('modal-coletor')">+ Novo</button></div>
   <div class="content" id="lista-coletores"></div>
 </div>
-
 <div id="s-usuarios" class="screen">
-  <div class="topbar">
-    <button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button>
-    <h1>Usuarios</h1>
-    <button class="btn small primary" onclick="showModal('modal-usuario')">+ Novo</button>
-  </div>
+  <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Usuarios</h1><button class="btn small primary" onclick="showModal('modal-usuario')">+ Novo</button></div>
   <div class="content" id="lista-usuarios"></div>
 </div>
 
 <div id="s-nova-vistoria" class="screen">
-  <div class="topbar">
-    <button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button>
-    <h1>Nova Vistoria</h1>
-  </div>
+  <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Nova Vistoria</h1></div>
   <div class="content">
-    <div class="card">
-      <h2>Dados do cliente</h2>
+    <div class="card"><h2>Dados do cliente</h2>
       <div class="field"><label>Cliente</label><select id="nv-cliente" onchange="loadColetoresByCliente()"><option value="">Selecione...</option></select></div>
       <div class="field"><label>Coletor</label><select id="nv-coletor"><option value="">Selecione o cliente primeiro...</option></select></div>
     </div>
-    <div class="card">
-      <h2>Dados do responsavel</h2>
+    <div class="card"><h2>Dados do responsavel</h2>
       <div id="nv-reaproveitar-box" style="display:none;margin-bottom:12px">
-        <div class="info-box">Deseja reaproveitar os dados do responsavel anterior?</div>
-        <div class="grid2">
-          <button class="btn small" onclick="reaproveitarResponsavel()">Sim, reaproveitar</button>
-          <button class="btn small" onclick="document.getElementById('nv-reaproveitar-box').style.display='none'">Nao</button>
-        </div>
+        <div class="info-box">Reaproveitar dados do responsavel anterior?</div>
+        <div class="grid2"><button class="btn small" onclick="reaproveitarResponsavel()">Sim</button><button class="btn small" onclick="document.getElementById('nv-reaproveitar-box').style.display='none'">Nao</button></div>
       </div>
       <div class="field"><label>Nome completo *</label><input type="text" id="nv-nome" placeholder="Nome do responsavel"></div>
       <div class="field"><label>RG / CPF</label><input type="text" id="nv-doc" placeholder="000.000.000-00"></div>
       <div class="field"><label>Telefone</label><input type="tel" id="nv-tel" placeholder="(11) 99999-9999"></div>
     </div>
-    <div class="card">
-      <h2>Endereco</h2>
+    <div class="card"><h2>Endereco</h2>
       <div class="field"><label>Rua *</label><input type="text" id="nv-rua" placeholder="Nome da rua"></div>
       <div class="grid2">
         <div class="field"><label>Numero *</label><input type="text" id="nv-num" placeholder="Num"></div>
         <div class="field"><label>Complemento</label><input type="text" id="nv-comp" placeholder="Casa 1, Ap 23..."></div>
       </div>
     </div>
-    <div class="card">
-      <h2>Tipo de imovel</h2>
-      <div class="field"><label>Ocupacao</label>
-        <select id="nv-ocupacao"><option>Residencial</option><option>Comercial</option><option>Institucional</option><option>Religioso</option><option>Servicos</option><option>Outros</option></select>
-      </div>
-      <div class="field"><label>Tipo de construcao</label>
-        <select id="nv-tipo"><option>Terrea</option><option>Sobrado</option><option>Galpao</option><option>Soleira Negativa</option><option>Outros</option></select>
-      </div>
+    <div class="card"><h2>Tipo de imovel</h2>
+      <div class="field"><label>Ocupacao</label><select id="nv-ocupacao"><option>Residencial</option><option>Comercial</option><option>Institucional</option><option>Religioso</option><option>Servicos</option><option>Outros</option></select></div>
+      <div class="field"><label>Tipo de construcao</label><select id="nv-tipo"><option>Terrea</option><option>Sobrado</option><option>Galpao</option><option>Soleira Negativa</option><option>Outros</option></select></div>
     </div>
     <button class="btn primary" onclick="criarVistoria()">Iniciar Vistoria &#8594;</button>
   </div>
 </div>
 
 <div id="s-vistoria" class="screen">
-  <div class="topbar">
-    <button class="back" onclick="confirmarSairVistoria()">&#8249; Sair</button>
-    <h1 id="v-titulo">Vistoria</h1>
-    <button class="btn small" onclick="goTo('s-checklist')" style="color:#007aff;border-color:#007aff">Checklist</button>
-  </div>
+  <div class="topbar"><button class="back" onclick="confirmarSairVistoria()">&#8249; Sair</button><h1 id="v-titulo">Vistoria</h1><button class="btn small" onclick="goTo('s-checklist')" style="color:#007aff;border-color:#007aff">Checklist</button></div>
   <div class="content">
     <div class="card"><h2>Resumo</h2><div id="v-info" style="font-size:13px;color:#555;line-height:1.8"></div></div>
-    <div class="card">
-      <h2>Capturar foto</h2>
+    <div id="gps-status" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:8px 12px;font-size:12px;color:#0369a1">&#128205; Aguardando GPS...</div>
+    <div class="card"><h2>Capturar foto</h2>
       <div class="field"><label>Ambiente</label><select id="v-ambiente"><option value="">Selecione o ambiente...</option></select></div>
-      <div class="field"><label>Tipo de foto</label>
-        <select id="v-tipo-foto">
-          <option value="Vista">Vista - ambiente geral</option>
-          <option value="Detalhe">Detalhe - foco na patologia</option>
-        </select>
-      </div>
+      <div class="field"><label>Tipo de foto</label><select id="v-tipo-foto"><option value="Vista">Vista - ambiente geral</option><option value="Detalhe">Detalhe - foco na patologia</option></select></div>
       <div class="grid2" style="margin-top:4px">
         <button class="btn primary" onclick="abrirCamera()">&#128247; Camera</button>
         <button class="btn" onclick="uploadFoto()">&#128444; Galeria</button>
@@ -289,56 +215,37 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 </div>
 
 <div id="s-checklist" class="screen">
-  <div class="topbar">
-    <button class="back" onclick="goTo('s-vistoria')">&#8249; Fotos</button>
-    <h1>Checklist</h1>
-    <button class="btn small" onclick="goTo('s-finalizacao')" style="color:#007aff;border-color:#007aff">Finalizar</button>
-  </div>
+  <div class="topbar"><button class="back" onclick="goTo('s-vistoria')">&#8249; Fotos</button><h1>Checklist</h1><button class="btn small" onclick="goTo('s-finalizacao')" style="color:#007aff;border-color:#007aff">Finalizar</button></div>
   <div class="content">
-    <div class="card">
-      <h2>Observacoes gerais</h2>
-      <div class="field"><textarea id="cl-obs" placeholder="Descreva observacoes gerais..."></textarea></div>
-    </div>
-    <div class="card">
-      <h2>Patologias por ambiente</h2>
+    <div class="card"><h2>Observacoes gerais</h2><div class="field"><textarea id="cl-obs" placeholder="Descreva observacoes gerais..."></textarea></div></div>
+    <div class="card"><h2>Patologias por ambiente (selecao multipla)</h2>
       <div class="checklist-wrapper">
         <table class="checklist-table">
           <thead><tr>
             <th style="min-width:72px">Local</th>
-            <th style="min-width:85px">Estrutura</th>
-            <th style="min-width:85px">Parede e muro</th>
-            <th style="min-width:85px">Cobertura a teto</th>
-            <th style="min-width:78px">Porta e esquadria</th>
-            <th style="min-width:78px">Piso e calcamento</th>
+            <th style="min-width:95px">Estrutura</th>
+            <th style="min-width:95px">Parede e muro</th>
+            <th style="min-width:95px">Cobertura a teto</th>
+            <th style="min-width:90px">Porta e esquadria</th>
+            <th style="min-width:90px">Piso e calcamento</th>
           </tr></thead>
           <tbody id="checklist-body"></tbody>
         </table>
       </div>
-      <div style="margin-top:10px">
-        <button class="btn small" onclick="addAmbienteExtra()" style="color:#007aff;border-color:#007aff">+ Adicionar ambiente</button>
-      </div>
+      <div style="margin-top:10px"><button class="btn small" onclick="addAmbienteExtra()" style="color:#007aff;border-color:#007aff">+ Adicionar ambiente</button></div>
     </div>
     <button class="btn primary" onclick="salvarChecklist()">Salvar e continuar &#8594;</button>
   </div>
 </div>
 
 <div id="s-finalizacao" class="screen">
-  <div class="topbar">
-    <button class="back" onclick="goTo('s-checklist')">&#8249; Checklist</button>
-    <h1>Finalizacao</h1>
-  </div>
+  <div class="topbar"><button class="back" onclick="goTo('s-checklist')">&#8249; Checklist</button><h1>Finalizacao</h1></div>
   <div class="content">
-    <div class="card">
-      <h2>Estado de conservacao (aparece no cabecalho do PDF)</h2>
-      <div class="field"><label>Estado geral do imovel</label>
-        <select id="fin-estado"><option>Bom</option><option>Regular</option><option>Ruim</option><option>Pessimo</option></select>
-      </div>
-      <div class="field"><label>Idade aparente do imovel (anos)</label>
-        <input type="number" id="fin-idade" placeholder="Ex: 30" min="0" max="200">
-      </div>
+    <div class="card"><h2>Estado de conservacao (aparece no cabecalho do PDF)</h2>
+      <div class="field"><label>Estado geral</label><select id="fin-estado"><option>Bom</option><option>Regular</option><option>Ruim</option><option>Pessimo</option></select></div>
+      <div class="field"><label>Idade aparente (anos)</label><input type="number" id="fin-idade" placeholder="Ex: 30" min="0" max="200"></div>
     </div>
-    <div class="card">
-      <h2>Assinatura do responsavel pelo imovel</h2>
+    <div class="card"><h2>Assinatura do responsavel pelo imovel</h2>
       <div id="assin-info" style="font-size:13px;color:#555;line-height:1.8;margin-bottom:14px;padding:12px;background:#f9f9f9;border-radius:8px"></div>
       <p style="font-size:13px;color:#888;margin-bottom:8px;font-weight:500">Assine abaixo:</p>
       <canvas id="sig-canvas" class="sig-pad"></canvas>
@@ -347,11 +254,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
         <button class="btn primary" onclick="salvarAssinatura()">Confirmar &#10003;</button>
       </div>
     </div>
-    <div class="card">
-      <h2>Assinatura do tecnico responsavel</h2>
-      <div id="sig-tecnico-preview" style="padding:10px;background:#f9f9f9;border-radius:8px;text-align:center">
-        <p style="font-size:13px;color:#888">Carregando...</p>
-      </div>
+    <div class="card"><h2>Assinatura do tecnico responsavel</h2>
+      <div id="sig-tecnico-preview" style="padding:10px;background:#f9f9f9;border-radius:8px;text-align:center"></div>
     </div>
     <div id="sig-confirmado" style="display:none;background:#d1fae5;color:#065f46;padding:12px 16px;border-radius:10px;font-size:14px;font-weight:500;text-align:center">&#10003; Assinatura confirmada</div>
     <button class="btn success" onclick="finalizarVistoria()" id="btn-finalizar" disabled style="opacity:.4">Gerar PDF e finalizar</button>
@@ -359,10 +263,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 </div>
 
 <div id="s-historico" class="screen">
-  <div class="topbar">
-    <button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button>
-    <h1>Minhas Vistorias</h1>
-  </div>
+  <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Minhas Vistorias</h1></div>
   <div class="content" id="lista-historico"></div>
 </div>
 
@@ -372,8 +273,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
     <span style="background:rgba(255,255,255,.15);color:#fff;font-size:12px;padding:3px 10px;border-radius:20px" id="cam-tipo-badge"></span>
   </div>
   <div class="cam-video-wrap"><video id="cam-video" autoplay playsinline muted></video></div>
-  <div style="background:#000;padding:8px 16px;display:flex;justify-content:center;gap:8px;flex-shrink:0">
-    <button class="zoom-btn active" id="z05" onclick="setZoom(0.5)" type="button">0.5x</button>
+  <div class="zoom-btns">
+    <button class="zoom-btn" id="z05" onclick="setZoom(0.5)" type="button">0.5x</button>
     <button class="zoom-btn active" id="z10" onclick="setZoom(1)" type="button">1x</button>
     <button class="zoom-btn" id="z20" onclick="setZoom(2)" type="button">2x</button>
   </div>
@@ -397,19 +298,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
   </div>
 </div>
 
+<!-- MODAIS -->
 <div id="modal-prestador" class="modal-bg" style="display:none" onclick="closeModalBg(event,'modal-prestador')">
-  <div class="modal">
-    <h3>Cadastrar Prestador</h3>
+  <div class="modal"><h3>Cadastrar Prestador</h3>
     <div class="field"><label>Nome da empresa *</label><input type="text" id="mp-nome" placeholder="CNRP Arquitetura..."></div>
     <div class="field"><label>CNPJ</label><input type="text" id="mp-cnpj" placeholder="00.000.000/0001-00"></div>
     <div class="field"><label>Endereco completo</label><input type="text" id="mp-end" placeholder="Rua, numero, bairro, cidade, CEP..."></div>
     <div class="field"><label>E-mail</label><input type="email" id="mp-email" placeholder="contato@empresa.com"></div>
     <div class="field"><label>Logo da empresa</label>
       <input type="file" id="mp-logo-file" accept="image/*" onchange="previewLogoUpload(event)" style="margin-bottom:8px">
-      <img id="mp-logo-preview" style="display:none;width:80px;height:80px;object-fit:contain;border:1px solid #e5e5e5;border-radius:8px;margin-top:4px">
+      <img id="mp-logo-preview" style="display:none;width:80px;height:80px;object-fit:contain;border:1px solid #e5e5e5;border-radius:8px">
     </div>
     <div class="field" style="display:flex;align-items:center;gap:10px">
-      <input type="checkbox" id="mp-default" style="width:auto;height:18px;width:18px">
+      <input type="checkbox" id="mp-default" style="width:18px;height:18px">
       <label for="mp-default" style="margin:0;font-size:14px">Definir como prestador padrao</label>
     </div>
     <div class="grid2" style="margin-top:8px">
@@ -418,53 +319,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
     </div>
   </div>
 </div>
-
 <div id="modal-cliente" class="modal-bg" style="display:none" onclick="closeModalBg(event,'modal-cliente')">
-  <div class="modal">
-    <h3>Novo Cliente</h3>
-    <div class="field"><label>Nome do cliente *</label><input type="text" id="mc-nome" placeholder="Ex: SABESP, CAIXA..."></div>
+  <div class="modal"><h3>Novo Cliente</h3>
+    <div class="field"><label>Nome *</label><input type="text" id="mc-nome" placeholder="Ex: SABESP, CAIXA..."></div>
     <div class="field"><label>RRT *</label><input type="text" id="mc-rrt" placeholder="Ex: 14845384"></div>
-    <div class="field"><label>Responsavel tecnico</label><input type="text" id="mc-resp" placeholder="Nome do responsavel tecnico"></div>
-    <div class="grid2" style="margin-top:8px">
-      <button class="btn" onclick="closeModal('modal-cliente')">Cancelar</button>
-      <button class="btn primary" onclick="salvarCliente()">Salvar</button>
-    </div>
+    <div class="field"><label>Responsavel tecnico</label><input type="text" id="mc-resp" placeholder="Nome do responsavel"></div>
+    <div class="grid2" style="margin-top:8px"><button class="btn" onclick="closeModal('modal-cliente')">Cancelar</button><button class="btn primary" onclick="salvarCliente()">Salvar</button></div>
   </div>
 </div>
-
 <div id="modal-coletor" class="modal-bg" style="display:none" onclick="closeModalBg(event,'modal-coletor')">
-  <div class="modal">
-    <h3>Novo Coletor</h3>
+  <div class="modal"><h3>Novo Coletor</h3>
     <div class="field"><label>Cliente *</label><select id="mcol-cliente"><option value="">Selecione...</option></select></div>
-    <div class="field"><label>Nome do coletor *</label><input type="text" id="mcol-nome" placeholder="Ex: Itaquera 1, Centro 2..."></div>
-    <div class="grid2" style="margin-top:8px">
-      <button class="btn" onclick="closeModal('modal-coletor')">Cancelar</button>
-      <button class="btn primary" onclick="salvarColetor()">Salvar</button>
-    </div>
+    <div class="field"><label>Nome do coletor *</label><input type="text" id="mcol-nome" placeholder="Ex: Itaquera 1..."></div>
+    <div class="grid2" style="margin-top:8px"><button class="btn" onclick="closeModal('modal-coletor')">Cancelar</button><button class="btn primary" onclick="salvarColetor()">Salvar</button></div>
   </div>
 </div>
-
 <div id="modal-usuario" class="modal-bg" style="display:none" onclick="closeModalBg(event,'modal-usuario')">
-  <div class="modal">
-    <h3>Novo Usuario</h3>
+  <div class="modal"><h3>Novo Usuario</h3>
     <div class="field"><label>Nome completo *</label><input type="text" id="mu-nome" placeholder="Nome do tecnico"></div>
     <div class="field"><label>E-mail *</label><input type="email" id="mu-email" placeholder="email@dominio.com"></div>
     <div class="field"><label>Senha *</label>
-      <div class="pass-wrap">
-        <input type="password" id="mu-pass" placeholder="Minimo 6 caracteres">
-        <button class="pass-toggle" onclick="togglePass('mu-pass',this)" type="button">&#128065;</button>
-      </div>
+      <div class="pass-wrap"><input type="password" id="mu-pass" placeholder="Minimo 6 caracteres"><button class="pass-toggle" onclick="togglePass('mu-pass',this)" type="button">&#128065;</button></div>
     </div>
     <div class="field"><label>Nivel de acesso</label>
-      <select id="mu-role">
-        <option value="cadastrador">Cadastrador (tecnico de campo)</option>
-        <option value="master">Master (administrador)</option>
-      </select>
+      <select id="mu-role"><option value="cadastrador">Cadastrador (tecnico de campo)</option><option value="master">Master (administrador)</option></select>
     </div>
-    <div class="grid2" style="margin-top:8px">
-      <button class="btn" onclick="closeModal('modal-usuario')">Cancelar</button>
-      <button class="btn primary" onclick="salvarUsuario()">Salvar</button>
-    </div>
+    <div class="grid2" style="margin-top:8px"><button class="btn" onclick="closeModal('modal-usuario')">Cancelar</button><button class="btn primary" onclick="salvarUsuario()">Salvar</button></div>
   </div>
 </div>
 
@@ -479,25 +359,54 @@ const LOGO_DEFAULT="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGB
 const fbApp=initializeApp(FC);
 const auth=getAuth(fbApp);
 const db=getFirestore(fbApp);
-
 const AMBIENTES_PADRAO=["Fachada","Calcada","Garagem","Corredor externo","Area de servico","Quintal","Sala","Cozinha","Banheiro 01","Banheiro 02","Lavabo","Dormitorio 01","Dormitorio 02","Dormitorio 03","Corredor interno","Varanda","Sacada","Deposito"];
-const PATOLOGIAS=["--","Fissura/Trinca/Rachadura","Umidade/Infiltracao","Danificado"];
+const PATOLOGIAS_OPCOES=["Fissura/Trinca/Rachadura","Umidade/Infiltracao","Danificado"];
+const COLS_CL=["estrutura","paredes","cobertura","portas","piso"];
 
 let currentUser=null,currentRole=null,currentUserData=null;
 let currentVistoria=null,fotosPendentes={};
 let fotoAtualBlob=null,fotoAtualTipo=null,fotoAtualAmbiente=null;
-let cameraStream=null,cameraFacingMode="environment",currentZoom=1;
+let cameraStream=null,cameraFacingMode="environment";
 let arrowPoints=[],arrowImage=null;
 let sigCanvas=null,sigCtx=null,sigDrawing=false,assinaturaData=null,assinaturaTecnico=null;
 let prestadorDefault=null,ambientesExtras=[];
-let ultimoResponsavel=null;
-let logoB64Upload=null;
+let ultimoResponsavel=null,logoB64Upload=null;
+let gpsAtual=null,enderecoGPS="";
 
 document.getElementById("login-logo").src=LOGO_DEFAULT;
 document.getElementById("dash-logo").src=LOGO_DEFAULT;
 
-window.togglePass=(id,btn)=>{const i=document.getElementById(id);if(i.type==="password"){i.type="text";btn.textContent="X";}else{i.type="password";btn.innerHTML="&#128065;";}};
+// GPS contínuo
+function iniciarGPS(){
+  if(!navigator.geolocation)return;
+  navigator.geolocation.watchPosition(async pos=>{
+    gpsAtual={lat:pos.coords.latitude,lng:pos.coords.longitude,acc:pos.coords.accuracy};
+    const el=document.getElementById("gps-status");
+    if(el)el.textContent="GPS: "+gpsAtual.lat.toFixed(5)+" S "+Math.abs(gpsAtual.lng).toFixed(5)+" W (precisao: "+Math.round(gpsAtual.acc)+"m)";
+    // Reverse geocode
+    try{
+      const r=await fetch("https://nominatim.openstreetmap.org/reverse?format=json&lat="+gpsAtual.lat+"&lon="+gpsAtual.lng+"&addressdetails=1");
+      const d=await r.json();
+      const a=d.address||{};
+      const rua=(a.road||a.pedestrian||"");
+      const num2=a.house_number||"";
+      const bairro=a.suburb||a.neighbourhood||a.quarter||"";
+      const cidade=a.city||a.town||a.municipality||"";
+      const estado=a.state_code||a.state||"";
+      const cep=a.postcode||"";
+      enderecoGPS=(rua+(num2?" "+num2:""))+(bairro?"
+"+bairro:"")+(cidade?"
+"+cidade+" "+estado:"")+(cep?"
+"+cep:"");
+      if(el)el.textContent="GPS: "+gpsAtual.lat.toFixed(5)+"S "+Math.abs(gpsAtual.lng).toFixed(5)+"W | "+rua+(num2?" "+num2:"");
+    }catch(e){}
+  },err=>{
+    const el=document.getElementById("gps-status");
+    if(el)el.textContent="GPS indisponivel - verifique permissoes";
+  },{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
+}
 
+window.togglePass=(id,btn)=>{const i=document.getElementById(id);if(i.type==="password"){i.type="text";btn.textContent="X";}else{i.type="password";btn.innerHTML="&#128065;";}};
 window.goTo=(id)=>{
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
@@ -512,12 +421,13 @@ window.goTo=(id)=>{
   if(id==="s-checklist")renderChecklist();
   if(id==="s-finalizacao")renderFinalizacao();
   if(id==="s-perfil")renderPerfil();
+  if(id==="s-vistoria")iniciarGPS();
 };
 window.showModal=(id)=>{if(id==="modal-coletor")populateClienteSelect("mcol-cliente");document.getElementById(id).style.display="flex";};
 window.closeModal=(id)=>{document.getElementById(id).style.display="none";};
 window.closeModalBg=(e,id)=>{if(e.target.id===id)closeModal(id);};
 
-onAuthStateChanged(auth,async(user)=>{
+onAuthStateChanged(auth,async user=>{
   if(user){
     currentUser=user;
     const snap=await getDoc(doc(db,"users",user.uid));
@@ -541,90 +451,74 @@ window.doLogin=async()=>{
 window.doLogout=async()=>{await signOut(auth);};
 
 function loadDash(){
-  const roleEl=document.getElementById("dash-role");
-  roleEl.textContent=currentRole==="master"?"Master":"Cadastrador";
-  roleEl.className="badge "+(currentRole==="master"?"master":"cad");
+  const el=document.getElementById("dash-role");
+  el.textContent=currentRole==="master"?"Master":"Cadastrador";
+  el.className="badge "+(currentRole==="master"?"master":"cad");
   document.getElementById("dash-master-section").style.display=currentRole==="master"?"block":"none";
   loadDashCount();
 }
-async function loadDashCount(){try{const q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));const snap=await getDocs(q);document.getElementById("dash-count").textContent=snap.size+" vistoria(s) registrada(s)";}catch(e){document.getElementById("dash-count").textContent="Ver historico";}}
+async function loadDashCount(){try{const q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));const s=await getDocs(q);document.getElementById("dash-count").textContent=s.size+" vistoria(s)";}catch(e){}}
 
 function renderPerfil(){
-  document.getElementById("perfil-nome").value=currentUserData?.nome||"";
-  document.getElementById("perfil-email").value=currentUser?.email||"";
-  const sigEl=document.getElementById("perfil-sig");
-  const ctx=sigEl.getContext("2d");
-  sigEl.width=sigEl.offsetWidth||300;sigEl.height=160;
-  ctx.fillStyle="#fff";ctx.fillRect(0,0,sigEl.width,sigEl.height);
+  document.getElementById("perfil-nome").value=currentUserData&&currentUserData.nome||"";
+  document.getElementById("perfil-email").value=currentUser&&currentUser.email||"";
+  const el=document.getElementById("perfil-sig");const ctx=el.getContext("2d");
+  el.width=el.offsetWidth||300;el.height=160;
+  ctx.fillStyle="#fff";ctx.fillRect(0,0,el.width,el.height);
   ctx.strokeStyle="#1c1c1e";ctx.lineWidth=2.5;ctx.lineCap="round";ctx.lineJoin="round";
-  if(currentUserData?.assinatura){const img=new Image();img.src=currentUserData.assinatura;img.onload=()=>ctx.drawImage(img,0,0,sigEl.width,sigEl.height);document.getElementById("perfil-sig-ok").style.display="block";}
+  if(currentUserData&&currentUserData.assinatura){const img=new Image();img.src=currentUserData.assinatura;img.onload=()=>ctx.drawImage(img,0,0,el.width,el.height);document.getElementById("perfil-sig-ok").style.display="block";}
   let drawing=false;
-  const getP=(e)=>{const r=sigEl.getBoundingClientRect();const s=e.touches?e.touches[0]:e;return{x:s.clientX-r.left,y:s.clientY-r.top};};
-  sigEl.onmousedown=sigEl.ontouchstart=(e)=>{e.preventDefault();drawing=true;const p=getP(e);ctx.beginPath();ctx.moveTo(p.x,p.y);};
-  sigEl.onmousemove=sigEl.ontouchmove=(e)=>{e.preventDefault();if(!drawing)return;const p=getP(e);ctx.lineTo(p.x,p.y);ctx.stroke();};
-  sigEl.onmouseup=sigEl.ontouchend=(e)=>{e.preventDefault();drawing=false;};
+  const getP=e=>{const r=el.getBoundingClientRect();const s=e.touches?e.touches[0]:e;return{x:s.clientX-r.left,y:s.clientY-r.top};};
+  el.onmousedown=el.ontouchstart=e=>{e.preventDefault();drawing=true;const p=getP(e);ctx.beginPath();ctx.moveTo(p.x,p.y);};
+  el.onmousemove=el.ontouchmove=e=>{e.preventDefault();if(!drawing)return;const p=getP(e);ctx.lineTo(p.x,p.y);ctx.stroke();};
+  el.onmouseup=el.ontouchend=e=>{e.preventDefault();drawing=false;};
 }
-window.limparSigPerfil=()=>{const sigEl=document.getElementById("perfil-sig");const ctx=sigEl.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,sigEl.width,sigEl.height);document.getElementById("perfil-sig-ok").style.display="none";};
-window.salvarSigPerfil=async()=>{const sigEl=document.getElementById("perfil-sig");const data=sigEl.toDataURL("image/png");await updateDoc(doc(db,"users",currentUser.uid),{assinatura:data});currentUserData.assinatura=data;assinaturaTecnico=data;document.getElementById("perfil-sig-ok").style.display="block";alert("Assinatura salva!");};
+window.limparSigPerfil=()=>{const el=document.getElementById("perfil-sig");const ctx=el.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,el.width,el.height);document.getElementById("perfil-sig-ok").style.display="none";};
+window.salvarSigPerfil=async()=>{const el=document.getElementById("perfil-sig");const data=el.toDataURL("image/png");await updateDoc(doc(db,"users",currentUser.uid),{assinatura:data});currentUserData.assinatura=data;assinaturaTecnico=data;document.getElementById("perfil-sig-ok").style.display="block";alert("Assinatura salva!");};
 window.salvarPerfil=async()=>{const nome=document.getElementById("perfil-nome").value.trim();if(!nome)return alert("Informe seu nome");await updateDoc(doc(db,"users",currentUser.uid),{nome});currentUserData.nome=nome;alert("Perfil atualizado!");};
 window.alterarSenhaPerfil=async()=>{const nova=document.getElementById("perfil-nova-senha").value;if(nova.length<6)return alert("Senha minimo 6 caracteres");try{await updatePassword(currentUser,nova);alert("Senha alterada!");document.getElementById("perfil-nova-senha").value="";}catch(e){alert("Erro: "+e.message);}};
 
-window.previewLogoUpload=(e)=>{
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=(ev)=>{logoB64Upload=ev.target.result;const prev=document.getElementById("mp-logo-preview");prev.src=logoB64Upload;prev.style.display="block";};
-  reader.readAsDataURL(file);
-};
+window.previewLogoUpload=e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{logoB64Upload=ev.target.result;const p=document.getElementById("mp-logo-preview");p.src=logoB64Upload;p.style.display="block";};r.readAsDataURL(file);};
 
 async function loadPrestadores(){
-  const snap=await getDocs(collection(db,"prestadores"));
-  const el=document.getElementById("lista-prestadores");el.innerHTML="";
-  if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px;font-size:14px">Nenhum prestador cadastrado</p>';return;}
-  const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));
-  docs.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
-  docs.forEach(p=>{
-    const div=document.createElement("div");div.className="list-item";
-    div.innerHTML='<div class="avatar" style="background:#fce7f3;color:#9d174d">'+(p.logo?'<img src="'+p.logo+'" style="width:36px;height:36px;object-fit:contain;border-radius:50%">':p.nome.charAt(0).toUpperCase())+'</div><div class="info"><div class="title">'+p.nome+(p.isDefault?" (Padrao)":"")+'</div><div class="sub">'+(p.cnpj||"")+'</div></div><div style="display:flex;gap:6px;flex-shrink:0">'+(!p.isDefault?'<button class="btn small" onclick="event.stopPropagation();setDefaultPrestador(''+p.id+'')" style="color:#007aff;border-color:#007aff;font-size:11px">Padrao</button>':'<span class="badge ok">Padrao</span>')+'<button class="btn small danger" onclick="event.stopPropagation();deletarPrestador(''+p.id+'')">Excluir</button></div>';
-    el.appendChild(div);
-  });
+  const snap=await getDocs(collection(db,"prestadores"));const el=document.getElementById("lista-prestadores");el.innerHTML="";
+  if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhum prestador</p>';return;}
+  const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
+  docs.forEach(p=>{const div=document.createElement("div");div.className="list-item";div.innerHTML='<div class="avatar" style="background:#fce7f3;color:#9d174d">'+(p.logo?'<img src="'+p.logo+'" style="width:36px;height:36px;object-fit:contain;border-radius:50%">':p.nome.charAt(0).toUpperCase())+'</div><div class="info"><div class="title">'+p.nome+(p.isDefault?" (Padrao)":"")+'</div><div class="sub">'+(p.cnpj||"")+'</div></div><div style="display:flex;gap:6px;flex-shrink:0">'+(!p.isDefault?'<button class="btn small" onclick="event.stopPropagation();setDefaultPrestador(''+p.id+'')" style="color:#007aff;border-color:#007aff;font-size:11px">Padrao</button>':'<span class="badge ok">Padrao</span>')+'<button class="btn small danger" onclick="event.stopPropagation();deletarPrestador(''+p.id+'')">Excluir</button></div>';el.appendChild(div);});
 }
 window.salvarPrestador=async()=>{
   const nome=document.getElementById("mp-nome").value.trim();if(!nome)return alert("Informe o nome");
   const isDefault=document.getElementById("mp-default").checked;
   const data={nome,cnpj:document.getElementById("mp-cnpj").value.trim(),endereco:document.getElementById("mp-end").value.trim(),email:document.getElementById("mp-email").value.trim(),isDefault,criadoEm:serverTimestamp()};
   if(logoB64Upload)data.logo=logoB64Upload;
-  if(isDefault){const q=query(collection(db,"prestadores"),where("isDefault","==",true));const snap=await getDocs(q);for(const d of snap.docs)await updateDoc(doc(db,"prestadores",d.id),{isDefault:false});}
-  await addDoc(collection(db,"prestadores"),data);
-  closeModal("modal-prestador");
+  if(isDefault){const q=query(collection(db,"prestadores"),where("isDefault","==",true));const s=await getDocs(q);for(const d of s.docs)await updateDoc(doc(db,"prestadores",d.id),{isDefault:false});}
+  await addDoc(collection(db,"prestadores"),data);closeModal("modal-prestador");
   ["mp-nome","mp-cnpj","mp-end","mp-email"].forEach(id=>document.getElementById(id).value="");
-  document.getElementById("mp-default").checked=false;
-  document.getElementById("mp-logo-file").value="";
-  document.getElementById("mp-logo-preview").style.display="none";
-  logoB64Upload=null;
+  document.getElementById("mp-default").checked=false;document.getElementById("mp-logo-file").value="";document.getElementById("mp-logo-preview").style.display="none";logoB64Upload=null;
   await loadPrestadorDefault();loadPrestadores();
 };
-window.setDefaultPrestador=async(id)=>{const q=query(collection(db,"prestadores"),where("isDefault","==",true));const snap=await getDocs(q);for(const d of snap.docs)await updateDoc(doc(db,"prestadores",d.id),{isDefault:false});await updateDoc(doc(db,"prestadores",id),{isDefault:true});await loadPrestadorDefault();loadPrestadores();};
-window.deletarPrestador=async(id)=>{if(!confirm("Excluir?"))return;await deleteDoc(doc(db,"prestadores",id));loadPrestadores();};
+window.setDefaultPrestador=async id=>{const q=query(collection(db,"prestadores"),where("isDefault","==",true));const s=await getDocs(q);for(const d of s.docs)await updateDoc(doc(db,"prestadores",d.id),{isDefault:false});await updateDoc(doc(db,"prestadores",id),{isDefault:true});await loadPrestadorDefault();loadPrestadores();};
+window.deletarPrestador=async id=>{if(!confirm("Excluir?"))return;await deleteDoc(doc(db,"prestadores",id));loadPrestadores();};
 
 async function loadClientes(){
   const snap=await getDocs(collection(db,"clientes"));const el=document.getElementById("lista-clientes");el.innerHTML="";
-  if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px;font-size:14px">Nenhum cliente</p>';return;}
+  if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhum cliente</p>';return;}
   const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
-  docs.forEach(cl=>{const div=document.createElement("div");div.className="list-item";div.innerHTML='<div class="avatar" style="background:#ede9fe;color:#5b21b6">'+cl.nome.charAt(0).toUpperCase()+'</div><div class="info"><div class="title">'+cl.nome+'</div><div class="sub">RRT: '+cl.rrt+(cl.resp?" - "+cl.resp:"")+'</div></div>'+(currentRole==="master"?'<button class="btn small danger" onclick="event.stopPropagation();deletarCliente(''+cl.id+'')">Excluir</button>':'<span style="color:#c7c7cc;font-size:20px">&#8250;</span>');el.appendChild(div);});
+  docs.forEach(cl=>{const div=document.createElement("div");div.className="list-item";div.innerHTML='<div class="avatar" style="background:#ede9fe;color:#5b21b6">'+cl.nome.charAt(0).toUpperCase()+'</div><div class="info"><div class="title">'+cl.nome+'</div><div class="sub">RRT: '+cl.rrt+'</div></div>'+(currentRole==="master"?'<button class="btn small danger" onclick="event.stopPropagation();deletarCliente(''+cl.id+'')">Excluir</button>':'<span style="color:#c7c7cc;font-size:20px">&#8250;</span>');el.appendChild(div);});
 }
 window.salvarCliente=async()=>{const nome=document.getElementById("mc-nome").value.trim();const rrt=document.getElementById("mc-rrt").value.trim();if(!nome||!rrt)return alert("Preencha nome e RRT");await addDoc(collection(db,"clientes"),{nome,rrt,resp:document.getElementById("mc-resp").value.trim(),criadoEm:serverTimestamp()});closeModal("modal-cliente");["mc-nome","mc-rrt","mc-resp"].forEach(id=>document.getElementById(id).value="");loadClientes();};
-window.deletarCliente=async(id)=>{if(!confirm("Excluir?"))return;await deleteDoc(doc(db,"clientes",id));loadClientes();};
+window.deletarCliente=async id=>{if(!confirm("Excluir?"))return;await deleteDoc(doc(db,"clientes",id));loadClientes();};
 
 async function loadColetores(){
   const[snap,clSnap]=await Promise.all([getDocs(collection(db,"coletores")),getDocs(collection(db,"clientes"))]);
   const clMap={};clSnap.forEach(d=>clMap[d.id]=d.data().nome);
   const el=document.getElementById("lista-coletores");el.innerHTML="";
-  if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px;font-size:14px">Nenhum coletor</p>';return;}
+  if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhum coletor</p>';return;}
   const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
   docs.forEach(col=>{const div=document.createElement("div");div.className="list-item";div.innerHTML='<div class="avatar" style="background:#e0f2fe;color:#0369a1">C</div><div class="info"><div class="title">'+col.nome+'</div><div class="sub">'+(clMap[col.clienteId]||"--")+'</div></div>'+(currentRole==="master"?'<button class="btn small danger" onclick="event.stopPropagation();deletarColetor(''+col.id+'')">Excluir</button>':'<span style="color:#c7c7cc;font-size:20px">&#8250;</span>');el.appendChild(div);});
 }
-window.salvarColetor=async()=>{const clienteId=document.getElementById("mcol-cliente").value;const nome=document.getElementById("mcol-nome").value.trim();if(!clienteId||!nome)return alert("Selecione cliente e informe nome");await addDoc(collection(db,"coletores"),{nome,clienteId,criadoEm:serverTimestamp()});closeModal("modal-coletor");document.getElementById("mcol-nome").value="";loadColetores();};
-window.deletarColetor=async(id)=>{if(!confirm("Excluir?"))return;await deleteDoc(doc(db,"coletores",id));loadColetores();};
+window.salvarColetor=async()=>{const cId=document.getElementById("mcol-cliente").value;const nome=document.getElementById("mcol-nome").value.trim();if(!cId||!nome)return alert("Selecione cliente e informe nome");await addDoc(collection(db,"coletores"),{nome,clienteId:cId,criadoEm:serverTimestamp()});closeModal("modal-coletor");document.getElementById("mcol-nome").value="";loadColetores();};
+window.deletarColetor=async id=>{if(!confirm("Excluir?"))return;await deleteDoc(doc(db,"coletores",id));loadColetores();};
 
 async function loadUsuarios(){
   const snap=await getDocs(collection(db,"users"));const el=document.getElementById("lista-usuarios");el.innerHTML="";
@@ -636,61 +530,51 @@ window.salvarUsuario=async()=>{const nome=document.getElementById("mu-nome").val
 async function populateClienteSelect(selectId){const snap=await getDocs(collection(db,"clientes"));const sel=document.getElementById(selectId);sel.innerHTML='<option value="">Selecione...</option>';const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));docs.forEach(d=>{const opt=document.createElement("option");opt.value=d.id;opt.textContent=d.nome;sel.appendChild(opt);});}
 
 async function loadNovVistoriaForm(){
-  const snap=await getDocs(collection(db,"clientes"));const sel=document.getElementById("nv-cliente");sel.innerHTML='<option value="">Selecione...</option>';const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));docs.forEach(d=>{const opt=document.createElement("option");opt.value=d.id;opt.textContent=d.nome;sel.appendChild(opt);});
+  await populateClienteSelect("nv-cliente");
   document.getElementById("nv-coletor").innerHTML='<option value="">Selecione o cliente primeiro...</option>';
   ["nv-nome","nv-doc","nv-tel","nv-rua","nv-num","nv-comp"].forEach(id=>document.getElementById(id).value="");
-  if(ultimoResponsavel)document.getElementById("nv-reaproveitar-box").style.display="block";
-  else document.getElementById("nv-reaproveitar-box").style.display="none";
+  document.getElementById("nv-reaproveitar-box").style.display=ultimoResponsavel?"block":"none";
 }
 window.reaproveitarResponsavel=()=>{if(!ultimoResponsavel)return;document.getElementById("nv-nome").value=ultimoResponsavel.nome||"";document.getElementById("nv-doc").value=ultimoResponsavel.doc||"";document.getElementById("nv-tel").value=ultimoResponsavel.tel||"";document.getElementById("nv-reaproveitar-box").style.display="none";};
-window.loadColetoresByCliente=async()=>{const clienteId=document.getElementById("nv-cliente").value;const sel=document.getElementById("nv-coletor");if(!clienteId){sel.innerHTML='<option value="">Selecione...</option>';return;}sel.innerHTML='<option value="">Carregando...</option>';const q=query(collection(db,"coletores"),where("clienteId","==",clienteId));const snap=await getDocs(q);sel.innerHTML='<option value="">Selecione...</option>';const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));docs.forEach(d=>{const opt=document.createElement("option");opt.value=d.id;opt.textContent=d.nome;sel.appendChild(opt);});};
+window.loadColetoresByCliente=async()=>{const cId=document.getElementById("nv-cliente").value;const sel=document.getElementById("nv-coletor");if(!cId){sel.innerHTML='<option value="">Selecione...</option>';return;}sel.innerHTML='<option value="">Carregando...</option>';const q=query(collection(db,"coletores"),where("clienteId","==",cId));const snap=await getDocs(q);sel.innerHTML='<option value="">Selecione...</option>';const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));docs.forEach(d=>{const opt=document.createElement("option");opt.value=d.id;opt.textContent=d.nome;sel.appendChild(opt);});};
 
 window.criarVistoria=async()=>{
-  const clienteId=document.getElementById("nv-cliente").value;const coletorId=document.getElementById("nv-coletor").value;
+  const cId=document.getElementById("nv-cliente").value;const colId=document.getElementById("nv-coletor").value;
   const nome=document.getElementById("nv-nome").value.trim();const docR=document.getElementById("nv-doc").value.trim();const tel=document.getElementById("nv-tel").value.trim();
   const rua=document.getElementById("nv-rua").value.trim();const num=document.getElementById("nv-num").value.trim();const comp=document.getElementById("nv-comp").value.trim();
-  if(!clienteId||!coletorId)return alert("Selecione cliente e coletor");if(!nome||!rua||!num)return alert("Preencha nome, rua e numero");
-  const[clSnap,colSnap]=await Promise.all([getDoc(doc(db,"clientes",clienteId)),getDoc(doc(db,"coletores",coletorId))]);
-  const clData=clSnap.data();const colData=colSnap.data();
-  const now=new Date();
+  if(!cId||!colId)return alert("Selecione cliente e coletor");if(!nome||!rua||!num)return alert("Preencha nome, rua e numero");
+  const[clS,colS]=await Promise.all([getDoc(doc(db,"clientes",cId)),getDoc(doc(db,"coletores",colId))]);
+  const clD=clS.data();const colD=colS.data();const now=new Date();
   const meses=["Janeiro","Fevereiro","Marco","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-  currentVistoria={clienteId,coletorId,clienteNome:clData.nome,clienteRRT:clData.rrt,coletorNome:colData.nome,responsavel:{nome,doc:docR,tel},endereco:{rua,num,comp},ocupacao:document.getElementById("nv-ocupacao").value,tipo:document.getElementById("nv-tipo").value,data:meses[now.getMonth()]+"/"+String(now.getFullYear()).slice(2),dataCompleta:now.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}),userId:currentUser.uid,checklist:{},observacoes:"",estado:"",idade:"",status:"em_andamento"};
+  currentVistoria={clienteId:cId,coletorId:colId,clienteNome:clD.nome,clienteRRT:clD.rrt,coletorNome:colD.nome,responsavel:{nome,doc:docR,tel},endereco:{rua,num,comp},ocupacao:document.getElementById("nv-ocupacao").value,tipo:document.getElementById("nv-tipo").value,data:meses[now.getMonth()]+"/"+String(now.getFullYear()).slice(2),dataCompleta:now.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}),userId:currentUser.uid,checklist:{},observacoes:"",estado:"",idade:"",status:"em_andamento"};
   fotosPendentes={};assinaturaData=null;ambientesExtras=[];
   document.getElementById("v-titulo").textContent=nome.split(" ")[0];
-  document.getElementById("v-info").innerHTML="<b>"+nome+"</b><br>"+(docR?"Doc: "+docR+"<br>":"")+(tel?"Tel: "+tel+"<br>":"")+rua+", "+num+(comp?" - "+comp:"")+"<br><span style='color:#aaa;font-size:12px'>Coletor: "+colData.nome+" - RRT: "+clData.rrt+"</span>";
-  const ambiSel=document.getElementById("v-ambiente");ambiSel.innerHTML='<option value="">Selecione o ambiente...</option>';AMBIENTES_PADRAO.forEach(a=>{const opt=document.createElement("option");opt.value=a;opt.textContent=a;ambiSel.appendChild(opt);});
+  document.getElementById("v-info").innerHTML="<b>"+nome+"</b><br>"+(docR?"Doc: "+docR+"<br>":"")+(tel?"Tel: "+tel+"<br>":"")+rua+", "+num+(comp?" - "+comp:"")+"<br><span style='color:#aaa;font-size:12px'>Coletor: "+colD.nome+" | RRT: "+clD.rrt+"</span>";
+  const sel=document.getElementById("v-ambiente");sel.innerHTML='<option value="">Selecione o ambiente...</option>';AMBIENTES_PADRAO.forEach(a=>{const o=document.createElement("option");o.value=a;o.textContent=a;sel.appendChild(o);});
   goTo("s-vistoria");renderFotos();
 };
 
 function renderFotos(){
-  const container=document.getElementById("fotos-por-ambiente");container.innerHTML="";
-  const grupos={};Object.values(fotosPendentes).forEach(f=>{if(!grupos[f.ambiente])grupos[f.ambiente]=[];grupos[f.ambiente].push(f);});
-  if(Object.keys(grupos).length===0){container.innerHTML='<div class="card" style="text-align:center;color:#aaa;padding:24px;font-size:14px">Nenhuma foto ainda</div>';return;}
-  Object.entries(grupos).forEach(([amb,fotos])=>{const sec=document.createElement("div");sec.className="card";sec.innerHTML="<h2>"+amb+" ("+fotos.length+" foto"+(fotos.length>1?"s":"")+")</h2><div class='photo-grid'>"+fotos.map(f=>'<div class="photo-card"><img src="'+f.dataUrl+'" loading="lazy"><div class="photo-label"><span>'+f.numero+" - "+f.tipo+'</span><button class="del-btn" onclick="removerFoto(''+f.id+'')">X</button></div></div>').join("")+"</div>";container.appendChild(sec);});
+  const c=document.getElementById("fotos-por-ambiente");c.innerHTML="";
+  const g={};Object.values(fotosPendentes).forEach(f=>{if(!g[f.ambiente])g[f.ambiente]=[];g[f.ambiente].push(f);});
+  if(!Object.keys(g).length){c.innerHTML='<div class="card" style="text-align:center;color:#aaa;padding:24px">Nenhuma foto ainda</div>';return;}
+  Object.entries(g).forEach(([amb,fotos])=>{const s=document.createElement("div");s.className="card";s.innerHTML="<h2>"+amb+" ("+fotos.length+")</h2><div class='photo-grid'>"+fotos.map(f=>'<div class="photo-card"><img src="'+f.dataUrl+'" loading="lazy"><div class="photo-label"><span>'+f.numero+" - "+f.tipo+'</span><button class="del-btn" onclick="removerFoto(''+f.id+'')">X</button></div></div>').join("")+"</div>";c.appendChild(s);});
 }
-window.removerFoto=(id)=>{delete fotosPendentes[id];renderFotos();};
+window.removerFoto=id=>{delete fotosPendentes[id];renderFotos();};
 
-window.setZoom=(z)=>{
-  currentZoom=z;
+window.setZoom=z=>{
   ["z05","z10","z20"].forEach(id=>document.getElementById(id).classList.remove("active"));
   document.getElementById(z===0.5?"z05":z===1?"z10":"z20").classList.add("active");
-  if(cameraStream){
-    const track=cameraStream.getVideoTracks()[0];
-    if(track&&track.getCapabilities&&track.getCapabilities().zoom){
-      const caps=track.getCapabilities().zoom;
-      const zoomVal=Math.min(caps.max,Math.max(caps.min,z));
-      track.applyConstraints({advanced:[{zoom:zoomVal}]}).catch(()=>{});
-    }
-  }
+  if(cameraStream){const t=cameraStream.getVideoTracks()[0];if(t&&t.getCapabilities){const c=t.getCapabilities();if(c.zoom){const v=Math.min(c.zoom.max,Math.max(c.zoom.min,z));t.applyConstraints({advanced:[{zoom:v}]}).catch(()=>{});}}}
 };
 
 window.abrirCamera=async()=>{
-  const ambiente=document.getElementById("v-ambiente").value;if(!ambiente)return alert("Selecione o ambiente primeiro");
-  fotoAtualAmbiente=ambiente;fotoAtualTipo=document.getElementById("v-tipo-foto").value;
-  document.getElementById("cam-label").textContent=ambiente;document.getElementById("cam-tipo-badge").textContent=fotoAtualTipo;
+  const amb=document.getElementById("v-ambiente").value;if(!amb)return alert("Selecione o ambiente primeiro");
+  fotoAtualAmbiente=amb;fotoAtualTipo=document.getElementById("v-tipo-foto").value;
+  document.getElementById("cam-label").textContent=amb;document.getElementById("cam-tipo-badge").textContent=fotoAtualTipo;
   try{
     cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:cameraFacingMode,width:{ideal:1920},height:{ideal:1080}},audio:false});
-    const video=document.getElementById("cam-video");video.srcObject=cameraStream;await video.play();
+    const v=document.getElementById("cam-video");v.srcObject=cameraStream;await v.play();
     document.getElementById("camera-overlay").style.display="flex";
     setZoom(1);
   }catch(e){alert("Camera indisponivel: "+e.message);}
@@ -700,26 +584,55 @@ window.trocarCamera=async()=>{cameraFacingMode=cameraFacingMode==="environment"?
 
 window.tirarFoto=()=>{
   const video=document.getElementById("cam-video");
-  const isPortrait=video.videoHeight>video.videoWidth;
+  const vW=video.videoWidth||1280,vH=video.videoHeight||720;
   const canvas=document.createElement("canvas");
-  canvas.width=video.videoWidth||1280;canvas.height=video.videoHeight||720;
+  canvas.width=vW;canvas.height=vH;
   const ctx=canvas.getContext("2d");
-  ctx.drawImage(video,0,0);
+  ctx.drawImage(video,0,0,vW,vH);
+
+  // Carimbo inferior - fundo semitransparente
   const now=new Date();
-  const ts=now.toLocaleString("pt-BR");
-  const addr=currentVistoria?currentVistoria.endereco.rua+", "+currentVistoria.endereco.num:"";
-  const fs=Math.max(14,Math.round(canvas.width/55));
-  ctx.fillStyle="rgba(0,0,0,0.62)";ctx.fillRect(0,canvas.height-fs*3.8,canvas.width,fs*3.8);
-  ctx.fillStyle="#fff";ctx.font="bold "+fs+"px sans-serif";ctx.fillText(ts,12,canvas.height-fs*2.2);
-  ctx.font=(fs*0.85)+"px sans-serif";ctx.fillText(addr,12,canvas.height-fs*0.6);
+  const tsLine=now.toLocaleString("pt-BR");
+  const fs=Math.max(18,Math.round(vW/55));
+  const lineH=fs*1.4;
+  const gpsLines=enderecoGPS?enderecoGPS.split("\n"):[];
+  const coordLine=gpsAtual?gpsAtual.lat.toFixed(5)+"S "+Math.abs(gpsAtual.lng).toFixed(5)+"W":"";
+  const allLines=[tsLine,...gpsLines,coordLine].filter(Boolean);
+  const boxH=allLines.length*lineH+fs*0.8;
+  ctx.fillStyle="rgba(0,0,0,0.55)";
+  ctx.fillRect(0,vH-boxH,vW,boxH);
+  ctx.fillStyle="#fff";ctx.font="bold "+fs+"px sans-serif";ctx.textBaseline="top";
+  allLines.forEach((line,i)=>{
+    if(i===0)ctx.font="bold "+fs+"px sans-serif";
+    else ctx.font=(fs*0.82)+"px sans-serif";
+    ctx.fillText(line,fs*0.4,vH-boxH+fs*0.3+i*lineH);
+  });
+
+  // Logo canto superior direito - proporcional sem distorção
   const logoSrc=prestadorDefault&&prestadorDefault.logo?prestadorDefault.logo:LOGO_DEFAULT;
-  if(logoSrc&&logoSrc.length>50){const logoImg=new Image();logoImg.src=logoSrc;const lSize=Math.round(canvas.width*0.11);try{ctx.drawImage(logoImg,canvas.width-lSize-12,12,lSize,lSize);}catch(e){}}
-  fecharCamera();
-  fotoAtualBlob=canvas.toDataURL("image/jpeg",0.92);
-  abrirEditorSetas(fotoAtualBlob);
+  if(logoSrc&&logoSrc.length>50){
+    const logoImg=new Image();
+    logoImg.onload=()=>{
+      const lW=Math.round(vW*0.13);
+      const ratio=logoImg.naturalHeight/logoImg.naturalWidth;
+      const lH=Math.round(lW*ratio);
+      const pad=Math.round(vW*0.015);
+      ctx.drawImage(logoImg,vW-lW-pad,pad,lW,lH);
+      fecharCamera();
+      fotoAtualBlob=canvas.toDataURL("image/jpeg",0.93);
+      abrirEditorSetas(fotoAtualBlob);
+    };
+    logoImg.onerror=()=>{fecharCamera();fotoAtualBlob=canvas.toDataURL("image/jpeg",0.93);abrirEditorSetas(fotoAtualBlob);};
+    logoImg.src=logoSrc;
+  }else{
+    fecharCamera();
+    fotoAtualBlob=canvas.toDataURL("image/jpeg",0.93);
+    abrirEditorSetas(fotoAtualBlob);
+  }
 };
-window.uploadFoto=()=>{const ambiente=document.getElementById("v-ambiente").value;if(!ambiente)return alert("Selecione o ambiente primeiro");fotoAtualAmbiente=ambiente;fotoAtualTipo=document.getElementById("v-tipo-foto").value;document.getElementById("file-input").click();};
-window.handleFileUpload=(e)=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=(ev)=>{fotoAtualBlob=ev.target.result;abrirEditorSetas(fotoAtualBlob);};reader.readAsDataURL(file);e.target.value="";};
+
+window.uploadFoto=()=>{const amb=document.getElementById("v-ambiente").value;if(!amb)return alert("Selecione o ambiente primeiro");fotoAtualAmbiente=amb;fotoAtualTipo=document.getElementById("v-tipo-foto").value;document.getElementById("file-input").click();};
+window.handleFileUpload=e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{fotoAtualBlob=ev.target.result;abrirEditorSetas(fotoAtualBlob);};r.readAsDataURL(file);e.target.value="";};
 
 function abrirEditorSetas(imgDataUrl){
   arrowPoints=[];document.getElementById("arrow-counter").textContent="0 setas";
@@ -734,86 +647,87 @@ function abrirEditorSetas(imgDataUrl){
     desenharSetas();
   };
   img.src=imgDataUrl;
-  canvas.ontouchend=(e)=>{e.preventDefault();const r=canvas.getBoundingClientRect();const s=e.changedTouches[0];arrowPoints.push({x:(s.clientX-r.left)/r.width,y:(s.clientY-r.top)/r.height});document.getElementById("arrow-counter").textContent=arrowPoints.length+" seta(s)";desenharSetas();};
-  canvas.onclick=(e)=>{const r=canvas.getBoundingClientRect();arrowPoints.push({x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height});document.getElementById("arrow-counter").textContent=arrowPoints.length+" seta(s)";desenharSetas();};
+  canvas.ontouchend=e=>{e.preventDefault();const r=canvas.getBoundingClientRect();const s=e.changedTouches[0];arrowPoints.push({x:(s.clientX-r.left)/r.width,y:(s.clientY-r.top)/r.height});document.getElementById("arrow-counter").textContent=arrowPoints.length+" seta(s)";desenharSetas();};
+  canvas.onclick=e=>{const r=canvas.getBoundingClientRect();arrowPoints.push({x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height});document.getElementById("arrow-counter").textContent=arrowPoints.length+" seta(s)";desenharSetas();};
 }
-
 function desenharSetas(){
   const canvas=document.getElementById("arrow-canvas");const ctx=canvas.getContext("2d");
   ctx.clearRect(0,0,canvas.width,canvas.height);
   if(arrowImage)ctx.drawImage(arrowImage,0,0,canvas.width,canvas.height);
   arrowPoints.forEach(p=>{
     const cx=p.x*canvas.width,cy=p.y*canvas.height;
-    const size=Math.max(30,canvas.width*0.09);
-    const angle=Math.PI*0.75;
+    const size=Math.max(32,canvas.width*0.09);const angle=Math.PI*0.75;
     const tx=cx-size*Math.cos(angle),ty=cy-size*Math.sin(angle);
-    ctx.save();
-    ctx.strokeStyle="#FF0000";ctx.fillStyle="#FF0000";
-    ctx.lineWidth=Math.max(5,size*0.22);
-    ctx.lineCap="round";ctx.lineJoin="round";
+    ctx.save();ctx.strokeStyle="#FF0000";ctx.fillStyle="#FF0000";
+    ctx.lineWidth=Math.max(5,size*0.23);ctx.lineCap="round";ctx.lineJoin="round";
     ctx.beginPath();ctx.moveTo(tx,ty);ctx.lineTo(cx,cy);ctx.stroke();
-    const hLen=size*0.45,hAngle=0.45;
-    ctx.beginPath();ctx.moveTo(cx,cy);
-    ctx.lineTo(cx-hLen*Math.cos(angle-hAngle),cy-hLen*Math.sin(angle-hAngle));
-    ctx.lineTo(cx-hLen*Math.cos(angle+hAngle),cy-hLen*Math.sin(angle+hAngle));
-    ctx.closePath();ctx.fill();ctx.restore();
+    const hLen=size*0.46,hAngle=0.44;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx-hLen*Math.cos(angle-hAngle),cy-hLen*Math.sin(angle-hAngle));ctx.lineTo(cx-hLen*Math.cos(angle+hAngle),cy-hLen*Math.sin(angle+hAngle));ctx.closePath();ctx.fill();ctx.restore();
   });
 }
 window.desfazerSeta=()=>{arrowPoints.pop();document.getElementById("arrow-counter").textContent=arrowPoints.length+" seta(s)";desenharSetas();};
 window.limparSetas=()=>{arrowPoints=[];document.getElementById("arrow-counter").textContent="0 setas";desenharSetas();};
 window.confirmarSetas=()=>{const canvas=document.getElementById("arrow-canvas");const dataUrl=canvas.toDataURL("image/jpeg",0.92);document.getElementById("arrow-overlay").style.display="none";salvarFotoFinal(dataUrl);};
-
 function salvarFotoFinal(dataUrl){
-  const id=Date.now().toString();
-  const numero=Object.keys(fotosPendentes).length+1;
-  fotosPendentes[id]={id,dataUrl,ambiente:fotoAtualAmbiente,tipo:fotoAtualTipo,numero:"Foto "+String(numero).padStart(2,"0"),timestamp:new Date().toISOString()};
+  const id=Date.now().toString();const numero=Object.keys(fotosPendentes).length+1;
+  fotosPendentes[id]={id,dataUrl,ambiente:fotoAtualAmbiente,tipo:fotoAtualTipo,numero:"Foto "+String(numero).padStart(2,"0"),gps:gpsAtual?{...gpsAtual}:null,timestamp:new Date().toISOString()};
   renderFotos();
 }
 
 window.addAmbienteExtra=()=>{const nome=prompt("Nome do ambiente adicional:");if(!nome||!nome.trim())return;ambientesExtras.push(nome.trim());renderChecklist();};
+
 function renderChecklist(){
   const ambientes=[...AMBIENTES_PADRAO,...ambientesExtras];
   const tbody=document.getElementById("checklist-body");tbody.innerHTML="";
   ambientes.forEach(amb=>{
-    const tr=document.createElement("tr");const cols=["estrutura","paredes","cobertura","portas","piso"];const saved=(currentVistoria&&currentVistoria.checklist&&currentVistoria.checklist[amb])||{};
-    tr.innerHTML='<td style="font-size:11px;font-weight:600;white-space:nowrap">'+amb+"</td>"+cols.map(c=>'<td><select onchange="updateChecklist(''+amb+'',''+c+'',this.value)">'+PATOLOGIAS.map(p=>'<option'+(saved[c]===p?" selected":"")+">"+p+"</option>").join("")+"</select></td>").join("");
-    tbody.appendChild(tr);
+    const tr=document.createElement("tr");
+    const saved=(currentVistoria&&currentVistoria.checklist&&currentVistoria.checklist[amb])||{};
+    let cells='<td style="font-size:11px;font-weight:600;white-space:nowrap;vertical-align:middle">'+amb+"</td>";
+    COLS_CL.forEach(col=>{
+      const savedVals=saved[col]||[];
+      cells+="<td>"+PATOLOGIAS_OPCOES.map(p=>{
+        const checked=Array.isArray(savedVals)&&savedVals.includes(p)?"checked":"";
+        const safeAmb=amb.replace(/'/g,"\'");const safeP=p.replace(/'/g,"\'");
+        return '<label><input type="checkbox" '+checked+' onchange="togglePatologia(''+safeAmb+'',''+col+'',''+safeP+'',this.checked)"> '+p+"</label>";
+      }).join("")+"</td>";
+    });
+    tr.innerHTML=cells;tbody.appendChild(tr);
   });
   if(currentVistoria)document.getElementById("cl-obs").value=currentVistoria.observacoes||"";
 }
-window.updateChecklist=(amb,col,val)=>{if(!currentVistoria.checklist)currentVistoria.checklist={};if(!currentVistoria.checklist[amb])currentVistoria.checklist[amb]={};currentVistoria.checklist[amb][col]=val;};
+window.togglePatologia=(amb,col,pat,checked)=>{
+  if(!currentVistoria.checklist)currentVistoria.checklist={};
+  if(!currentVistoria.checklist[amb])currentVistoria.checklist[amb]={};
+  const arr=currentVistoria.checklist[amb][col]||[];
+  if(checked){if(!arr.includes(pat))arr.push(pat);}else{const i=arr.indexOf(pat);if(i>=0)arr.splice(i,1);}
+  currentVistoria.checklist[amb][col]=arr;
+};
 window.salvarChecklist=()=>{if(currentVistoria)currentVistoria.observacoes=document.getElementById("cl-obs").value;goTo("s-finalizacao");};
 
 function renderFinalizacao(){
-  if(!assinaturaTecnico){
-    const box=document.getElementById("sig-tecnico-preview");
-    box.innerHTML='<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px;font-size:13px;color:#856404">Voce nao tem assinatura cadastrada. <a href="#" onclick="goTo('s-perfil')" style="color:#007aff;font-weight:500">Cadastrar agora em Perfil</a></div>';
-  }else{
-    document.getElementById("sig-tecnico-preview").innerHTML='<img src="'+assinaturaTecnico+'" style="max-height:60px;max-width:200px;object-fit:contain"><br><span style="font-size:12px;color:#888;margin-top:4px;display:block">'+(currentUserData&&currentUserData.nome?currentUserData.nome:"")+"</span>";
-  }
-  if(currentVistoria){
-    document.getElementById("assin-info").innerHTML="<b>"+currentVistoria.responsavel.nome+"</b><br>"+(currentVistoria.responsavel.doc?"Doc: "+currentVistoria.responsavel.doc+"<br>":"")+(currentVistoria.responsavel.tel?"Tel: "+currentVistoria.responsavel.tel+"<br>":"")+currentVistoria.endereco.rua+", "+currentVistoria.endereco.num+(currentVistoria.endereco.comp?" - "+currentVistoria.endereco.comp:"")+"<br><span style='color:#aaa;font-size:12px'>Data: "+currentVistoria.dataCompleta+"</span>";
-  }
+  const prevEl=document.getElementById("sig-tecnico-preview");
+  if(!assinaturaTecnico){prevEl.innerHTML='<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px;font-size:13px;color:#856404">Sem assinatura cadastrada. <a href="#" onclick="goTo('s-perfil')" style="color:#007aff;font-weight:500">Cadastrar em Perfil</a></div>';}
+  else{prevEl.innerHTML='<img src="'+assinaturaTecnico+'" style="max-height:60px;max-width:200px;object-fit:contain"><br><span style="font-size:12px;color:#888">'+(currentUserData&&currentUserData.nome||"")+"</span>";}
+  if(currentVistoria){document.getElementById("assin-info").innerHTML="<b>"+currentVistoria.responsavel.nome+"</b><br>"+(currentVistoria.responsavel.doc?"Doc: "+currentVistoria.responsavel.doc+"<br>":"")+(currentVistoria.responsavel.tel?"Tel: "+currentVistoria.responsavel.tel+"<br>":"")+currentVistoria.endereco.rua+", "+currentVistoria.endereco.num+(currentVistoria.endereco.comp?" - "+currentVistoria.endereco.comp:"")+"<br><span style='color:#aaa;font-size:12px'>"+currentVistoria.dataCompleta+"</span>";}
   sigCanvas=document.getElementById("sig-canvas");sigCtx=sigCanvas.getContext("2d");
   sigCanvas.width=sigCanvas.offsetWidth||300;sigCanvas.height=160;
   sigCtx.fillStyle="#fff";sigCtx.fillRect(0,0,sigCanvas.width,sigCanvas.height);
   sigCtx.strokeStyle="#1c1c1e";sigCtx.lineWidth=2.5;sigCtx.lineCap="round";sigCtx.lineJoin="round";
   assinaturaData=null;document.getElementById("sig-confirmado").style.display="none";
   document.getElementById("btn-finalizar").disabled=true;document.getElementById("btn-finalizar").style.opacity=".4";
-  const getPos=(e)=>{const r=sigCanvas.getBoundingClientRect();const s=e.touches?e.touches[0]:e;return{x:s.clientX-r.left,y:s.clientY-r.top};};
-  sigCanvas.onmousedown=sigCanvas.ontouchstart=(e)=>{e.preventDefault();sigDrawing=true;const p=getPos(e);sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);};
-  sigCanvas.onmousemove=sigCanvas.ontouchmove=(e)=>{e.preventDefault();if(!sigDrawing)return;const p=getPos(e);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();};
-  sigCanvas.onmouseup=sigCanvas.ontouchend=(e)=>{e.preventDefault();sigDrawing=false;};
+  const gP=e=>{const r=sigCanvas.getBoundingClientRect();const s=e.touches?e.touches[0]:e;return{x:s.clientX-r.left,y:s.clientY-r.top};};
+  sigCanvas.onmousedown=sigCanvas.ontouchstart=e=>{e.preventDefault();sigDrawing=true;const p=gP(e);sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);};
+  sigCanvas.onmousemove=sigCanvas.ontouchmove=e=>{e.preventDefault();if(!sigDrawing)return;const p=gP(e);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();};
+  sigCanvas.onmouseup=sigCanvas.ontouchend=e=>{e.preventDefault();sigDrawing=false;};
 }
 window.limparAssinatura=()=>{if(!sigCtx)return;sigCtx.fillStyle="#fff";sigCtx.fillRect(0,0,sigCanvas.width,sigCanvas.height);assinaturaData=null;document.getElementById("sig-confirmado").style.display="none";document.getElementById("btn-finalizar").disabled=true;document.getElementById("btn-finalizar").style.opacity=".4";};
 window.salvarAssinatura=()=>{assinaturaData=sigCanvas.toDataURL("image/png");document.getElementById("sig-confirmado").style.display="block";document.getElementById("btn-finalizar").disabled=false;document.getElementById("btn-finalizar").style.opacity="1";};
 window.confirmarSairVistoria=()=>{if(confirm("Sair? Dados nao salvos serao perdidos."))goTo("s-dash");};
 
 window.finalizarVistoria=async()=>{
-  if(!assinaturaData)return alert("Confirme a assinatura do responsavel primeiro");
-  if(!assinaturaTecnico)return alert("Cadastre sua assinatura em Perfil antes de finalizar");
-  const btnFin=document.getElementById("btn-finalizar");
-  btnFin.textContent="Gerando PDF...";btnFin.disabled=true;
+  if(!assinaturaData)return alert("Confirme a assinatura do responsavel");
+  if(!assinaturaTecnico)return alert("Cadastre sua assinatura em Perfil");
+  const btnFin=document.getElementById("btn-finalizar");btnFin.textContent="Gerando PDF...";btnFin.disabled=true;
   currentVistoria.estado=document.getElementById("fin-estado").value;
   currentVistoria.idade=document.getElementById("fin-idade").value;
   ultimoResponsavel={...currentVistoria.responsavel};
@@ -823,159 +737,162 @@ window.finalizarVistoria=async()=>{
     const pdf=new jsPDF("p","mm","a4");
     const W=210,M=8,cw=W-M*2;
     const fotos=Object.values(fotosPendentes);
-    const prestador=prestadorDefault||{nome:"CNRP Arquitetura e Construcoes Ltda.",cnpj:"22.121.094/0001-90",endereco:"Av. Marechal Eurico Gaspar Dutra, n 1292 | Santana | Sao Paulo - SP | CEP 02239-010",email:"ronaldopinto@rbarquitetura.com"};
-    const logoSrc=prestador.logo||LOGO_DEFAULT;
+    const prest=prestadorDefault||{nome:"CNRP Arquitetura e Construcoes Ltda.",cnpj:"22.121.094/0001-90",endereco:"Av. Marechal Eurico Gaspar Dutra, n 1292 | Santana | Sao Paulo - SP | CEP 02239-010",email:"ronaldopinto@rbarquitetura.com"};
+    const logoSrc=prest.logo||LOGO_DEFAULT;
 
-    // Agrupar fotos por pagina (6 por pagina, exceto primeira com foto grande + 5)
-    // Ordenar: primeira foto do primeiro ambiente vai grande
-    let paginaFotos=[];
+    // Agrupar fotos em paginas: pg0 = [0..5] isPrimeira, pg1+ = [6..11], etc
+    const pagFotos=[];
     if(fotos.length>0){
-      // Pagina 1: foto 0 grande + fotos 1-5
-      paginaFotos.push({fotos:fotos.slice(0,6),isPrimeira:true});
-      // Demais paginas: grupos de 6
-      for(let i=6;i<fotos.length;i+=6){paginaFotos.push({fotos:fotos.slice(i,i+6),isPrimeira:false});}
+      pagFotos.push({fotos:fotos.slice(0,6),isPrimeira:true});
+      for(let i=6;i<fotos.length;i+=6)pagFotos.push({fotos:fotos.slice(i,i+6),isPrimeira:false});
     }
 
     let fotoNum=1;
-    for(let pg=0;pg<paginaFotos.length;pg++){
+    for(let pg=0;pg<pagFotos.length;pg++){
       if(pg>0)pdf.addPage();
-      const pFotos=paginaFotos[pg].fotos;
-      const isPrimeira=paginaFotos[pg].isPrimeira;
-
-      // Locais desta pagina
-      const locais=[...new Set(pFotos.map(f=>f.ambiente))];
-      const localStr=locais.join(" / ");
-
-      addHeader(pdf,M,W,cw,currentVistoria,localStr,logoSrc);
+      const pF=pagFotos[pg].fotos;const isP=pagFotos[pg].isPrimeira;
+      const locais=[...new Set(pF.map(f=>f.ambiente))];
+      addHeader(pdf,M,W,cw,currentVistoria,locais.join(" / "),logoSrc);
       let y=M+38;
 
-      if(isPrimeira&&pFotos.length>0){
-        // Foto 01 grande (fachada)
-        const fotoGrande=pFotos[0];
-        try{await addImg(pdf,fotoGrande.dataUrl,M,y,cw,75);addFotoLabel(pdf,"Foto "+String(fotoNum).padStart(2,"0"),fotoGrande.tipo,M,y+75+4,cw);fotoNum++;}catch(e){}
-        y+=75+13;
-        // Restantes em pares (max 5 fotos = 2+2+1)
-        const resto=pFotos.slice(1);
+      if(isP&&pF.length>0){
+        // Foto 01 grande, proporcional
+        const f0=pF[0];
+        try{
+          const dims=await getImgDims(f0.dataUrl);
+          const maxH=80;const fw=cw;
+          const fh=Math.min(maxH,Math.round(fw*dims.h/dims.w));
+          await addImgProp(pdf,f0.dataUrl,M,y,fw,fh);
+          addFotoLabel(pdf,"Foto "+String(fotoNum).padStart(2,"0"),f0.tipo,M,y+fh+4,fw);fotoNum++;
+          y+=fh+13;
+        }catch(e){fotoNum++;}
+        // Restantes em pares
+        const resto=pF.slice(1);
         for(let i=0;i<resto.length;i+=2){
-          if(y+52>280){pdf.addPage();addHeader(pdf,M,W,cw,currentVistoria,localStr,logoSrc);y=M+38;}
+          if(y+52>280){pdf.addPage();addHeader(pdf,M,W,cw,currentVistoria,locais.join(" / "),logoSrc);y=M+38;}
           const hw=(cw-4)/2;
           for(let k=0;k<2&&i+k<resto.length;k++){
-            try{const fx=M+k*(hw+4);await addImg(pdf,resto[i+k].dataUrl,fx,y,hw,48);addFotoLabel(pdf,"Foto "+String(fotoNum).padStart(2,"0"),resto[i+k].tipo,fx,y+48+4,hw);fotoNum++;}catch(e){}
+            try{
+              const dims=await getImgDims(resto[i+k].dataUrl);
+              const fh=Math.min(52,Math.round(hw*dims.h/dims.w));
+              const fx=M+k*(hw+4);
+              await addImgProp(pdf,resto[i+k].dataUrl,fx,y,hw,fh);
+              addFotoLabel(pdf,"Foto "+String(fotoNum).padStart(2,"0"),resto[i+k].tipo,fx,y+fh+4,hw);fotoNum++;
+            }catch(e){fotoNum++;}
           }
-          y+=48+13;
+          y+=56+13;
         }
       }else{
-        // Grade 2x3 (6 fotos por pagina)
-        for(let i=0;i<pFotos.length;i+=2){
-          if(y+52>280){pdf.addPage();addHeader(pdf,M,W,cw,currentVistoria,localStr,logoSrc);y=M+38;}
+        for(let i=0;i<pF.length;i+=2){
+          if(y+54>280){pdf.addPage();addHeader(pdf,M,W,cw,currentVistoria,locais.join(" / "),logoSrc);y=M+38;}
           const hw=(cw-4)/2;
-          for(let k=0;k<2&&i+k<pFotos.length;k++){
-            try{const fx=M+k*(hw+4);await addImg(pdf,pFotos[i+k].dataUrl,fx,y,hw,48);addFotoLabel(pdf,"Foto "+String(fotoNum).padStart(2,"0"),pFotos[i+k].tipo,fx,y+48+4,hw);fotoNum++;}catch(e){}
+          for(let k=0;k<2&&i+k<pF.length;k++){
+            try{
+              const dims=await getImgDims(pF[i+k].dataUrl);
+              const fh=Math.min(52,Math.round(hw*dims.h/dims.w));
+              const fx=M+k*(hw+4);
+              await addImgProp(pdf,pF[i+k].dataUrl,fx,y,hw,fh);
+              addFotoLabel(pdf,"Foto "+String(fotoNum).padStart(2,"0"),pF[i+k].tipo,fx,y+fh+4,hw);fotoNum++;
+            }catch(e){fotoNum++;}
           }
-          y+=48+13;
+          y+=56+13;
         }
       }
-      addFooter(pdf,W,M,prestador);
+      addFooter(pdf,W,M,prest);
     }
 
-    // Pagina do checklist
+    // Checklist
     pdf.addPage();
     addHeader(pdf,M,W,cw,currentVistoria,"Checklist de Patologias",logoSrc);
     let y=M+40;
     pdf.setFontSize(9);pdf.setFont("helvetica","bold");pdf.text("IDENTIFICACAO DE PATOLOGIAS",M+cw/2,y,{align:"center"});y+=7;
-
-    const ambientesTotal=[...AMBIENTES_PADRAO,...ambientesExtras];
-    const cols=["Local","Estrutura","Parede e muro","Cobertura a teto","Porta e esquadria","Piso e calcamento"];
-    const ckeys=["estrutura","paredes","cobertura","portas","piso"];
+    const ambTotal=[...AMBIENTES_PADRAO,...ambientesExtras];
+    const colsH=["Local","Estrutura","Parede e muro","Cobertura a teto","Porta e esquadria","Piso e calcamento"];
     const colW=[30,32,34,34,30,30];
-    pdf.setFillColor(220,220,220);let cx=M;colW.forEach(w=>{pdf.rect(cx,y,w,6,"F");cx+=w;});
-    cx=M;pdf.setFontSize(7);pdf.setFont("helvetica","bold");cols.forEach((c,i)=>{pdf.text(c,cx+1.5,y+4);cx+=colW[i];});y+=6;
-    ambientesTotal.forEach((amb,ri)=>{
+    pdf.setFillColor(210,210,210);let cx=M;colW.forEach(w=>{pdf.rect(cx,y,w,6,"F");cx+=w;});
+    cx=M;pdf.setFontSize(7);pdf.setFont("helvetica","bold");colsH.forEach((c,i)=>{pdf.text(c,cx+1.5,y+4);cx+=colW[i];});y+=6;
+    ambTotal.forEach((amb,ri)=>{
       if(y>270){pdf.addPage();y=20;}
       if(ri%2===0){pdf.setFillColor(250,250,250);cx=M;colW.forEach(w=>{pdf.rect(cx,y,w,6,"F");cx+=w;});}
-      pdf.setDrawColor(200,200,200);pdf.rect(M,y,cw,6,"S");
+      // Calcular altura da linha (pode ter multiplas patologias)
+      const maxPats=Math.max(...COLS_CL.map(k=>{const v=(currentVistoria.checklist&&currentVistoria.checklist[amb]&&currentVistoria.checklist[amb][k])||[];return Array.isArray(v)?v.length:0;}),1);
+      const rowH=Math.max(6,maxPats*4+2);
+      if(y+rowH>270){pdf.addPage();y=20;}
+      pdf.setDrawColor(200,200,200);pdf.rect(M,y,cw,rowH,"S");
       cx=M;pdf.setFont("helvetica","bold");pdf.setFontSize(6.5);pdf.text(amb,cx+1.5,y+4);cx+=colW[0];
-      ckeys.forEach((k,ki)=>{pdf.setFont("helvetica","normal");const val=(currentVistoria.checklist&&currentVistoria.checklist[amb]&&currentVistoria.checklist[amb][k])||"--";const short=val==="Fissura/Trinca/Rachadura"?"Fissura/Trinca":val==="Umidade/Infiltracao"?"Umid./Infiltr.":val;pdf.text(short,cx+1.5,y+4);cx+=colW[ki+1];});
-      y+=6;
+      COLS_CL.forEach((k,ki)=>{
+        const vals=(currentVistoria.checklist&&currentVistoria.checklist[amb]&&currentVistoria.checklist[amb][k])||[];
+        const arr=Array.isArray(vals)?vals:(vals&&vals!=="--"?[vals]:[]);
+        pdf.setFont("helvetica","normal");
+        if(arr.length===0){pdf.text("--",cx+1.5,y+4);}
+        else{arr.forEach((p,pi)=>{const short=p==="Fissura/Trinca/Rachadura"?"Fissura/Trinca":p==="Umidade/Infiltracao"?"Umid./Infiltr.":p;pdf.text(short,cx+1.5,y+3.5+pi*3.8);});}
+        cx+=colW[ki+1];
+      });
+      y+=rowH;
     });
     y+=8;
     if(currentVistoria.observacoes){pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text("Observacoes:",M,y);y+=5;pdf.setFont("helvetica","normal");const lines=pdf.splitTextToSize(currentVistoria.observacoes,cw);pdf.text(lines,M,y);y+=lines.length*4.5+6;}
-    y+=10;
+    y+=8;
     pdf.setFontSize(9);pdf.setFont("helvetica","normal");pdf.text("Sao Paulo, "+currentVistoria.dataCompleta,M,y);y+=14;
     if(assinaturaData){try{pdf.addImage(assinaturaData,"PNG",M,y,70,22);}catch(e){}}
     pdf.line(M,y+24,M+80,y+24);pdf.setFontSize(8);pdf.text(currentVistoria.responsavel.nome,M,y+29);pdf.text("Responsavel pelo imovel",M,y+33);
     if(assinaturaTecnico){try{pdf.addImage(assinaturaTecnico,"PNG",M+100,y,70,22);}catch(e){}}
-    pdf.line(M+100,y+24,M+180,y+24);pdf.text(currentUserData&&currentUserData.nome?currentUserData.nome:"Responsavel Tecnico",M+100,y+29);pdf.text("Responsavel Tecnico",M+100,y+33);
-    addFooter(pdf,W,M,prestador);
+    pdf.line(M+100,y+24,M+180,y+24);pdf.text(currentUserData&&currentUserData.nome||"Responsavel Tecnico",M+100,y+29);pdf.text("Responsavel Tecnico",M+100,y+33);
+    addFooter(pdf,W,M,prest);
 
     await addDoc(collection(db,"vistorias"),{clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,coletorNome:currentVistoria.coletorNome,responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,ocupacao:currentVistoria.ocupacao,tipo:currentVistoria.tipo,estado:currentVistoria.estado,idade:currentVistoria.idade,data:currentVistoria.data,userId:currentUser.uid,checklist:currentVistoria.checklist,observacoes:currentVistoria.observacoes,totalFotos:Object.keys(fotosPendentes).length,status:"concluida",criadoEm:serverTimestamp()});
 
-    // Nome do arquivo: Coletor - Endereco - Data
     const dataArq=new Date().toLocaleDateString("pt-BR").replace(/\//g,"-");
-    const endArq=(currentVistoria.endereco.rua+"_"+currentVistoria.endereco.num+(currentVistoria.endereco.comp?"_"+currentVistoria.endereco.comp:"")).replace(/\s+/g,"_").replace(/[^a-zA-Z0-9_]/g,"");
-    const coletorArq=currentVistoria.coletorNome.replace(/\s+/g,"_").replace(/[^a-zA-Z0-9_]/g,"");
-    const nomeArq=coletorArq+"-"+endArq+"-"+dataArq+".pdf";
-    pdf.save(nomeArq);
-    alert("Vistoria finalizada! PDF gerado: "+nomeArq);
+    const endArq=(currentVistoria.endereco.rua+"_"+currentVistoria.endereco.num+(currentVistoria.endereco.comp?"_"+currentVistoria.endereco.comp:"")).replace(/[^a-zA-Z0-9_]/g,"");
+    const colArq=currentVistoria.coletorNome.replace(/[^a-zA-Z0-9_]/g,"_");
+    pdf.save(colArq+"-"+endArq+"-"+dataArq+".pdf");
+    alert("Vistoria finalizada! PDF gerado.");
     currentVistoria=null;fotosPendentes={};assinaturaData=null;ambientesExtras=[];
     goTo("s-dash");
   }catch(e){console.error(e);alert("Erro: "+e.message);}
   finally{btnFin.textContent="Gerar PDF e finalizar";btnFin.disabled=false;btnFin.style.opacity="1";}
 };
 
-function addImg(pdf,dataUrl,x,y,w,h){return new Promise(res=>{try{pdf.addImage(dataUrl,"JPEG",x,y,w,h,"","FAST");}catch(e){}res();});}
+function getImgDims(dataUrl){return new Promise(res=>{const img=new Image();img.onload=()=>res({w:img.naturalWidth||1,h:img.naturalHeight||1});img.onerror=()=>res({w:4,h:3});img.src=dataUrl;});}
+function addImgProp(pdf,dataUrl,x,y,w,h){return new Promise(res=>{try{pdf.addImage(dataUrl,"JPEG",x,y,w,h,"","FAST");}catch(e){}res();});}
 function addFotoLabel(pdf,num,tipo,x,y,w){pdf.setFontSize(8);pdf.setFont("helvetica","bold");pdf.text(num,x+w/2,y,{align:"center"});pdf.setFont("helvetica","normal");pdf.text(tipo,x+w/2,y+4,{align:"center"});}
 
 function addHeader(pdf,M,W,cw,v,local,logoSrc){
-  // Borda externa
   pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.4);pdf.rect(M,M,cw,36,"S");
-  // Logo
-  if(logoSrc&&logoSrc.length>50){try{pdf.addImage(logoSrc,"JPEG",M+1,M+1,14,14);}catch(e){}}
-  // Titulo
+  if(logoSrc&&logoSrc.length>50){try{pdf.addImage(logoSrc,"JPEG",M+1,M+1,16,16,"","FAST");}catch(e){}}
   pdf.setFontSize(11);pdf.setFont("helvetica","bold");pdf.text("RELATORIO DE VISTORIA CAUTELAR",M+cw/2,M+7,{align:"center"});
   pdf.setFontSize(9);pdf.text("RRT: "+v.clienteRRT,W-M-1,M+7,{align:"right"});
-  // Linha divisoria 1
   pdf.setLineWidth(0.3);pdf.line(M,M+9,M+cw,M+9);
-  // Bloco info responsavel
   pdf.setFontSize(8);pdf.setFont("helvetica","bold");pdf.text("INFORMACOES DO RESPONSAVEL",M+cw/2,M+13,{align:"center"});
-  pdf.setLineWidth(0.3);pdf.line(M,M+14.5,M+cw,M+14.5);
+  pdf.line(M,M+14.5,M+cw,M+14.5);
   pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);
   pdf.text("Nome: "+v.responsavel.nome,M+1,M+18);
   pdf.text("CPF/RG: "+(v.responsavel.doc||"Nao informado"),M+1,M+22);
   pdf.text("Contato: "+(v.responsavel.tel||"--"),M+70,M+22);
-  pdf.text("Endereco: "+v.endereco.rua,M+1,M+26);
-  pdf.text("N: "+v.endereco.num+(v.endereco.comp?"  Compl.: "+v.endereco.comp:""),M+80,M+26);
+  pdf.text("Endereco: "+v.endereco.rua+" N: "+v.endereco.num+(v.endereco.comp?" Compl.: "+v.endereco.comp:""),M+1,M+26);
   pdf.text("Coletor: "+v.coletorNome,M+1,M+30);
-  // Estado de conservacao no cabecalho
-  if(v.estado||v.idade){
-    pdf.setFont("helvetica","bold");
-    pdf.text("Estado: "+v.estado+(v.idade?"  Idade aparente: "+v.idade+" anos":""),M+80,M+30);
-  }
-  pdf.setLineWidth(0.3);pdf.line(M,M+31.5,M+cw,M+31.5);
-  // Local e Data na barra escura
-  pdf.setFillColor(230,230,230);pdf.rect(M,M+32,cw/2,4,"F");pdf.rect(M+cw/2,M+32,cw/2,4,"F");
+  if(v.estado||v.idade){pdf.setFont("helvetica","bold");pdf.text("Estado: "+v.estado+(v.idade?" | Idade aparente: "+v.idade+" anos":""),M+80,M+30);}
+  pdf.line(M,M+31.5,M+cw,M+31.5);
+  pdf.setFillColor(225,225,225);pdf.rect(M,M+31.5,cw,4.5,"F");
   pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
-  pdf.text("Local: "+local,M+1,M+35.2);
-  pdf.text("Data Vistoria: "+v.dataCompleta,W-M-1,M+35.2,{align:"right"});
+  pdf.text("Local: "+local,M+1,M+35);
+  pdf.text("Data Vistoria: "+v.dataCompleta,W-M-1,M+35,{align:"right"});
 }
-
 function addFooter(pdf,W,M,p){
-  pdf.setFontSize(6.5);pdf.setFont("helvetica","bold");pdf.setTextColor(60,60,60);
-  const linha1=(p.nome||"")+(p.cnpj?"  |  CNPJ: "+p.cnpj:"");
-  const linha2=(p.endereco||"")+(p.email?"  |  "+p.email:"");
-  pdf.text(linha1,W/2,287,{align:"center"});
-  pdf.setFont("helvetica","normal");pdf.text(linha2,W/2,290.5,{align:"center"});
+  pdf.setFontSize(6.5);pdf.setFont("helvetica","bold");pdf.setTextColor(50,50,50);
+  pdf.text((p.nome||"")+(p.cnpj?" | CNPJ: "+p.cnpj:""),W/2,287,{align:"center"});
+  pdf.setFont("helvetica","normal");pdf.text((p.endereco||"")+(p.email?" | "+p.email:""),W/2,290.5,{align:"center"});
   pdf.setTextColor(0,0,0);
 }
 
 async function loadHistorico(){
-  const el=document.getElementById("lista-historico");el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px;font-size:14px">Carregando...</p>';
+  const el=document.getElementById("lista-historico");el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Carregando...</p>';
   try{
     const q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));const snap=await getDocs(q);el.innerHTML="";
-    if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px;font-size:14px">Nenhuma vistoria</p>';return;}
+    if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhuma vistoria</p>';return;}
     const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>(b.criadoEm&&b.criadoEm.seconds||0)-(a.criadoEm&&a.criadoEm.seconds||0));
-    docs.forEach(v=>{const div=document.createElement("div");div.className="list-item";div.innerHTML='<div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></div><div class="info"><div class="title">'+(v.responsavel&&v.responsavel.nome||"--")+'</div><div class="sub">'+(v.endereco&&v.endereco.rua||"")+", "+(v.endereco&&v.endereco.num||"")+" - "+(v.totalFotos||0)+" fotos - "+(v.coletorNome||"")+'</div></div><span class="badge '+(v.status==="concluida"?"ok":"master")+'">'+(v.status==="concluida"?"Concluida":"Andamento")+"</span>";el.appendChild(div);});
-  }catch(e){el.innerHTML='<p style="text-align:center;color:#dc2626;padding:24px;font-size:14px">Erro: '+e.message+"</p>";}
+    docs.forEach(v=>{const div=document.createElement("div");div.className="list-item";div.innerHTML='<div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></div><div class="info"><div class="title">'+(v.responsavel&&v.responsavel.nome||"--")+'</div><div class="sub">'+(v.endereco&&v.endereco.rua||"")+", "+(v.endereco&&v.endereco.num||"")+" | "+(v.totalFotos||0)+" fotos"+'</div></div><span class="badge '+(v.status==="concluida"?"ok":"master")+'">'+(v.status==="concluida"?"Concluida":"Andamento")+"</span>";el.appendChild(div);});
+  }catch(e){el.innerHTML='<p style="text-align:center;color:#dc2626;padding:24px">Erro: '+e.message+"</p>";}
 }
 </script>
 </body>
