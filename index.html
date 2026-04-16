@@ -47,34 +47,39 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 .cam-video-wrap{flex:1;position:relative;overflow:hidden;min-height:0}
 .cam-video-wrap video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .camera-controls{background:#000;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-shrink:0}
-.zoom-wrap{background:#000;padding:8px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.zoom-wrap{background:#111;padding:6px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
 .zoom-slider{flex:1;height:4px;cursor:pointer;accent-color:#fff}
-.zoom-label{color:#fff;font-size:14px;font-weight:600;min-width:36px;text-align:right}
+.zoom-label{color:#fff;font-size:14px;font-weight:600;min-width:38px;text-align:right}
 .shutter{width:72px;height:72px;border-radius:50%;background:#fff;border:5px solid rgba(255,255,255,.4);cursor:pointer;flex-shrink:0;-webkit-appearance:none;appearance:none}
 .shutter:active{background:#ccc;transform:scale(.93)}
 .btn-cam{background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:10px;padding:10px 16px;font-size:13px;cursor:pointer;-webkit-appearance:none;white-space:nowrap}
 .canvas-overlay{position:fixed;inset:0;z-index:1001;display:flex;flex-direction:column;background:#000;overflow:hidden}
 .canvas-overlay canvas{flex:1;width:100%;touch-action:none;display:block;min-height:0}
 .canvas-controls{background:#111;padding:14px 16px;display:flex;gap:10px;align-items:center;flex-shrink:0}
-.pat-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1002;display:flex;align-items:flex-end;justify-content:center}
-.pat-sheet{background:#fff;border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:600px}
-.pat-sheet h3{font-size:17px;font-weight:600;margin-bottom:16px}
-.pat-list{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.bottom-sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1002;display:flex;align-items:flex-end;justify-content:center}
+.sheet-body{background:#fff;border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:600px;max-height:85vh;overflow-y:auto}
+.sheet-body h3{font-size:17px;font-weight:600;margin-bottom:6px}
+.sheet-body p{font-size:13px;color:#888;margin-bottom:16px}
+.part-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.part-btn{padding:12px 8px;border:2px solid #e5e5e5;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;background:#fff;color:#111;text-align:center}
+.part-btn.selected{border-color:#007aff;background:#f0f8ff;color:#007aff}
+.pat-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
 .pat-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid #e5e5e5;border-radius:10px;cursor:pointer}
-.pat-item input[type=checkbox]{width:20px;height:20px;cursor:pointer;flex-shrink:0}
+.pat-item input[type=checkbox]{width:20px;height:20px;cursor:pointer;flex-shrink:0;accent-color:#007aff}
 .pat-item label{font-size:15px;cursor:pointer;flex:1}
 .checklist-wrapper{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .checklist-table{width:100%;border-collapse:collapse;font-size:11px;min-width:500px}
 .checklist-table th{background:#f0f0f0;padding:6px 5px;text-align:left;font-weight:700;border:1px solid #ccc;font-size:10px;white-space:nowrap}
 .checklist-table td{padding:5px 4px;border:1px solid #ddd;vertical-align:top}
 .checklist-table td label{display:flex;align-items:center;gap:4px;font-size:10px;cursor:pointer;margin-bottom:2px;white-space:nowrap}
-.checklist-table td input[type=checkbox]{width:13px;height:13px;flex-shrink:0;cursor:pointer}
+.checklist-table td input[type=checkbox]{width:13px;height:13px;flex-shrink:0;cursor:pointer;accent-color:#007aff}
 .sig-pad{border:1px solid #ddd;border-radius:10px;background:#fff;touch-action:none;width:100%;height:160px;display:block}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:flex;align-items:flex-end;justify-content:center}
 .modal{background:#fff;border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:600px;max-height:88vh;overflow-y:auto}
 .modal h3{font-size:18px;font-weight:600;margin-bottom:16px}
 .section-header{background:#f5f5f7;padding:10px 14px;font-size:13px;font-weight:600;color:#555;border-radius:10px;margin-bottom:8px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 .sep{height:1px;background:#e5e5e5;margin:8px 0}
 .pass-wrap{position:relative}
 .pass-wrap input{padding-right:44px}
@@ -84,6 +89,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1c1c1e;color:#fff;padding:12px 24px;border-radius:24px;font-size:14px;font-weight:500;z-index:9999;display:none;white-space:nowrap;max-width:90vw;text-align:center}
 .coletor-group{margin-bottom:16px}
 .coletor-group-title{font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.04em;padding:6px 0 4px;border-bottom:1px solid #f0f0f0;margin-bottom:8px}
+.hist-actions{display:flex;gap:6px;flex-shrink:0}
 
 </style>
 </head>
@@ -100,7 +106,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <button class="btn primary" onclick="doLogin()">Entrar</button>
     </div>
   </div>
-  <div style="padding:16px;text-align:center;font-size:12px;color:#aaa">Vistoria Cautelar v1.5</div>
+  <div style="padding:16px;text-align:center;font-size:12px;color:#aaa">Vistoria Cautelar v1.6</div>
 </div>
 
 <div id="s-dash" class="screen">
@@ -201,7 +207,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
     <div id="gps-status" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:8px 12px;font-size:12px;color:#0369a1">Aguardando GPS...</div>
     <div class="card"><h2>Capturar foto</h2>
       <div class="field"><label>Ambiente</label><select id="v-ambiente"><option value="">Selecione o ambiente...</option></select></div>
-      <div class="field"><label>Tipo de foto</label><select id="v-tipo-foto" onchange="onTipoFotoChange()"><option value="Vista">Vista - ambiente geral</option><option value="Detalhe">Detalhe - foco na patologia</option></select></div>
+      <div class="field"><label>Tipo de foto</label><select id="v-tipo-foto"><option value="Vista">Vista - ambiente geral</option><option value="Detalhe">Detalhe - foco na patologia</option></select></div>
       <div class="grid2" style="margin-top:4px">
         <button class="btn primary" onclick="abrirCamera()">Camera</button>
         <button class="btn" onclick="uploadFoto()">Galeria</button>
@@ -218,15 +224,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   <div class="content">
     <div class="card"><h2>Observacoes gerais</h2><div class="field"><textarea id="cl-obs" placeholder="Descreva observacoes gerais..."></textarea></div></div>
     <div class="card"><h2>Patologias por ambiente</h2>
-      <p style="font-size:12px;color:#888;margin-bottom:10px">Role horizontalmente para ver todas as colunas. Patologias marcadas nas fotos ja estao preenchidas.</p>
+      <p style="font-size:12px;color:#888;margin-bottom:10px">Role horizontalmente para ver todas as colunas.</p>
       <div class="checklist-wrapper">
-        <table class="checklist-table" id="checklist-table">
+        <table class="checklist-table">
           <thead><tr>
             <th style="min-width:80px;position:sticky;left:0;background:#f0f0f0;z-index:1">Local</th>
-            <th style="min-width:95px">Estrutura</th>
-            <th style="min-width:95px">Parede e muro</th>
-            <th style="min-width:95px">Cobertura a teto</th>
-            <th style="min-width:90px">Porta e esquadria</th>
+            <th style="min-width:95px">Estrutura</th><th style="min-width:95px">Parede e muro</th>
+            <th style="min-width:95px">Cobertura a teto</th><th style="min-width:90px">Porta e esquadria</th>
             <th style="min-width:90px">Piso e calcamento</th>
           </tr></thead>
           <tbody id="checklist-body"></tbody>
@@ -262,27 +266,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   <div class="content" id="lista-historico"></div>
 </div>
 
-<!-- CAMERA OVERLAY -->
-<div id="camera-overlay" class="camera-overlay" style="display:none">
-  <div class="cam-header">
-    <span style="color:#fff;font-size:14px;font-weight:500;flex:1" id="cam-label"></span>
-    <span style="background:rgba(255,255,255,.15);color:#fff;font-size:12px;padding:3px 10px;border-radius:20px" id="cam-tipo-badge"></span>
+<div id="s-detalhe-vistoria" class="screen">
+  <div class="topbar"><button class="back" onclick="goTo('s-historico')">&#8249; Voltar</button><h1 id="dv-titulo">Vistoria</h1>
+    <button class="btn small danger" onclick="excluirVistoriaAtual()" style="margin-right:4px">Excluir</button>
+    <button class="btn small primary" onclick="editarVistoriaAtual()">Editar</button>
   </div>
+  <div class="content" id="dv-content"></div>
+</div>
+
+<!-- CAMERA -->
+<div id="camera-overlay" class="camera-overlay" style="display:none">
+  <div class="cam-header"><span style="color:#fff;font-size:14px;font-weight:500;flex:1" id="cam-label"></span><span style="background:rgba(255,255,255,.15);color:#fff;font-size:12px;padding:3px 10px;border-radius:20px" id="cam-tipo-badge"></span></div>
   <div class="cam-video-wrap"><video id="cam-video" autoplay playsinline muted></video></div>
   <div class="zoom-wrap">
-    <span style="color:#aaa;font-size:12px">0.5x</span>
-    <input type="range" id="zoom-slider" class="zoom-slider" min="1" max="10" step="0.5" value="1" oninput="onZoomSlider(this.value)">
-    <span style="color:#aaa;font-size:12px">10x</span>
+    <span style="color:#aaa;font-size:11px">0.5x</span>
+    <input type="range" id="zoom-slider" class="zoom-slider" min="0.5" max="10" step="0.5" value="1" oninput="onZoomSlider(this.value)">
+    <span style="color:#aaa;font-size:11px">10x</span>
     <span class="zoom-label" id="zoom-label">1x</span>
   </div>
   <div class="camera-controls">
     <button class="btn-cam" onclick="fecharCamera()" type="button">Cancelar</button>
-    <button class="shutter" onclick="tirarFoto()" type="button" id="shutter-btn"></button>
+    <button class="shutter" onclick="tirarFoto()" type="button"></button>
     <button class="btn-cam" onclick="trocarCamera()" type="button">Virar</button>
   </div>
 </div>
 
-<!-- EDITOR DE SETAS (apenas para Detalhe) -->
+<!-- EDITOR SETAS -->
 <div id="arrow-overlay" class="canvas-overlay" style="display:none">
   <div style="background:#111;padding:12px 16px;color:#fff;font-size:14px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
     <span style="font-weight:600">Toque para marcar patologias</span>
@@ -296,11 +305,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   </div>
 </div>
 
-<!-- MODAL PATOLOGIAS (aparece após confirmar foto Detalhe) -->
-<div id="pat-modal" class="pat-modal" style="display:none">
-  <div class="pat-sheet">
-    <h3>Patologias nesta foto</h3>
-    <p style="font-size:13px;color:#888;margin-bottom:14px" id="pat-modal-info"></p>
+<!-- MODAL PATOLOGIAS COM PARTE -->
+<div id="pat-modal" class="bottom-sheet" style="display:none">
+  <div class="sheet-body">
+    <h3>Registrar patologia</h3>
+    <p id="pat-modal-info">Ambiente: ---</p>
+    <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px">1. Onde esta a patologia?</p>
+    <div class="part-grid" id="part-grid"></div>
+    <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px">2. Qual patologia?</p>
     <div class="pat-list" id="pat-list"></div>
     <button class="btn primary" onclick="confirmarPatologias()">Confirmar e salvar foto</button>
   </div>
@@ -309,7 +321,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 <!-- MODAIS ADMIN -->
 <div id="modal-prestador" class="modal-bg" style="display:none" onclick="closeModalBg(event,'modal-prestador')">
   <div class="modal"><h3>Cadastrar Prestador</h3>
-    <div class="field"><label>Nome da empresa *</label><input type="text" id="mp-nome"></div>
+    <div class="field"><label>Nome *</label><input type="text" id="mp-nome"></div>
     <div class="field"><label>CNPJ</label><input type="text" id="mp-cnpj" placeholder="00.000.000/0001-00"></div>
     <div class="field"><label>Endereco</label><input type="text" id="mp-end"></div>
     <div class="field"><label>E-mail</label><input type="email" id="mp-email"></div>
@@ -342,6 +354,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
     <div class="grid2" style="margin-top:8px"><button class="btn" onclick="closeModal('modal-usuario')">Cancelar</button><button class="btn primary" onclick="salvarUsuario()">Salvar</button></div>
   </div>
 </div>
+<div id="modal-editar-resp" class="modal-bg" style="display:none" onclick="closeModalBg(event,'modal-editar-resp')">
+  <div class="modal"><h3>Editar Dados</h3>
+    <div class="field"><label>Nome</label><input type="text" id="er-nome"></div>
+    <div class="field"><label>CPF/RG</label><input type="text" id="er-doc" inputmode="numeric" oninput="maskCPF(this)"></div>
+    <div class="field"><label>Telefone</label><input type="tel" id="er-tel" inputmode="numeric" oninput="maskTel(this)"></div>
+    <div class="field"><label>Rua</label><input type="text" id="er-rua"></div>
+    <div class="grid2">
+      <div class="field"><label>Numero</label><input type="text" id="er-num"></div>
+      <div class="field"><label>Complemento</label><input type="text" id="er-comp"></div>
+    </div>
+    <div class="grid2" style="margin-top:8px"><button class="btn" onclick="closeModal('modal-editar-resp')">Cancelar</button><button class="btn primary" onclick="salvarEdicaoResponsavel()">Salvar</button></div>
+  </div>
+</div>
 
 <div id="toast" class="toast"></div>
 
@@ -352,41 +377,42 @@ const LOGO_CONST="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgc
 
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import{getAuth,signInWithEmailAndPassword,signOut,createUserWithEmailAndPassword,onAuthStateChanged,updatePassword}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import{getFirestore,collection,doc,setDoc,getDoc,getDocs,addDoc,query,where,serverTimestamp,deleteDoc,updateDoc,orderBy}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import{getFirestore,collection,doc,setDoc,getDoc,getDocs,addDoc,query,where,serverTimestamp,deleteDoc,updateDoc}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const FC={apiKey:"AIzaSyAwwO2yLyNVnKMLFfmKKCx64zeh7Tbgrvc",authDomain:"vistoria-cautelar-71f6d.firebaseapp.com",projectId:"vistoria-cautelar-71f6d",storageBucket:"vistoria-cautelar-71f6d.firebasestorage.app",messagingSenderId:"157244396794",appId:"1:157244396794:web:c0b983583939e13e91a543"};
 const fbApp=initializeApp(FC);
 const auth=getAuth(fbApp);
 const db=getFirestore(fbApp);
 
-const AMBIENTES=["\xc1rea de servi\xe7o","Banheiro 01","Banheiro 02","Cal\xe7ada","Corredor externo","Corredor interno","Cozinha","Dep\xf3sito","Dorm 01","Dorm 02","Dorm 03","Fachada","Garagem","Lavabo","Quintal","Sacada","Sala","Varanda"];
-const PATOLOGIAS=["Fissura/Trinca/Rachadura","Umidade/Infiltra\xe7\xe3o","Danificado"];
+const AMBIENTES=["Fachada","Calçada","Garagem","Corredor externo","Área de serviço","Quintal","Sala","Cozinha","Banheiro 01","Banheiro 02","Lavabo","Dorm 01","Dorm 02","Dorm 03","Corredor interno","Varanda","Sacada","Depósito"];
+const PARTES=["Estrutura","Parede e muro","Cobertura a teto","Porta e esquadria","Piso e cal\xe7amento"];
 const COLS=["estrutura","paredes","cobertura","portas","piso"];
-const COLS_LABELS=["\xc9strutura","Parede e muro","Cobertura a teto","Porta e esquadria","Piso e cal\xe7amento"];
+const PATOLOGIAS=["Fissura/Trinca/Rachadura","Umidade/Infiltra\xe7\xe3o","Danificado"];
 
 let currentUser=null,currentRole=null,currentUserData=null;
 let currentVistoria=null,fotosPendentes={};
 let fotoAtualBlob=null,fotoAtualTipo=null,fotoAtualAmbiente=null;
-let cameraStream=null,cameraFacingMode="environment",currentZoomVal=1,maxZoomCam=10;
+let cameraStream=null,cameraFacingMode="environment";
 let arrowPoints=[],arrowImage=null;
 let sigCanvas=null,sigCtx=null,sigDrawing=false,assinaturaData=null,assinaturaTecnico=null;
 let prestadorDefault=null,ambientesExtras=[],ultimoResponsavel=null,logoB64Upload=null;
-let gpsAtual=null,enderecoGPS="",enderecoLinhas=[];
-let patModalCallback=null;
+let gpsAtual=null,enderecoLinhas=[];
+let deviceOrientation=0;
+let vistoriaDetalheId=null,vistoriaDetalheData=null;
 
 function showToast(msg,dur){const t=document.getElementById("toast");t.textContent=msg;t.style.display="block";setTimeout(()=>{t.style.display="none";},dur||2500);}
 
-// Mascaras
 window.maskCPF=el=>{let v=el.value.replace(/\D/g,"").slice(0,11);if(v.length>9)v=v.slice(0,3)+"."+v.slice(3,6)+"."+v.slice(6,9)+"-"+v.slice(9);else if(v.length>6)v=v.slice(0,3)+"."+v.slice(3,6)+"."+v.slice(6);else if(v.length>3)v=v.slice(0,3)+"."+v.slice(3);el.value=v;};
 window.maskTel=el=>{let v=el.value.replace(/\D/g,"").slice(0,11);if(v.length>10)v="("+v.slice(0,2)+") "+v.slice(2,3)+" "+v.slice(3,7)+"-"+v.slice(7);else if(v.length>6)v="("+v.slice(0,2)+") "+v.slice(2,6)+"-"+v.slice(6);else if(v.length>2)v="("+v.slice(0,2)+") "+v.slice(2);el.value=v;};
-
 window.togglePass=(id,btn)=>{const i=document.getElementById(id);if(i.type==="password"){i.type="text";btn.textContent="X";}else{i.type="password";btn.innerHTML="&#128065;";}};
-window.onTipoFotoChange=()=>{};
+
+// Detectar orientacao do dispositivo
+window.addEventListener("deviceorientationabsolute",e=>{if(e.beta!==null)deviceOrientation=Math.round(e.beta);},true);
+window.addEventListener("deviceorientation",e=>{if(e.beta!==null)deviceOrientation=Math.round(e.beta);},true);
 
 window.goTo=(id)=>{
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
-  window.scrollTo(0,0);
+  document.getElementById(id).classList.add("active");window.scrollTo(0,0);
   const m={"s-dash":loadDash,"s-prestadores":loadPrestadores,"s-clientes":loadClientes,"s-coletores":loadColetores,"s-usuarios":loadUsuarios,"s-nova-vistoria":loadNovVistoriaForm,"s-historico":loadHistorico,"s-checklist":renderChecklist,"s-finalizacao":renderFinalizacao,"s-perfil":renderPerfil,"s-vistoria":iniciarGPS};
   if(m[id])m[id]();
 };
@@ -404,31 +430,19 @@ onAuthStateChanged(auth,async user=>{
   }else{goTo("s-login");}
 });
 
-async function loadPrestadorDefault(){try{const q=query(collection(db,"prestadores"),where("isDefault","==",true));const snap=await getDocs(q);if(!snap.empty)prestadorDefault={id:snap.docs[0].id,...snap.docs[0].data()};}catch(e){}}
-
-window.doLogin=async()=>{
-  const email=document.getElementById("login-email").value.trim();
-  const pass=document.getElementById("login-pass").value;
-  const err=document.getElementById("login-err");
-  if(!email||!pass){err.textContent="Preencha e-mail e senha";err.style.display="block";return;}
-  try{await signInWithEmailAndPassword(auth,email,pass);err.style.display="none";}
-  catch(e){err.textContent="E-mail ou senha incorretos";err.style.display="block";}
-};
+async function loadPrestadorDefault(){try{const q=query(collection(db,"prestadores"),where("isDefault","==",true));const s=await getDocs(q);if(!s.empty)prestadorDefault={id:s.docs[0].id,...s.docs[0].data()};}catch(e){}}
+window.doLogin=async()=>{const email=document.getElementById("login-email").value.trim();const pass=document.getElementById("login-pass").value;const err=document.getElementById("login-err");if(!email||!pass){err.textContent="Preencha e-mail e senha";err.style.display="block";return;}try{await signInWithEmailAndPassword(auth,email,pass);err.style.display="none";}catch(e){err.textContent="E-mail ou senha incorretos";err.style.display="block";}};
 window.doLogout=async()=>await signOut(auth);
 
-function loadDash(){
-  const el=document.getElementById("dash-role");el.textContent=currentRole==="master"?"Master":"Cadastrador";el.className="badge "+(currentRole==="master"?"master":"cad");
-  document.getElementById("dash-master-section").style.display=currentRole==="master"?"block":"none";
-  loadDashCount();
-}
+function loadDash(){const el=document.getElementById("dash-role");el.textContent=currentRole==="master"?"Master":"Cadastrador";el.className="badge "+(currentRole==="master"?"master":"cad");document.getElementById("dash-master-section").style.display=currentRole==="master"?"block":"none";loadDashCount();}
 async function loadDashCount(){try{const q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));const s=await getDocs(q);document.getElementById("dash-count").textContent=s.size+" vistoria(s)";}catch(e){}}
 
 function renderPerfil(){
   document.getElementById("perfil-nome").value=currentUserData&&currentUserData.nome||"";
   document.getElementById("perfil-email").value=currentUser&&currentUser.email||"";
   const el=document.getElementById("perfil-sig");const ctx=el.getContext("2d");
-  el.width=el.offsetWidth||300;el.height=160;
-  ctx.fillStyle="#fff";ctx.fillRect(0,0,el.width,el.height);ctx.strokeStyle="#1c1c1e";ctx.lineWidth=2.5;ctx.lineCap="round";ctx.lineJoin="round";
+  el.width=el.offsetWidth||300;el.height=160;ctx.fillStyle="#fff";ctx.fillRect(0,0,el.width,el.height);
+  ctx.strokeStyle="#1c1c1e";ctx.lineWidth=2.5;ctx.lineCap="round";ctx.lineJoin="round";
   if(currentUserData&&currentUserData.assinatura){const img=new Image();img.src=currentUserData.assinatura;img.onload=()=>ctx.drawImage(img,0,0,el.width,el.height);document.getElementById("perfil-sig-ok").style.display="block";}
   let drawing=false;
   const gP=e=>{const r=el.getBoundingClientRect();const s=e.touches?e.touches[0]:e;return{x:s.clientX-r.left,y:s.clientY-r.top};};
@@ -440,82 +454,29 @@ window.limparSigPerfil=()=>{const el=document.getElementById("perfil-sig");const
 window.salvarSigPerfil=async()=>{const el=document.getElementById("perfil-sig");const data=el.toDataURL("image/png");await updateDoc(doc(db,"users",currentUser.uid),{assinatura:data});currentUserData.assinatura=data;assinaturaTecnico=data;document.getElementById("perfil-sig-ok").style.display="block";showToast("Assinatura salva!");};
 window.salvarPerfil=async()=>{const nome=document.getElementById("perfil-nome").value.trim();if(!nome)return alert("Informe seu nome");await updateDoc(doc(db,"users",currentUser.uid),{nome});currentUserData.nome=nome;showToast("Perfil atualizado!");};
 window.alterarSenhaPerfil=async()=>{const nova=document.getElementById("perfil-nova-senha").value;if(nova.length<6)return alert("Minimo 6 caracteres");try{await updatePassword(currentUser,nova);showToast("Senha alterada!");document.getElementById("perfil-nova-senha").value="";}catch(e){alert("Erro: "+e.message);}};
-
 window.previewLogoUpload=e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{logoB64Upload=ev.target.result;const p=document.getElementById("mp-logo-preview");p.src=logoB64Upload;p.style.display="block";};r.readAsDataURL(file);};
 
 function mkLI(av,title,sub,act){const d=document.createElement("div");d.className="list-item";d.innerHTML=av+'<div class="info"><div class="title">'+title+'</div><div class="sub">'+sub+'</div></div>'+act;return d;}
 
-async function loadPrestadores(){
-  const snap=await getDocs(collection(db,"prestadores"));const el=document.getElementById("lista-prestadores");el.innerHTML="";
-  if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhum prestador</p>';return;}
-  const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
-  docs.forEach(p=>{
-    const av=p.logo?'<div class="avatar" style="background:#fce7f3"><img src="'+p.logo+'" style="width:36px;height:36px;object-fit:contain;border-radius:50%"></div>':'<div class="avatar" style="background:#fce7f3;color:#9d174d">'+p.nome.charAt(0)+"</div>";
-    const def=p.isDefault?'<span class="badge ok">Padrao</span>':'<button class="btn small" onclick="event.stopPropagation();setDefaultPrestador(\''+p.id+'\')" style="color:#007aff;border-color:#007aff;font-size:11px">Padrao</button>';
-    const del='<button class="btn small danger" onclick="event.stopPropagation();deletarPrestador(\''+p.id+'\')">Excluir</button>';
-    el.appendChild(mkLI(av,p.nome+(p.isDefault?" (Padrao)":""),p.cnpj||"","<div style='display:flex;gap:6px;flex-shrink:0'>"+def+del+"</div>"));
-  });
-}
-window.salvarPrestador=async()=>{
-  const nome=document.getElementById("mp-nome").value.trim();if(!nome)return alert("Informe o nome");
-  const isDefault=document.getElementById("mp-default").checked;
-  const data={nome,cnpj:document.getElementById("mp-cnpj").value.trim(),endereco:document.getElementById("mp-end").value.trim(),email:document.getElementById("mp-email").value.trim(),isDefault,criadoEm:serverTimestamp()};
-  if(logoB64Upload)data.logo=logoB64Upload;
-  if(isDefault){const q=query(collection(db,"prestadores"),where("isDefault","==",true));const s=await getDocs(q);for(const d of s.docs)await updateDoc(doc(db,"prestadores",d.id),{isDefault:false});}
-  await addDoc(collection(db,"prestadores"),data);closeModal("modal-prestador");
-  ["mp-nome","mp-cnpj","mp-end","mp-email"].forEach(id=>document.getElementById(id).value="");
-  document.getElementById("mp-default").checked=false;document.getElementById("mp-logo-file").value="";document.getElementById("mp-logo-preview").style.display="none";logoB64Upload=null;
-  await loadPrestadorDefault();loadPrestadores();
-};
+async function loadPrestadores(){const snap=await getDocs(collection(db,"prestadores"));const el=document.getElementById("lista-prestadores");el.innerHTML="";if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhum prestador</p>';return;}const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));docs.forEach(p=>{const av=p.logo?'<div class="avatar" style="background:#fce7f3"><img src="'+p.logo+'" style="width:36px;height:36px;object-fit:contain;border-radius:50%"></div>':'<div class="avatar" style="background:#fce7f3;color:#9d174d">'+p.nome.charAt(0)+"</div>";const def=p.isDefault?'<span class="badge ok">Padrao</span>':'<button class="btn small" onclick="event.stopPropagation();setDefaultPrestador(\''+p.id+'\')" style="color:#007aff;border-color:#007aff;font-size:11px">Padrao</button>';const del='<button class="btn small danger" onclick="event.stopPropagation();deletarPrestador(\''+p.id+'\')">Excluir</button>';el.appendChild(mkLI(av,p.nome+(p.isDefault?" (Padrao)":""),p.cnpj||"","<div style='display:flex;gap:6px;flex-shrink:0'>"+def+del+"</div>"));});}
+window.salvarPrestador=async()=>{const nome=document.getElementById("mp-nome").value.trim();if(!nome)return alert("Informe o nome");const isDefault=document.getElementById("mp-default").checked;const data={nome,cnpj:document.getElementById("mp-cnpj").value.trim(),endereco:document.getElementById("mp-end").value.trim(),email:document.getElementById("mp-email").value.trim(),isDefault,criadoEm:serverTimestamp()};if(logoB64Upload)data.logo=logoB64Upload;if(isDefault){const q=query(collection(db,"prestadores"),where("isDefault","==",true));const s=await getDocs(q);for(const d of s.docs)await updateDoc(doc(db,"prestadores",d.id),{isDefault:false});}await addDoc(collection(db,"prestadores"),data);closeModal("modal-prestador");["mp-nome","mp-cnpj","mp-end","mp-email"].forEach(id=>document.getElementById(id).value="");document.getElementById("mp-default").checked=false;document.getElementById("mp-logo-file").value="";document.getElementById("mp-logo-preview").style.display="none";logoB64Upload=null;await loadPrestadorDefault();loadPrestadores();};
 window.setDefaultPrestador=async id=>{const q=query(collection(db,"prestadores"),where("isDefault","==",true));const s=await getDocs(q);for(const d of s.docs)await updateDoc(doc(db,"prestadores",d.id),{isDefault:false});await updateDoc(doc(db,"prestadores",id),{isDefault:true});await loadPrestadorDefault();loadPrestadores();};
 window.deletarPrestador=async id=>{if(!confirm("Excluir?"))return;await deleteDoc(doc(db,"prestadores",id));loadPrestadores();};
 
-async function loadClientes(){
-  const snap=await getDocs(collection(db,"clientes"));const el=document.getElementById("lista-clientes");el.innerHTML="";
-  if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhum cliente</p>';return;}
-  const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
-  docs.forEach(cl=>{const av='<div class="avatar" style="background:#ede9fe;color:#5b21b6">'+cl.nome.charAt(0)+"</div>";const act=currentRole==="master"?'<button class="btn small danger" onclick="event.stopPropagation();deletarCliente(\''+cl.id+'\')">Excluir</button>':'<span style="color:#c7c7cc;font-size:20px">&#8250;</span>';el.appendChild(mkLI(av,cl.nome,"RRT: "+cl.rrt,act));});
-}
+async function loadClientes(){const snap=await getDocs(collection(db,"clientes"));const el=document.getElementById("lista-clientes");el.innerHTML="";if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhum cliente</p>';return;}const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));docs.forEach(cl=>{const av='<div class="avatar" style="background:#ede9fe;color:#5b21b6">'+cl.nome.charAt(0)+"</div>";const act=currentRole==="master"?'<button class="btn small danger" onclick="event.stopPropagation();deletarCliente(\''+cl.id+'\')">Excluir</button>':'<span style="color:#c7c7cc;font-size:20px">&#8250;</span>';el.appendChild(mkLI(av,cl.nome,"RRT: "+cl.rrt,act));});}
 window.salvarCliente=async()=>{const n=document.getElementById("mc-nome").value.trim();const r=document.getElementById("mc-rrt").value.trim();if(!n||!r)return alert("Preencha nome e RRT");await addDoc(collection(db,"clientes"),{nome:n,rrt:r,resp:document.getElementById("mc-resp").value.trim(),criadoEm:serverTimestamp()});closeModal("modal-cliente");["mc-nome","mc-rrt","mc-resp"].forEach(id=>document.getElementById(id).value="");loadClientes();};
 window.deletarCliente=async id=>{if(!confirm("Excluir?"))return;await deleteDoc(doc(db,"clientes",id));loadClientes();};
 
-async function loadColetores(){
-  const[snap,clSnap]=await Promise.all([getDocs(collection(db,"coletores")),getDocs(collection(db,"clientes"))]);
-  const clMap={};clSnap.forEach(d=>clMap[d.id]=d.data().nome);
-  const el=document.getElementById("lista-coletores");el.innerHTML="";
-  if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhum coletor</p>';return;}
-  const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>{const ca=clMap[a.clienteId]||"";const cb=clMap[b.clienteId]||"";return ca.localeCompare(cb,"pt-BR")||a.nome.localeCompare(b.nome,"pt-BR");});
-  // Agrupar por cliente
-  const grupos={};docs.forEach(col=>{const cn=clMap[col.clienteId]||"Sem cliente";if(!grupos[cn])grupos[cn]=[];grupos[cn].push(col);});
-  Object.entries(grupos).forEach(([cname,cols])=>{
-    const g=document.createElement("div");g.className="coletor-group";
-    const t=document.createElement("div");t.className="coletor-group-title";t.textContent=cname;g.appendChild(t);
-    cols.forEach(col=>{
-      const av='<div class="avatar" style="background:#e0f2fe;color:#0369a1;font-size:11px">C</div>';
-      const act=currentRole==="master"?'<button class="btn small danger" onclick="event.stopPropagation();deletarColetor(\''+col.id+'\')">Excluir</button>':'<span style="color:#c7c7cc;font-size:20px">&#8250;</span>';
-      g.appendChild(mkLI(av,col.nome,"",act));
-    });
-    el.appendChild(g);
-  });
-}
+async function loadColetores(){const[snap,clSnap]=await Promise.all([getDocs(collection(db,"coletores")),getDocs(collection(db,"clientes"))]);const clMap={};clSnap.forEach(d=>clMap[d.id]=d.data().nome);const el=document.getElementById("lista-coletores");el.innerHTML="";if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhum coletor</p>';return;}const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>{const ca=clMap[a.clienteId]||"";const cb=clMap[b.clienteId]||"";return ca.localeCompare(cb,"pt-BR")||a.nome.localeCompare(b.nome,"pt-BR");});const grupos={};docs.forEach(col=>{const cn=clMap[col.clienteId]||"Sem cliente";if(!grupos[cn])grupos[cn]=[];grupos[cn].push(col);});Object.entries(grupos).forEach(([cname,cols])=>{const g=document.createElement("div");g.className="coletor-group";const t=document.createElement("div");t.className="coletor-group-title";t.textContent=cname;g.appendChild(t);cols.forEach(col=>{const av='<div class="avatar" style="background:#e0f2fe;color:#0369a1;font-size:11px">C</div>';const act=currentRole==="master"?'<button class="btn small danger" onclick="event.stopPropagation();deletarColetor(\''+col.id+'\')">Excluir</button>':'<span style="color:#c7c7cc;font-size:20px">&#8250;</span>';g.appendChild(mkLI(av,col.nome,"",act));});el.appendChild(g);});}
 window.salvarColetor=async()=>{const cId=document.getElementById("mcol-cliente").value;const n=document.getElementById("mcol-nome").value.trim();if(!cId||!n)return alert("Selecione cliente e informe nome");await addDoc(collection(db,"coletores"),{nome:n,clienteId:cId,criadoEm:serverTimestamp()});closeModal("modal-coletor");document.getElementById("mcol-nome").value="";loadColetores();};
 window.deletarColetor=async id=>{if(!confirm("Excluir?"))return;await deleteDoc(doc(db,"coletores",id));loadColetores();};
 
-async function loadUsuarios(){
-  const snap=await getDocs(collection(db,"users"));const el=document.getElementById("lista-usuarios");el.innerHTML="";
-  const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>(a.nome||"").localeCompare(b.nome||"","pt-BR"));
-  docs.forEach(u=>{const av='<div class="avatar" style="background:#d1fae5;color:#065f46">'+(u.nome||u.email).charAt(0)+"</div>";const badge='<span class="badge '+(u.role==="master"?"master":"cad")+'">'+(u.role==="master"?"Master":"Cad.")+"</span>";el.appendChild(mkLI(av,u.nome||"--",u.email,badge));});
-}
+async function loadUsuarios(){const snap=await getDocs(collection(db,"users"));const el=document.getElementById("lista-usuarios");el.innerHTML="";const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>(a.nome||"").localeCompare(b.nome||"","pt-BR"));docs.forEach(u=>{const av='<div class="avatar" style="background:#d1fae5;color:#065f46">'+(u.nome||u.email).charAt(0)+"</div>";const badge='<span class="badge '+(u.role==="master"?"master":"cad")+'">'+(u.role==="master"?"Master":"Cad.")+"</span>";el.appendChild(mkLI(av,u.nome||"--",u.email,badge));});}
 window.salvarUsuario=async()=>{const n=document.getElementById("mu-nome").value.trim();const em=document.getElementById("mu-email").value.trim();const pw=document.getElementById("mu-pass").value;const role=document.getElementById("mu-role").value;if(!n||!em||!pw)return alert("Preencha todos os campos");if(pw.length<6)return alert("Senha minimo 6 caracteres");try{const uc=await createUserWithEmailAndPassword(auth,em,pw);await setDoc(doc(db,"users",uc.user.uid),{nome:n,email:em,role,criadoEm:serverTimestamp()});closeModal("modal-usuario");["mu-nome","mu-email","mu-pass"].forEach(id=>document.getElementById(id).value="");loadUsuarios();showToast("Usuario criado!");}catch(e){alert("Erro: "+e.message);}};
 
 async function populateClienteSelect(selectId){const snap=await getDocs(collection(db,"clientes"));const sel=document.getElementById(selectId);sel.innerHTML='<option value="">Selecione...</option>';const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));docs.forEach(d=>{const o=document.createElement("option");o.value=d.id;o.textContent=d.nome;sel.appendChild(o);});}
 
-async function loadNovVistoriaForm(){
-  await populateClienteSelect("nv-cliente");
-  document.getElementById("nv-coletor").innerHTML='<option value="">Selecione o cliente primeiro...</option>';
-  ["nv-nome","nv-doc","nv-tel","nv-rua","nv-num","nv-comp"].forEach(id=>document.getElementById(id).value="");
-  document.getElementById("nv-reaproveitar-box").style.display=ultimoResponsavel?"block":"none";
-}
+async function loadNovVistoriaForm(){await populateClienteSelect("nv-cliente");document.getElementById("nv-coletor").innerHTML='<option value="">Selecione o cliente primeiro...</option>';["nv-nome","nv-doc","nv-tel","nv-rua","nv-num","nv-comp"].forEach(id=>document.getElementById(id).value="");document.getElementById("nv-reaproveitar-box").style.display=ultimoResponsavel?"block":"none";}
 window.reaproveitarResponsavel=()=>{if(!ultimoResponsavel)return;document.getElementById("nv-nome").value=ultimoResponsavel.nome||"";document.getElementById("nv-doc").value=ultimoResponsavel.doc||"";document.getElementById("nv-tel").value=ultimoResponsavel.tel||"";document.getElementById("nv-reaproveitar-box").style.display="none";};
 window.loadColetoresByCliente=async()=>{const cId=document.getElementById("nv-cliente").value;const sel=document.getElementById("nv-coletor");if(!cId){sel.innerHTML='<option value="">Selecione...</option>';return;}sel.innerHTML='<option value="">Carregando...</option>';const q=query(collection(db,"coletores"),where("clienteId","==",cId));const snap=await getDocs(q);sel.innerHTML='<option value="">Selecione...</option>';const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));docs.forEach(d=>{const o=document.createElement("option");o.value=d.id;o.textContent=d.nome;sel.appendChild(o);});};
 
@@ -531,7 +492,8 @@ window.criarVistoria=async()=>{
   document.getElementById("v-titulo").textContent=nome.split(" ")[0];
   document.getElementById("v-info").innerHTML=["<b>"+nome+"</b>",docR?"Doc: "+docR:"",tel?"Tel: "+tel:"",rua+", "+num+(comp?" - "+comp:""),"<span style='color:#aaa;font-size:12px'>Coletor: "+colD.nome+" | RRT: "+clD.rrt+"</span>"].filter(Boolean).join("<br>");
   const sel=document.getElementById("v-ambiente");sel.innerHTML='<option value="">Selecione o ambiente...</option>';
-  [...AMBIENTES,...ambientesExtras].sort((a,b)=>a.localeCompare(b,"pt-BR")).forEach(a=>{const o=document.createElement("option");o.value=a;o.textContent=a;sel.appendChild(o);});
+  AMBIENTES.forEach(a=>{const o=document.createElement("option");o.value=a;o.textContent=a;sel.appendChild(o);});
+  ambientesExtras.forEach(a=>{const o=document.createElement("option");o.value=a;o.textContent=a;sel.appendChild(o);});
   goTo("s-vistoria");renderFotos();
 };
 
@@ -539,8 +501,9 @@ function renderFotos(){
   const c=document.getElementById("fotos-por-ambiente");c.innerHTML="";
   const g={};Object.values(fotosPendentes).forEach(f=>{if(!g[f.ambiente])g[f.ambiente]=[];g[f.ambiente].push(f);});
   if(!Object.keys(g).length){c.innerHTML='<div class="card" style="text-align:center;color:#aaa;padding:24px">Nenhuma foto ainda</div>';return;}
-  const sorted=Object.keys(g).sort((a,b)=>a.localeCompare(b,"pt-BR"));
-  sorted.forEach(amb=>{
+  // Manter ordem dos ambientes
+  const ordered=[...AMBIENTES,...ambientesExtras].filter(a=>g[a]);
+  ordered.forEach(amb=>{
     const fotos=g[amb];const s=document.createElement("div");s.className="card";
     const h=document.createElement("h2");h.textContent=amb+" ("+fotos.length+")";s.appendChild(h);
     const gd=document.createElement("div");gd.className="photo-grid";
@@ -548,8 +511,8 @@ function renderFotos(){
       const pc=document.createElement("div");pc.className="photo-card";
       const img=document.createElement("img");img.src=f.dataUrl;img.loading="lazy";
       const lbl=document.createElement("div");lbl.className="photo-label";
-      const pats=f.patologias&&f.patologias.length?f.patologias.map(p=>p.split("/")[0]).join(", "):"";
-      lbl.innerHTML='<span style="flex:1">'+f.numero+" | "+f.tipo+(pats?" | "+pats:"")+'</span><button class="del-btn" onclick="removerFoto(\''+f.id+'\')">X</button>';
+      const pats=f.patologias&&f.patologias.length?f.patologias.map(p=>p.tipo+" > "+p.pat.split("/")[0]).join(", "):"";
+      lbl.innerHTML='<span style="flex:1;overflow:hidden;text-overflow:ellipsis">'+f.numero+" | "+f.tipo+(pats?" | "+pats:"")+'</span><button class="del-btn" onclick="removerFoto(\''+f.id+'\')">X</button>';
       pc.appendChild(img);pc.appendChild(lbl);gd.appendChild(pc);
     });
     s.appendChild(gd);c.appendChild(s);
@@ -571,23 +534,14 @@ function iniciarGPS(){
       const cidade=(a.city||a.town||a.municipality||"")+" "+(a.state_code||a.state||"");
       const cep=a.postcode||"";
       enderecoLinhas=[rua,bairro,cidade.trim(),cep].filter(x=>x.trim());
-      enderecoGPS=enderecoLinhas.join(" | ");
       if(statusEl)statusEl.textContent="GPS: "+(enderecoLinhas[0]||"OK");
     }catch(e){}
   },()=>{if(statusEl)statusEl.textContent="GPS indisponivel";},{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
 }
 
-// CAMERA COM ZOOM SLIDER
 window.onZoomSlider=async v=>{
-  currentZoomVal=parseFloat(v);
-  document.getElementById("zoom-label").textContent=currentZoomVal+"x";
-  if(cameraStream){
-    const t=cameraStream.getVideoTracks()[0];
-    if(t&&t.getCapabilities){
-      const c=t.getCapabilities();
-      if(c.zoom){const zv=Math.min(c.zoom.max,Math.max(c.zoom.min,currentZoomVal));await t.applyConstraints({advanced:[{zoom:zv}]}).catch(()=>{});}
-    }
-  }
+  document.getElementById("zoom-label").textContent=v+"x";
+  if(cameraStream){const t=cameraStream.getVideoTracks()[0];if(t&&t.getCapabilities){const c=t.getCapabilities();if(c.zoom){await t.applyConstraints({advanced:[{zoom:Math.min(c.zoom.max,Math.max(c.zoom.min,parseFloat(v)))}]}).catch(()=>{});}}}
 };
 
 window.abrirCamera=async()=>{
@@ -595,13 +549,10 @@ window.abrirCamera=async()=>{
   fotoAtualAmbiente=amb;fotoAtualTipo=document.getElementById("v-tipo-foto").value;
   document.getElementById("cam-label").textContent=amb;document.getElementById("cam-tipo-badge").textContent=fotoAtualTipo;
   try{
-    const constraints={video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},audio:false};
-    cameraStream=await navigator.mediaDevices.getUserMedia(constraints);
+    cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},audio:false});
     const v=document.getElementById("cam-video");v.srcObject=cameraStream;await v.play();
-    // Detectar max zoom
-    const t=cameraStream.getVideoTracks()[0];
-    if(t&&t.getCapabilities){const c=t.getCapabilities();if(c.zoom){maxZoomCam=c.zoom.max;document.getElementById("zoom-slider").max=Math.min(10,maxZoomCam);}}
-    document.getElementById("zoom-slider").value=1;currentZoomVal=1;document.getElementById("zoom-label").textContent="1x";
+    const t=cameraStream.getVideoTracks()[0];if(t&&t.getCapabilities){const c=t.getCapabilities();if(c.zoom)document.getElementById("zoom-slider").max=Math.min(10,c.zoom.max);}
+    document.getElementById("zoom-slider").value=1;document.getElementById("zoom-label").textContent="1x";
     document.getElementById("camera-overlay").style.display="flex";
   }catch(e){alert("Camera indisponivel: "+e.message);}
 };
@@ -611,53 +562,54 @@ window.trocarCamera=async()=>{cameraFacingMode=cameraFacingMode==="environment"?
 window.tirarFoto=()=>{
   const video=document.getElementById("cam-video");
   const vW=video.videoWidth||1280,vH=video.videoHeight||720;
-  const canvas=document.createElement("canvas");
-  // Detectar orientacao e corrigir
-  const isPortrait=vH>vW;
-  canvas.width=vW;canvas.height=vH;
+  // Detectar se precisa rotacionar (retrato real vs frame paisagem)
+  const isDevicePortrait=Math.abs(deviceOrientation)>45&&Math.abs(deviceOrientation)<135;
+  const isFrameLandscape=vW>vH;
+  const needsRotation=isDevicePortrait&&isFrameLandscape;
+  // Criar canvas com dimensoes corretas
+  const outW=needsRotation?vH:vW;
+  const outH=needsRotation?vW:vH;
+  const canvas=document.createElement("canvas");canvas.width=outW;canvas.height=outH;
   const ctx=canvas.getContext("2d");
-  ctx.drawImage(video,0,0,vW,vH);
-  // Carimbo inferior
-  const now=new Date();
-  const tsText=now.toLocaleString("pt-BR");
-  const baseW=Math.max(vW,vH); // usar dimensao maior como referencia de escala
-  const fs=Math.max(20,Math.round(baseW/52));
+  if(needsRotation){
+    ctx.translate(outW/2,outH/2);
+    const angle=deviceOrientation>0?Math.PI/2:-Math.PI/2;
+    ctx.rotate(angle);ctx.drawImage(video,-vW/2,-vH/2,vW,vH);
+    ctx.setTransform(1,0,0,1,0,0);
+  }else{ctx.drawImage(video,0,0,vW,vH);}
+  // Carimbo - usar fonte maior para evitar pixelacao
+  const now=new Date();const tsText=now.toLocaleString("pt-BR");
+  const baseRef=Math.max(outW,outH);const fs=Math.max(28,Math.round(baseRef/45));
   const lineH=Math.round(fs*1.35);
   const coordLine=gpsAtual?gpsAtual.lat.toFixed(6)+"\u00b0S "+Math.abs(gpsAtual.lng).toFixed(6)+"\u00b0W":"";
   const allLines=[tsText,...enderecoLinhas,coordLine].filter(Boolean);
   const boxH=allLines.length*lineH+Math.round(fs*0.4);
-  ctx.fillStyle="rgba(0,0,0,0.55)";ctx.fillRect(0,vH-boxH,vW,boxH);
-  allLines.forEach((line,i)=>{ctx.fillStyle="#fff";ctx.textBaseline="top";ctx.font=(i===0?"bold ":"")+fs+"px sans-serif";ctx.fillText(line,Math.round(fs*0.3),vH-boxH+Math.round(fs*0.1)+i*lineH);});
-  // Logo canto superior direito - proporcional
+  ctx.fillStyle="rgba(0,0,0,0.55)";ctx.fillRect(0,outH-boxH,outW,boxH);
+  allLines.forEach((line,i)=>{ctx.fillStyle="#fff";ctx.textBaseline="top";ctx.font=(i===0?"bold ":"")+fs+"px sans-serif";ctx.fillText(line,Math.round(fs*0.3),outH-boxH+Math.round(fs*0.1)+i*lineH);});
+  // Logo proporcional - sem distorcao
   const logoSrc=prestadorDefault&&prestadorDefault.logo?prestadorDefault.logo:LOGO_CONST;
   const doLogo=src=>{
     if(src&&src.length>50){
       const li=new Image();
       li.onload=()=>{
-        // Calcular tamanho proporcional (cerca de 13% da largura, max 160px)
-        const lW=Math.min(Math.round(vW*0.13),160);
-        const lH=Math.round(lW*li.naturalHeight/li.naturalWidth);
-        const pad=Math.round(vW*0.012);
-        ctx.drawImage(li,vW-lW-pad,pad,lW,lH);
+        // Tamanho proporcional: largura = 14% da foto, altura calculada pela proporcao real
+        const lW=Math.round(outW*0.14);
+        const lH=Math.round(lW*(li.naturalHeight/li.naturalWidth));
+        const pad=Math.round(outW*0.015);
+        ctx.drawImage(li,outW-lW-pad,pad,lW,lH);
         finish();
       };
       li.onerror=finish;li.src=src;
     }else{finish();}
   };
-  const finish=()=>{fecharCamera();fotoAtualBlob=canvas.toDataURL("image/jpeg",0.93);processarFoto();};
+  const finish=()=>{fecharCamera();fotoAtualBlob=canvas.toDataURL("image/jpeg",0.95);processarFoto();};
   doLogo(logoSrc);
 };
 
 function processarFoto(){
-  if(fotoAtualTipo==="Vista"){
-    // Vista: sem setas, vai direto para salvar
-    salvarFotoFinal(fotoAtualBlob,[]);
-  }else{
-    // Detalhe: abre editor de setas
-    abrirEditorSetas(fotoAtualBlob);
-  }
+  if(fotoAtualTipo==="Vista"){salvarFotoFinal(fotoAtualBlob,[]);}
+  else{abrirEditorSetas(fotoAtualBlob);}
 }
-
 window.uploadFoto=()=>{const amb=document.getElementById("v-ambiente").value;if(!amb)return alert("Selecione o ambiente primeiro");fotoAtualAmbiente=amb;fotoAtualTipo=document.getElementById("v-tipo-foto").value;document.getElementById("file-input").click();};
 window.handleFileUpload=e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{fotoAtualBlob=ev.target.result;processarFoto();};r.readAsDataURL(file);e.target.value="";};
 
@@ -678,50 +630,42 @@ function abrirEditorSetas(imgDataUrl){
 }
 
 function desenharSeta(ctx,tipX,tipY,canvasW){
-  // Seta fina e precisa - corpo fino + ponta triangular definida
-  const sz=Math.max(20,Math.round(canvasW*0.055));
-  const angle=Math.PI*0.75; // 135graus - aponta diagonal baixo-direita
-  const bodyLen=sz*1.0;
-  const tailX=tipX-bodyLen*Math.cos(angle);
-  const tailY=tipY-bodyLen*Math.sin(angle);
-  const lw=Math.max(2,Math.round(sz*0.08));
-  ctx.save();
-  ctx.strokeStyle="#FF0000";ctx.fillStyle="#FF0000";
+  // Seta bem visivel: corpo mais grosso, ponta triangular grande
+  const sz=Math.max(32,Math.round(canvasW*0.08));
+  const angle=Math.PI*0.75; // aponta diagonal baixo-direita
+  const bodyLen=sz*1.1;
+  const tailX=tipX-bodyLen*Math.cos(angle),tailY=tipY-bodyLen*Math.sin(angle);
+  const lw=Math.max(4,Math.round(sz*0.12));
+  ctx.save();ctx.strokeStyle="#FF0000";ctx.fillStyle="#FF0000";
   ctx.lineWidth=lw;ctx.lineCap="round";ctx.lineJoin="miter";
-  // Corpo
   ctx.beginPath();ctx.moveTo(tailX,tailY);ctx.lineTo(tipX,tipY);ctx.stroke();
-  // Ponta triangular
-  const hLen=sz*0.42;const hAngle=0.35;
+  const hLen=sz*0.5;const hAngle=0.38;
   ctx.beginPath();ctx.moveTo(tipX,tipY);
   ctx.lineTo(tipX-hLen*Math.cos(angle-hAngle),tipY-hLen*Math.sin(angle-hAngle));
   ctx.lineTo(tipX-hLen*Math.cos(angle+hAngle),tipY-hLen*Math.sin(angle+hAngle));
   ctx.closePath();ctx.fill();ctx.restore();
 }
-
-function desenharSetas(){
-  const canvas=document.getElementById("arrow-canvas");const ctx=canvas.getContext("2d");
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  if(arrowImage)ctx.drawImage(arrowImage,0,0,canvas.width,canvas.height);
-  arrowPoints.forEach(p=>desenharSeta(ctx,p.x*canvas.width,p.y*canvas.height,canvas.width));
-}
+function desenharSetas(){const canvas=document.getElementById("arrow-canvas");const ctx=canvas.getContext("2d");ctx.clearRect(0,0,canvas.width,canvas.height);if(arrowImage)ctx.drawImage(arrowImage,0,0,canvas.width,canvas.height);arrowPoints.forEach(p=>desenharSeta(ctx,p.x*canvas.width,p.y*canvas.height,canvas.width));}
 window.desfazerSeta=()=>{arrowPoints.pop();document.getElementById("arrow-counter").textContent=arrowPoints.length+" seta(s)";desenharSetas();};
 window.limparSetas=()=>{arrowPoints=[];document.getElementById("arrow-counter").textContent="0 setas";desenharSetas();};
-window.confirmarSetas=()=>{
-  const canvas=document.getElementById("arrow-canvas");
-  const dataUrl=canvas.toDataURL("image/jpeg",0.92);
-  document.getElementById("arrow-overlay").style.display="none";
-  fotoAtualBlob=dataUrl;
-  // Abrir modal de patologias
-  abrirModalPatologias();
-};
+window.confirmarSetas=()=>{const canvas=document.getElementById("arrow-canvas");fotoAtualBlob=canvas.toDataURL("image/jpeg",0.93);document.getElementById("arrow-overlay").style.display="none";abrirModalPatologias();};
 
 function abrirModalPatologias(){
   document.getElementById("pat-modal-info").textContent="Ambiente: "+fotoAtualAmbiente;
+  // Grid de partes
+  const grid=document.getElementById("part-grid");grid.innerHTML="";
+  PARTES.forEach((p,i)=>{
+    const btn=document.createElement("button");btn.className="part-btn";btn.textContent=p;
+    btn.dataset.col=COLS[i];
+    btn.onclick=()=>{document.querySelectorAll(".part-btn").forEach(b=>b.classList.remove("selected"));btn.classList.add("selected");};
+    grid.appendChild(btn);
+  });
+  // Lista patologias
   const list=document.getElementById("pat-list");list.innerHTML="";
   PATOLOGIAS.forEach(p=>{
     const item=document.createElement("div");item.className="pat-item";
-    const cb=document.createElement("input");cb.type="checkbox";cb.id="pat-"+p;cb.value=p;
-    const lbl=document.createElement("label");lbl.htmlFor="pat-"+p;lbl.textContent=p;
+    const cb=document.createElement("input");cb.type="checkbox";cb.id="pat-cb-"+p;cb.value=p;
+    const lbl=document.createElement("label");lbl.htmlFor="pat-cb-"+p;lbl.textContent=p;
     item.appendChild(cb);item.appendChild(lbl);
     item.onclick=e=>{if(e.target!==cb)cb.checked=!cb.checked;};
     list.appendChild(item);
@@ -730,71 +674,56 @@ function abrirModalPatologias(){
 }
 
 window.confirmarPatologias=()=>{
-  const checked=Array.from(document.querySelectorAll("#pat-list input:checked")).map(cb=>cb.value);
+  const selectedPart=document.querySelector(".part-btn.selected");
+  const checkedPats=Array.from(document.querySelectorAll("#pat-list input:checked")).map(cb=>cb.value);
   document.getElementById("pat-modal").style.display="none";
-  salvarFotoFinal(fotoAtualBlob,checked);
+  // Montar array de patologias com parte
+  const pats=[];
+  if(selectedPart&&checkedPats.length){
+    checkedPats.forEach(p=>pats.push({col:selectedPart.dataset.col,tipo:selectedPart.textContent,pat:p}));
+  }
+  salvarFotoFinal(fotoAtualBlob,pats);
 };
 
 function salvarFotoFinal(dataUrl,patologias){
   const id=Date.now().toString();const num=Object.keys(fotosPendentes).length+1;
-  fotosPendentes[id]={id,dataUrl,ambiente:fotoAtualAmbiente,tipo:fotoAtualTipo,numero:"Foto "+String(num).padStart(2,"0"),patologias:patologias||[],gps:gpsAtual?{...gpsAtual}:null,timestamp:new Date().toISOString()};
-  // Atualizar checklist com patologias marcadas
+  fotosPendentes[id]={id,dataUrl,ambiente:fotoAtualAmbiente,tipo:fotoAtualTipo,numero:"Foto "+String(num).padStart(2,"0"),patologias:patologias||[],timestamp:new Date().toISOString()};
+  // Preencher checklist automaticamente
   if(patologias&&patologias.length&&currentVistoria){
     if(!currentVistoria.checklist)currentVistoria.checklist={};
     if(!currentVistoria.checklist[fotoAtualAmbiente])currentVistoria.checklist[fotoAtualAmbiente]={};
-    patologias.forEach(p=>{
-      // Adicionar em todas as colunas relevantes (estrutura como padrao)
-      const col="estrutura";
-      const arr=currentVistoria.checklist[fotoAtualAmbiente][col]||[];
-      if(!arr.includes(p))arr.push(p);
-      currentVistoria.checklist[fotoAtualAmbiente][col]=arr;
-    });
+    patologias.forEach(p=>{const arr=currentVistoria.checklist[fotoAtualAmbiente][p.col]||[];if(!arr.includes(p.pat))arr.push(p.pat);currentVistoria.checklist[fotoAtualAmbiente][p.col]=arr;});
   }
-  renderFotos();
-  showToast("Foto "+String(num).padStart(2,"0")+" salva!");
+  renderFotos();showToast("Foto "+String(num).padStart(2,"0")+" salva!");
 }
 
-window.addAmbienteExtra=()=>{const nome=prompt("Nome do ambiente adicional:");if(!nome||!nome.trim())return;ambientesExtras.push(nome.trim());renderChecklist();};
+window.addAmbienteExtra=()=>{const nome=prompt("Nome do ambiente:");if(!nome||!nome.trim())return;ambientesExtras.push(nome.trim());renderChecklist();const sel=document.getElementById("v-ambiente");const o=document.createElement("option");o.value=nome.trim();o.textContent=nome.trim();sel.appendChild(o);};
 
 function renderChecklist(){
-  const ambientes=[...AMBIENTES,...ambientesExtras].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+  const ambientes=[...AMBIENTES,...ambientesExtras];
   const tbody=document.getElementById("checklist-body");tbody.innerHTML="";
   ambientes.forEach(amb=>{
     const tr=document.createElement("tr");
     const saved=(currentVistoria&&currentVistoria.checklist&&currentVistoria.checklist[amb])||{};
-    const td0=document.createElement("td");
-    td0.style.cssText="font-size:11px;font-weight:600;white-space:nowrap;vertical-align:middle;position:sticky;left:0;background:#fff;z-index:1";
-    td0.textContent=amb;tr.appendChild(td0);
-    COLS.forEach((col,ci)=>{
+    const td0=document.createElement("td");td0.style.cssText="font-size:11px;font-weight:600;white-space:nowrap;vertical-align:middle;position:sticky;left:0;background:#fff;z-index:1";td0.textContent=amb;tr.appendChild(td0);
+    COLS.forEach((col)=>{
       const td=document.createElement("td");const savedVals=Array.isArray(saved[col])?saved[col]:[];
-      PATOLOGIAS.forEach(p=>{
-        const lbl=document.createElement("label");const cb=document.createElement("input");
-        cb.type="checkbox";cb.checked=savedVals.includes(p);
-        cb.onchange=()=>togglePatologia(amb,col,p,cb.checked);
-        lbl.appendChild(cb);lbl.appendChild(document.createTextNode(" "+p.split("/")[0]));td.appendChild(lbl);
-      });
+      PATOLOGIAS.forEach(p=>{const lbl=document.createElement("label");const cb=document.createElement("input");cb.type="checkbox";cb.checked=savedVals.includes(p);cb.onchange=()=>togglePatologia(amb,col,p,cb.checked);lbl.appendChild(cb);lbl.appendChild(document.createTextNode(" "+p.split("/")[0]));td.appendChild(lbl);});
       tr.appendChild(td);
     });
     tbody.appendChild(tr);
   });
   if(currentVistoria)document.getElementById("cl-obs").value=currentVistoria.observacoes||"";
 }
-window.togglePatologia=(amb,col,pat,checked)=>{
-  if(!currentVistoria.checklist)currentVistoria.checklist={};if(!currentVistoria.checklist[amb])currentVistoria.checklist[amb]={};
-  const arr=currentVistoria.checklist[amb][col]||[];
-  if(checked){if(!arr.includes(pat))arr.push(pat);}else{const i=arr.indexOf(pat);if(i>=0)arr.splice(i,1);}
-  currentVistoria.checklist[amb][col]=arr;
-};
+window.togglePatologia=(amb,col,pat,checked)=>{if(!currentVistoria.checklist)currentVistoria.checklist={};if(!currentVistoria.checklist[amb])currentVistoria.checklist[amb]={};const arr=currentVistoria.checklist[amb][col]||[];if(checked){if(!arr.includes(pat))arr.push(pat);}else{const i=arr.indexOf(pat);if(i>=0)arr.splice(i,1);}currentVistoria.checklist[amb][col]=arr;};
 window.salvarChecklist=()=>{if(currentVistoria)currentVistoria.observacoes=document.getElementById("cl-obs").value;goTo("s-finalizacao");};
 
 function renderFinalizacao(){
   const prevEl=document.getElementById("sig-tecnico-preview");
-  if(!assinaturaTecnico){prevEl.innerHTML='<div class="warn-box">Sem assinatura cadastrada. <a href="#" onclick="goTo(\'s-perfil\')" style="color:#007aff;font-weight:500">Cadastrar em Perfil</a></div>';}
+  if(!assinaturaTecnico){prevEl.innerHTML='<div class="warn-box">Sem assinatura. <a href="#" onclick="goTo(\'s-perfil\')" style="color:#007aff;font-weight:500">Cadastrar em Perfil</a></div>';}
   else{prevEl.innerHTML='<img src="'+assinaturaTecnico+'" style="max-height:60px;max-width:200px;object-fit:contain"><br><span style="font-size:12px;color:#888;display:block;margin-top:4px">'+(currentUserData&&currentUserData.nome||"")+"</span>";}
   if(currentVistoria){document.getElementById("assin-info").innerHTML=["<b>"+currentVistoria.responsavel.nome+"</b>",currentVistoria.responsavel.doc?"Doc: "+currentVistoria.responsavel.doc:"",currentVistoria.responsavel.tel?"Tel: "+currentVistoria.responsavel.tel:"",currentVistoria.endereco.rua+", "+currentVistoria.endereco.num+(currentVistoria.endereco.comp?" - "+currentVistoria.endereco.comp:""),"<span style='color:#aaa;font-size:12px'>"+currentVistoria.dataCompleta+"</span>"].filter(Boolean).join("<br>");}
-  sigCanvas=document.getElementById("sig-canvas");sigCtx=sigCanvas.getContext("2d");
-  sigCanvas.width=sigCanvas.offsetWidth||300;sigCanvas.height=160;
-  sigCtx.fillStyle="#fff";sigCtx.fillRect(0,0,sigCanvas.width,sigCanvas.height);sigCtx.strokeStyle="#1c1c1e";sigCtx.lineWidth=2.5;sigCtx.lineCap="round";sigCtx.lineJoin="round";
+  sigCanvas=document.getElementById("sig-canvas");sigCtx=sigCanvas.getContext("2d");sigCanvas.width=sigCanvas.offsetWidth||300;sigCanvas.height=160;sigCtx.fillStyle="#fff";sigCtx.fillRect(0,0,sigCanvas.width,sigCanvas.height);sigCtx.strokeStyle="#1c1c1e";sigCtx.lineWidth=2.5;sigCtx.lineCap="round";sigCtx.lineJoin="round";
   assinaturaData=null;document.getElementById("sig-confirmado").style.display="none";document.getElementById("btn-finalizar").disabled=true;document.getElementById("btn-finalizar").style.opacity=".4";
   const gP=e=>{const r=sigCanvas.getBoundingClientRect();const s=e.touches?e.touches[0]:e;return{x:s.clientX-r.left,y:s.clientY-r.top};};
   sigCanvas.onmousedown=sigCanvas.ontouchstart=e=>{e.preventDefault();sigDrawing=true;const p=gP(e);sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);};
@@ -805,15 +734,138 @@ window.limparAssinatura=()=>{if(!sigCtx)return;sigCtx.fillStyle="#fff";sigCtx.fi
 window.salvarAssinatura=()=>{assinaturaData=sigCanvas.toDataURL("image/png");document.getElementById("sig-confirmado").style.display="block";document.getElementById("btn-finalizar").disabled=false;document.getElementById("btn-finalizar").style.opacity="1";};
 window.confirmarSairVistoria=()=>{if(confirm("Sair? Dados nao salvos serao perdidos."))goTo("s-dash");};
 
-// ========== PDF GENERATOR ==========
-// Medidas do Excel: A4 210x297mm, margem 12.7mm, area util 184.6x271.6mm
-// Foto01: largura total 184.6mm, altura 79mm
-// Fotos pares: largura 90mm cada, altura 74mm cada
-// Cabecalho: 36mm
+// ===== HISTORICO COM DETALHE/EDITAR/EXCLUIR =====
+async function loadHistorico(){
+  const el=document.getElementById("lista-historico");el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Carregando...</p>';
+  try{
+    const q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));
+    const snap=await getDocs(q);el.innerHTML="";
+    if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhuma vistoria</p>';return;}
+    const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));
+    docs.sort((a,b)=>(b.criadoEm&&b.criadoEm.seconds||0)-(a.criadoEm&&a.criadoEm.seconds||0));
+    docs.forEach(v=>{
+      const div=document.createElement("div");div.className="list-item";div.style.cursor="pointer";
+      div.innerHTML='<div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></div><div class="info"><div class="title">'+(v.responsavel&&v.responsavel.nome||"--")+'</div><div class="sub">'+(v.endereco&&v.endereco.rua||"")+" "+( v.endereco&&v.endereco.num||"")+" | "+(v.totalFotos||0)+" fotos | "+(v.data||"")+'</div></div><span class="badge '+(v.status==="concluida"?"ok":"master")+'">'+(v.status==="concluida"?"Concluida":"Andamento")+"</span>";
+      div.onclick=()=>abrirDetalheVistoria(v.id,v);
+      el.appendChild(div);
+    });
+  }catch(e){el.innerHTML='<p style="text-align:center;color:#dc2626;padding:24px">Erro: '+e.message+"</p>";}
+}
 
+function abrirDetalheVistoria(id,data){
+  vistoriaDetalheId=id;vistoriaDetalheData=data;
+  document.getElementById("dv-titulo").textContent=data.responsavel&&data.responsavel.nome||"Vistoria";
+  const c=document.getElementById("dv-content");c.innerHTML="";
+  // Card dados
+  const card1=document.createElement("div");card1.className="card";
+  card1.innerHTML='<h2>Dados do responsavel</h2><div style="font-size:14px;line-height:1.9"><b>'+
+    (data.responsavel&&data.responsavel.nome||"--")+'</b><br>'+
+    (data.responsavel&&data.responsavel.doc?"CPF/RG: "+data.responsavel.doc+"<br>":"")+
+    (data.responsavel&&data.responsavel.tel?"Tel: "+data.responsavel.tel+"<br>":"")+
+    (data.endereco?data.endereco.rua+", "+data.endereco.num+(data.endereco.comp?" - "+data.endereco.comp:"")+"<br>":"")+
+    "Coletor: "+(data.coletorNome||"--")+"<br>"+
+    (data.estado?"Estado: "+data.estado+(data.idade?" | Idade: "+data.idade+" anos":""):"")+"</div>';
+  c.appendChild(card1);
+  // Card checklist resumo
+  if(data.checklist){
+    const card2=document.createElement("div");card2.className="card";card2.innerHTML='<h2>Patologias registradas</h2>';
+    const patStr=[];
+    Object.entries(data.checklist).forEach(([amb,cols])=>{
+      COLS.forEach((col,ci)=>{const arr=cols[col]||[];if(arr.length)patStr.push("<b>"+amb+"</b> ("+PARTES[ci]+"): "+arr.join(", "));});
+    });
+    card2.innerHTML+='<div style="font-size:13px;line-height:2">'+(patStr.length?patStr.join("<br>"):"Nenhuma patologia registrada")+"</div>";
+    c.appendChild(card2);
+  }
+  // Observacoes
+  if(data.observacoes){const card3=document.createElement("div");card3.className="card";card3.innerHTML='<h2>Observacoes</h2><p style="font-size:13px;color:#555">'+data.observacoes+"</p>";c.appendChild(card3);}
+  // Botao regenerar PDF
+  const btnPDF=document.createElement("button");btnPDF.className="btn primary";btnPDF.textContent="Regerar PDF";btnPDF.onclick=()=>regeRarPDF(data);c.appendChild(btnPDF);
+  goTo("s-detalhe-vistoria");
+}
+
+window.excluirVistoriaAtual=async()=>{
+  if(!vistoriaDetalheId)return;
+  if(!confirm("Excluir esta vistoria permanentemente?"))return;
+  try{await deleteDoc(doc(db,"vistorias",vistoriaDetalheId));showToast("Vistoria excluida");goTo("s-historico");}
+  catch(e){alert("Erro: "+e.message);}
+};
+
+window.editarVistoriaAtual=()=>{
+  if(!vistoriaDetalheData)return;
+  const v=vistoriaDetalheData;
+  document.getElementById("er-nome").value=v.responsavel&&v.responsavel.nome||"";
+  document.getElementById("er-doc").value=v.responsavel&&v.responsavel.doc||"";
+  document.getElementById("er-tel").value=v.responsavel&&v.responsavel.tel||"";
+  document.getElementById("er-rua").value=v.endereco&&v.endereco.rua||"";
+  document.getElementById("er-num").value=v.endereco&&v.endereco.num||"";
+  document.getElementById("er-comp").value=v.endereco&&v.endereco.comp||"";
+  document.getElementById("modal-editar-resp").style.display="flex";
+};
+
+window.salvarEdicaoResponsavel=async()=>{
+  if(!vistoriaDetalheId)return;
+  const updates={
+    "responsavel.nome":document.getElementById("er-nome").value.trim(),
+    "responsavel.doc":document.getElementById("er-doc").value.trim(),
+    "responsavel.tel":document.getElementById("er-tel").value.trim(),
+    "endereco.rua":document.getElementById("er-rua").value.trim(),
+    "endereco.num":document.getElementById("er-num").value.trim(),
+    "endereco.comp":document.getElementById("er-comp").value.trim(),
+  };
+  try{
+    await updateDoc(doc(db,"vistorias",vistoriaDetalheId),updates);
+    // Atualizar local
+    vistoriaDetalheData.responsavel={nome:updates["responsavel.nome"],doc:updates["responsavel.doc"],tel:updates["responsavel.tel"]};
+    vistoriaDetalheData.endereco={rua:updates["endereco.rua"],num:updates["endereco.num"],comp:updates["endereco.comp"]};
+    closeModal("modal-editar-resp");
+    showToast("Dados atualizados!");
+    abrirDetalheVistoria(vistoriaDetalheId,vistoriaDetalheData);
+  }catch(e){alert("Erro: "+e.message);}
+};
+
+async function regeRarPDF(data){
+  showToast("Gerando PDF...",5000);
+  try{
+    const{jsPDF}=window.jspdf;
+    const pdf=new jsPDF("p","mm","a4");
+    const W=210,H=297,M=12.7,CW=W-2*M,HDR_H=40,Y0=M+HDR_H+1,PGB=H-M;
+    const FP_W=(CW-1)/2,FP_H=74,F01_H=79,LH=10;
+    const prest=prestadorDefault||{nome:"CNRP Arquitetura e Construcoes Ltda.",cnpj:"22.121.094/0001-90",endereco:"Av. Marechal Eurico Gaspar Dutra, n 1292 | Santana | Sao Paulo - SP | CEP 02239-010",email:"ronaldopinto@rbarquitetura.com"};
+    const logoSrc=prest.logo||LOGO_CONST;
+    // Sem fotos no historico - gerar apenas checklist
+    pdf.addPage();
+    addHeader(pdf,M,W,CW,data,"Checklist de Patologias",logoSrc,HDR_H);
+    let y=Y0+4;
+    pdf.setFontSize(9.5);pdf.setFont("helvetica","bold");pdf.text("IDENTIFICA\xc7\xc3O DE PATOLOGIAS",M+CW/2,y,{align:"center"});y+=8;
+    const ambTotal=AMBIENTES;
+    const colsH=["Local","Estrutura","Parede e muro","Cobertura a teto","Porta e esquadria","Piso e cal\xe7amento"];
+    const colW=[32,30,34,34,30,24.6];
+    pdf.setFillColor(200,200,200);let cx=M;colW.forEach(w=>{pdf.rect(cx,y,w,7,"F");cx+=w;});
+    pdf.setDrawColor(130,130,130);pdf.setLineWidth(0.3);pdf.rect(M,y,CW,7,"S");
+    cx=M;pdf.setFontSize(7.5);pdf.setFont("helvetica","bold");colsH.forEach((c,i)=>{pdf.text(c,cx+1.5,y+4.8);cx+=colW[i];});y+=7;
+    ambTotal.forEach((amb,ri)=>{
+      const vals=COLS.map(k=>{const v=(data.checklist&&data.checklist[amb]&&data.checklist[amb][k])||[];return Array.isArray(v)?v:[];});
+      const maxN=Math.max(...vals.map(v=>v.length),1);const rowH=Math.max(7,maxN*3.8+2.5);
+      if(y+rowH>PGB-10){pdf.addPage();y=20;}
+      if(ri%2===0){pdf.setFillColor(247,247,247);cx=M;colW.forEach(w=>{pdf.rect(cx,y,w,rowH,"F");cx+=w;});}
+      pdf.setDrawColor(180,180,180);pdf.setLineWidth(0.2);pdf.rect(M,y,CW,rowH,"S");
+      cx=M;pdf.setFont("helvetica","bold");pdf.setFontSize(7);pdf.text(amb,cx+1.5,y+4.5);cx+=colW[0];
+      vals.forEach((arr,ki)=>{pdf.setFont("helvetica","normal");if(!arr.length){pdf.text("--",cx+1.5,y+4.5);}else{arr.forEach((p,pi)=>{const s=p==="Fissura/Trinca/Rachadura"?"Fissura/Trinca":p==="Umidade/Infiltra\xe7\xe3o"?"Umid./Infiltr.":p;pdf.text(s,cx+1.5,y+3.5+pi*3.8);});}cx+=colW[ki+1];});
+      y+=rowH;
+    });
+    y+=8;if(data.observacoes){pdf.setFont("helvetica","bold");pdf.setFontSize(8.5);pdf.text("Observa\xe7\xf5es:",M,y);y+=5;pdf.setFont("helvetica","normal");const lines=pdf.splitTextToSize(data.observacoes,CW);pdf.text(lines,M,y);y+=lines.length*5+6;}
+    y+=8;pdf.setFontSize(9);pdf.setFont("helvetica","normal");pdf.text("S\xe3o Paulo, "+(data.dataCompleta||data.data||""),M,y);
+    addFooter(pdf,W,H,M,prest);
+    const nomeArq=(data.coletorNome||"vistoria").replace(/[^a-zA-Z0-9]/g,"_")+"-"+(data.data||"").replace(/\//g,"-")+".pdf";
+    await shareOrDownload(pdf.output("blob"),nomeArq,"application/pdf");
+    showToast("PDF gerado!");
+  }catch(e){alert("Erro PDF: "+e.message);}
+}
+
+// ===== GERAR PDF COMPLETO =====
 window.finalizarVistoria=async()=>{
   if(!assinaturaData)return alert("Confirme a assinatura do responsavel");
-  if(!assinaturaTecnico)return alert("Cadastre sua assinatura em Perfil primeiro");
+  if(!assinaturaTecnico)return alert("Cadastre sua assinatura em Perfil");
   const btn=document.getElementById("btn-finalizar");btn.textContent="Gerando...";btn.disabled=true;
   currentVistoria.estado=document.getElementById("fin-estado").value;
   currentVistoria.idade=document.getElementById("fin-idade").value;
@@ -821,264 +873,123 @@ window.finalizarVistoria=async()=>{
   try{
     const{jsPDF}=window.jspdf;
     const pdf=new jsPDF("p","mm","a4");
-    // Dimensoes exatas baseadas no Excel
-    const W=210,H=297;
-    const M=12.7; // margem 0.5in
-    const CW=W-2*M; // 184.6mm largura util
-    const HDR_H=36; // cabecalho 36mm
-    const F01_H=79; // foto 01 altura
-    const FP_H=74; // foto par altura
-    const FP_W=(CW-1)/2; // foto par largura (~91.8mm cada)
-    const LBL_H=8; // legenda foto
-    const PG_BOT=H-M; // 284.3mm
-    const Y_AFTER_HDR=M+HDR_H+1;
-
+    const W=210,H=297,M=12.7,CW=W-2*M;
+    const HDR_H=40,Y0=M+HDR_H+1,PGB=H-M;
+    const FP_W=(CW-1)/2,FP_H=74,F01_H=79,LH=10;
     const fotos=Object.values(fotosPendentes);
     const prest=prestadorDefault||{nome:"CNRP Arquitetura e Construcoes Ltda.",cnpj:"22.121.094/0001-90",endereco:"Av. Marechal Eurico Gaspar Dutra, n 1292 | Santana | Sao Paulo - SP | CEP 02239-010",email:"ronaldopinto@rbarquitetura.com"};
     const logoSrc=prest.logo||LOGO_CONST;
 
-    // Agrupar em paginas: pg0 = fotos[0..5] isPrimeira, pg1+ = fotos[6..] grupos de 4
     const pagFotos=[];
-    if(fotos.length>0){
-      pagFotos.push({fotos:fotos.slice(0,6),isPrimeira:true});
-      for(let i=6;i<fotos.length;i+=4)pagFotos.push({fotos:fotos.slice(i,i+4),isPrimeira:false});
-    }
+    if(fotos.length>0){pagFotos.push({fotos:fotos.slice(0,6),isPrimeira:true});for(let i=6;i<fotos.length;i+=4)pagFotos.push({fotos:fotos.slice(i,i+4),isPrimeira:false});}
 
     let fotoNum=1;
     for(let pg=0;pg<pagFotos.length;pg++){
       if(pg>0)pdf.addPage();
       const pF=pagFotos[pg].fotos;const isP=pagFotos[pg].isPrimeira;
       const locais=[...new Set(pF.map(f=>f.ambiente))];
-      addHeader(pdf,M,W,CW,currentVistoria,locais.join(" / "),logoSrc);
-      let y=Y_AFTER_HDR;
-
+      addHeader(pdf,M,W,CW,currentVistoria,locais.join(" / "),logoSrc,HDR_H);
+      let y=Y0;
       if(isP&&pF.length>0){
-        // Foto 01 - largura total, sempre "Fachada"
-        const f0=pF[0];
-        const dims=await getImgDims(f0.dataUrl);
-        // Calcular altura real mantendo proporcao, max F01_H
-        const fhReal=Math.min(F01_H,Math.round(CW*dims.h/dims.w));
-        const yOff=Math.round((F01_H-fhReal)/2);
-        // Borda
+        const f0=pF[0];const dims=await getImgDims(f0.dataUrl);
+        const fhReal=Math.min(F01_H,Math.round(CW*dims.h/dims.w));const yOff=Math.round((F01_H-fhReal)/2);
         pdf.setDrawColor(120,120,120);pdf.setLineWidth(0.4);pdf.rect(M,y,CW,F01_H,"S");
         try{await addImgPDF(pdf,f0.dataUrl,M,y+yOff,CW,fhReal);}catch(e){}
-        // Legenda centralizada
         pdf.setFontSize(8.5);pdf.setFont("helvetica","bold");pdf.text("Foto "+String(fotoNum).padStart(2,"0"),M+CW/2,y+F01_H+5,{align:"center"});
         pdf.setFont("helvetica","normal");pdf.text("Fachada",M+CW/2,y+F01_H+9.5,{align:"center"});
-        fotoNum++;y+=F01_H+LBL_H+2;
-
-        // Fotos 02-06 em pares (max 2 linhas de 2 = 4 fotos + foto01 = 5 total na pg1)
+        fotoNum++;y+=F01_H+LH;
         const resto=pF.slice(1);
         for(let i=0;i<resto.length;i+=2){
-          if(y+FP_H+LBL_H>PG_BOT){pdf.addPage();addHeader(pdf,M,W,CW,currentVistoria,locais.join(" / "),logoSrc);y=Y_AFTER_HDR;}
-          const numNaLinha=Math.min(2,resto.length-i);
-          await renderFotoPar(pdf,resto,i,numNaLinha,M,y,CW,FP_W,FP_H,fotoNum);
-          fotoNum+=numNaLinha;
-          // linha separadora entre pares
-          if(i+2<resto.length){pdf.setDrawColor(180,180,180);pdf.setLineWidth(0.2);}
-          y+=FP_H+LBL_H+2;
+          if(y+FP_H+LH>PGB){pdf.addPage();addHeader(pdf,M,W,CW,currentVistoria,locais.join(" / "),logoSrc,HDR_H);y=Y0;}
+          await renderPar(pdf,resto,i,Math.min(2,resto.length-i),M,y,CW,FP_W,FP_H,fotoNum);fotoNum+=Math.min(2,resto.length-i);y+=FP_H+LH;
         }
       }else{
-        // Grade 2x2 (4 fotos por pagina)
         for(let i=0;i<pF.length;i+=2){
-          if(y+FP_H+LBL_H>PG_BOT){pdf.addPage();addHeader(pdf,M,W,CW,currentVistoria,locais.join(" / "),logoSrc);y=Y_AFTER_HDR;}
-          const numNaLinha=Math.min(2,pF.length-i);
-          await renderFotoPar(pdf,pF,i,numNaLinha,M,y,CW,FP_W,FP_H,fotoNum);
-          fotoNum+=numNaLinha;
-          y+=FP_H+LBL_H+2;
+          if(y+FP_H+LH>PGB){pdf.addPage();addHeader(pdf,M,W,CW,currentVistoria,locais.join(" / "),logoSrc,HDR_H);y=Y0;}
+          await renderPar(pdf,pF,i,Math.min(2,pF.length-i),M,y,CW,FP_W,FP_H,fotoNum);fotoNum+=Math.min(2,pF.length-i);y+=FP_H+LH;
         }
       }
       addFooter(pdf,W,H,M,prest);
     }
-
-    // CHECKLIST
-    pdf.addPage();
-    addHeader(pdf,M,W,CW,currentVistoria,"Checklist de Patologias",logoSrc);
-    let y=Y_AFTER_HDR+4;
+    // Checklist
+    pdf.addPage();addHeader(pdf,M,W,CW,currentVistoria,"Checklist de Patologias",logoSrc,HDR_H);
+    let y=Y0+4;
     pdf.setFontSize(9.5);pdf.setFont("helvetica","bold");pdf.text("IDENTIFICA\xc7\xc3O DE PATOLOGIAS",M+CW/2,y,{align:"center"});y+=8;
-
-    const ambTotal=[...AMBIENTES,...ambientesExtras].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+    const ambTotal=[...AMBIENTES,...ambientesExtras];
     const colsH=["Local","Estrutura","Parede e muro","Cobertura a teto","Porta e esquadria","Piso e cal\xe7amento"];
     const colW=[32,30,34,34,30,24.6];
-    // Header tabela
-    pdf.setFillColor(200,200,200);let cx=M;
-    colW.forEach(w=>{pdf.rect(cx,y,w,7,"F");cx+=w;});
+    pdf.setFillColor(200,200,200);let cx=M;colW.forEach(w=>{pdf.rect(cx,y,w,7,"F");cx+=w;});
     pdf.setDrawColor(130,130,130);pdf.setLineWidth(0.3);pdf.rect(M,y,CW,7,"S");
-    cx=M;pdf.setFontSize(7.5);pdf.setFont("helvetica","bold");
-    colsH.forEach((c,i)=>{pdf.text(c,cx+1.5,y+4.8);cx+=colW[i];});y+=7;
+    cx=M;pdf.setFontSize(7.5);pdf.setFont("helvetica","bold");colsH.forEach((c,i)=>{pdf.text(c,cx+1.5,y+4.8);cx+=colW[i];});y+=7;
     ambTotal.forEach((amb,ri)=>{
       const vals=COLS.map(k=>{const v=(currentVistoria.checklist&&currentVistoria.checklist[amb]&&currentVistoria.checklist[amb][k])||[];return Array.isArray(v)?v:[];});
       const maxN=Math.max(...vals.map(v=>v.length),1);const rowH=Math.max(7,maxN*3.8+2.5);
-      if(y+rowH>PG_BOT-10){pdf.addPage();y=20;}
+      if(y+rowH>PGB-10){pdf.addPage();y=20;}
       if(ri%2===0){pdf.setFillColor(247,247,247);cx=M;colW.forEach(w=>{pdf.rect(cx,y,w,rowH,"F");cx+=w;});}
       pdf.setDrawColor(180,180,180);pdf.setLineWidth(0.2);pdf.rect(M,y,CW,rowH,"S");
       cx=M;pdf.setFont("helvetica","bold");pdf.setFontSize(7);pdf.text(amb,cx+1.5,y+4.5);cx+=colW[0];
-      vals.forEach((arr,ki)=>{
-        pdf.setFont("helvetica","normal");
-        if(!arr.length){pdf.text("--",cx+1.5,y+4.5);}
-        else{arr.forEach((p,pi)=>{const s=p==="Fissura/Trinca/Rachadura"?"Fissura/Trinca":p==="Umidade/Infiltra\xe7\xe3o"?"Umid./Infiltr.":p;pdf.text(s,cx+1.5,y+3.5+pi*3.8);});}
-        cx+=colW[ki+1];
-      });
+      vals.forEach((arr,ki)=>{pdf.setFont("helvetica","normal");if(!arr.length){pdf.text("--",cx+1.5,y+4.5);}else{arr.forEach((p,pi)=>{const s=p==="Fissura/Trinca/Rachadura"?"Fissura/Trinca":p==="Umidade/Infiltra\xe7\xe3o"?"Umid./Infiltr.":p;pdf.text(s,cx+1.5,y+3.5+pi*3.8);});}cx+=colW[ki+1];});
       y+=rowH;
     });
     y+=10;
     if(currentVistoria.observacoes){pdf.setFont("helvetica","bold");pdf.setFontSize(8.5);pdf.text("Observa\xe7\xf5es:",M,y);y+=5;pdf.setFont("helvetica","normal");const lines=pdf.splitTextToSize(currentVistoria.observacoes,CW);pdf.text(lines,M,y);y+=lines.length*5+6;}
     y+=8;pdf.setFontSize(9);pdf.setFont("helvetica","normal");pdf.text("S\xe3o Paulo, "+currentVistoria.dataCompleta,M,y);y+=16;
     if(assinaturaData){try{pdf.addImage(assinaturaData,"PNG",M,y,70,22);}catch(e){}}
-    pdf.line(M,y+24,M+80,y+24);pdf.setFontSize(8.5);pdf.setFont("helvetica","normal");
-    pdf.text(currentVistoria.responsavel.nome,M,y+28);pdf.text("Respons\xe1vel pelo im\xf3vel",M,y+33);
+    pdf.line(M,y+24,M+80,y+24);pdf.setFontSize(8.5);pdf.text(currentVistoria.responsavel.nome,M,y+28);pdf.text("Respons\xe1vel pelo im\xf3vel",M,y+33);
     if(assinaturaTecnico){try{pdf.addImage(assinaturaTecnico,"PNG",M+105,y,70,22);}catch(e){}}
-    pdf.line(M+105,y+24,M+185,y+24);
-    pdf.text(currentUserData&&currentUserData.nome||"Responsavel Tecnico",M+105,y+28);pdf.text("Respons\xe1vel T\xe9cnico",M+105,y+33);
+    pdf.line(M+105,y+24,M+185,y+24);pdf.text(currentUserData&&currentUserData.nome||"Responsavel Tecnico",M+105,y+28);pdf.text("Respons\xe1vel T\xe9cnico",M+105,y+33);
     addFooter(pdf,W,H,M,prest);
-
-    // Salvar Firebase
+    // Firebase
     const vDoc={clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,coletorNome:currentVistoria.coletorNome,responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,ocupacao:currentVistoria.ocupacao,tipo:currentVistoria.tipo,estado:currentVistoria.estado,idade:currentVistoria.idade,data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,userId:currentUser.uid,checklist:currentVistoria.checklist,observacoes:currentVistoria.observacoes,totalFotos:Object.keys(fotosPendentes).length,status:"concluida",criadoEm:serverTimestamp()};
     await addDoc(collection(db,"vistorias"),vDoc);
-
-    // Nome do arquivo
     const dataArq=currentVistoria.data.replace(/\//g,"-");
     const endArq=(currentVistoria.endereco.rua+" "+currentVistoria.endereco.num+(currentVistoria.endereco.comp?" "+currentVistoria.endereco.comp:"")).replace(/[^a-zA-Z0-9\s]/g,"").trim().replace(/\s+/g,"_");
     const colArq=currentVistoria.coletorNome.replace(/[^a-zA-Z0-9\s]/g,"").trim().replace(/\s+/g,"_");
     const nomeBase=colArq+"-"+endArq+"-"+dataArq;
-
-    // Gerar PDF blob e compartilhar
-    const pdfBlob=pdf.output("blob");
-    const nomePDF=nomeBase+".pdf";
-    await shareOrDownload(pdfBlob,nomePDF,"application/pdf");
-
-    // ZIP das fotos
-    if(window.JSZip){
-      try{
-        const zip=new window.JSZip();const folder=zip.folder("fotos_"+nomeBase);
-        Object.values(fotosPendentes).forEach(f=>{const b64=f.dataUrl.split(",")[1];const fn=f.numero.replace(" ","_")+"_"+f.ambiente.replace(/\s+/g,"_")+"_"+f.tipo+".jpg";folder.file(fn,b64,{base64:true});});
-        const zipBlob=await zip.generateAsync({type:"blob"});
-        await shareOrDownload(zipBlob,nomeBase+"_fotos.zip","application/zip");
-        showToast("Fotos salvas com sucesso!",3000);
-      }catch(e){console.error("ZIP error:",e);}
-    }
-
-    currentVistoria=null;fotosPendentes={};assinaturaData=null;ambientesExtras=[];
-    goTo("s-dash");
+    await shareOrDownload(pdf.output("blob"),nomeBase+".pdf","application/pdf");
+    if(window.JSZip){try{const zip=new window.JSZip();const folder=zip.folder("fotos_"+nomeBase);Object.values(fotosPendentes).forEach(f=>{const b64=f.dataUrl.split(",")[1];folder.file(f.numero.replace(" ","_")+"_"+f.ambiente.replace(/\s+/g,"_")+"_"+f.tipo+".jpg",b64,{base64:true});});const zBlob=await zip.generateAsync({type:"blob"});await shareOrDownload(zBlob,nomeBase+"_fotos.zip","application/zip");showToast("Fotos salvas com sucesso!",3000);}catch(e){}}
+    currentVistoria=null;fotosPendentes={};assinaturaData=null;ambientesExtras=[];goTo("s-dash");
   }catch(e){console.error(e);alert("Erro: "+e.message);}
   finally{btn.textContent="Gerar PDF + ZIP e finalizar";btn.disabled=false;btn.style.opacity="1";}
 };
 
-async function shareOrDownload(blob,nome,mimeType){
-  if(navigator.share&&navigator.canShare){
-    try{const file=new File([blob],nome,{type:mimeType});if(navigator.canShare({files:[file]})){await navigator.share({files:[file],title:nome});return;}}catch(e){if(e.name==="AbortError")return;}
-  }
-  const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=nome;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),2000);
-}
-
-async function renderFotoPar(pdf,fotos,startIdx,count,M,y,CW,FP_W,FP_H,fotoNum){
+async function renderPar(pdf,fotos,startIdx,count,M,y,CW,FP_W,FP_H,fotoNum){
   pdf.setDrawColor(120,120,120);pdf.setLineWidth(0.4);
-  if(count===1){
-    // Foto unica - centralizada
-    const f=fotos[startIdx];const fc=M+CW/4;const fw=CW/2;
-    const dims=await getImgDims(f.dataUrl);
-    const fhReal=Math.min(FP_H,Math.round(fw*dims.h/dims.w));
-    const yOff=Math.round((FP_H-fhReal)/2);
-    pdf.rect(fc,y,fw,FP_H,"S");
-    try{await addImgPDF(pdf,f.dataUrl,fc,y+yOff,fw,fhReal);}catch(e){}
-    pdf.setFontSize(8.5);pdf.setFont("helvetica","bold");pdf.text("Foto "+String(fotoNum).padStart(2,"0"),fc+fw/2,y+FP_H+5,{align:"center"});
-    pdf.setFont("helvetica","normal");pdf.text(f.tipo,fc+fw/2,y+FP_H+9.5,{align:"center"});
-  }else{
-    // Par de fotos com linha central
-    pdf.line(M+FP_W+0.5,y,M+FP_W+0.5,y+FP_H+10);
-    for(let k=0;k<2&&startIdx+k<fotos.length;k++){
-      const f=fotos[startIdx+k];const fx=M+k*(FP_W+1);
-      const dims=await getImgDims(f.dataUrl);
-      const fhReal=Math.min(FP_H,Math.round(FP_W*dims.h/dims.w));
-      const yOff=Math.round((FP_H-fhReal)/2);
-      pdf.rect(fx,y,FP_W,FP_H,"S");
-      try{await addImgPDF(pdf,f.dataUrl,fx,y+yOff,FP_W,fhReal);}catch(e){}
-      pdf.setFontSize(8.5);pdf.setFont("helvetica","bold");pdf.text("Foto "+String(fotoNum+k).padStart(2,"0"),fx+FP_W/2,y+FP_H+5,{align:"center"});
-      pdf.setFont("helvetica","normal");pdf.text(f.tipo,fx+FP_W/2,y+FP_H+9.5,{align:"center"});
-    }
-  }
+  if(count===1){const f=fotos[startIdx];const fc=M+CW/4;const fw=CW/2;const dims=await getImgDims(f.dataUrl);const fhReal=Math.min(FP_H,Math.round(fw*dims.h/dims.w));const yOff=Math.round((FP_H-fhReal)/2);pdf.rect(fc,y,fw,FP_H,"S");try{await addImgPDF(pdf,f.dataUrl,fc,y+yOff,fw,fhReal);}catch(e){}pdf.setFontSize(8.5);pdf.setFont("helvetica","bold");pdf.text("Foto "+String(fotoNum).padStart(2,"0"),fc+fw/2,y+FP_H+5,{align:"center"});pdf.setFont("helvetica","normal");pdf.text(f.tipo,fc+fw/2,y+FP_H+9.5,{align:"center"});}
+  else{pdf.line(M+FP_W+0.5,y,M+FP_W+0.5,y+FP_H+9);for(let k=0;k<2&&startIdx+k<fotos.length;k++){const f=fotos[startIdx+k];const fx=M+k*(FP_W+1);const dims=await getImgDims(f.dataUrl);const fhReal=Math.min(FP_H,Math.round(FP_W*dims.h/dims.w));const yOff=Math.round((FP_H-fhReal)/2);pdf.rect(fx,y,FP_W,FP_H,"S");try{await addImgPDF(pdf,f.dataUrl,fx,y+yOff,FP_W,fhReal);}catch(e){}pdf.setFontSize(8.5);pdf.setFont("helvetica","bold");pdf.text("Foto "+String(fotoNum+k).padStart(2,"0"),fx+FP_W/2,y+FP_H+5,{align:"center"});pdf.setFont("helvetica","normal");pdf.text(f.tipo,fx+FP_W/2,y+FP_H+9.5,{align:"center"});}}
 }
 
 function getImgDims(dataUrl){return new Promise(res=>{const img=new Image();img.onload=()=>res({w:img.naturalWidth||1,h:img.naturalHeight||1});img.onerror=()=>res({w:4,h:3});img.src=dataUrl;});}
 function addImgPDF(pdf,dataUrl,x,y,w,h){return new Promise(res=>{try{pdf.addImage(dataUrl,"JPEG",x,y,w,h,"","FAST");}catch(e){}res();});}
+async function shareOrDownload(blob,nome,mime){if(navigator.share&&navigator.canShare){try{const f=new File([blob],nome,{type:mime});if(navigator.canShare({files:[f]})){await navigator.share({files:[f],title:nome});return;}}catch(e){if(e.name==="AbortError")return;}}const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=nome;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),2000);}
 
-function addHeader(pdf,M,W,CW,v,local,logoSrc){
-  // Borda externa
-  pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.5);pdf.rect(M,M,CW,36,"S");
-  // Logo sem linha acima - no canto sup esq dentro do retangulo
-  if(logoSrc&&logoSrc.length>50){try{pdf.addImage(logoSrc,"JPEG",M+1,M+0.5,18,18,"","FAST");}catch(e){}}
-  // Titulo
-  pdf.setFontSize(12);pdf.setFont("helvetica","bold");
-  pdf.text("RELAT\xd3RIO DE VISTORIA CAUTELAR",M+CW/2,M+7,{align:"center"});
-  pdf.setFontSize(9.5);pdf.text("RRT: "+v.clienteRRT,W-M-1,M+7,{align:"right"});
-  // Linha 1
-  pdf.setLineWidth(0.3);pdf.line(M,M+9,M+CW,M+9);
-  // INFORMACOES
-  pdf.setFontSize(8.5);pdf.setFont("helvetica","bold");
-  pdf.text("INFORMA\xc7\xd5ES DO RESPONS\xc1VEL",M+CW/2,M+13,{align:"center"});
-  // Linha 2
-  pdf.line(M,M+14.5,M+CW,M+14.5);
-  // Nome (linha propria)
-  pdf.setFontSize(8);
-  pdf.setFont("helvetica","bold");pdf.text("Nome: ",M+1,M+18.5);
-  pdf.setFont("helvetica","normal");pdf.text(v.responsavel.nome,M+1+pdf.getTextWidth("Nome: "),M+18.5);
-  // Linha 3
-  pdf.setLineWidth(0.2);pdf.line(M,M+20,M+CW,M+20);
-  // CPF e Contato
-  pdf.setFont("helvetica","bold");pdf.text("CPF/RG: ",M+1,M+23.5);
-  pdf.setFont("helvetica","normal");pdf.text(v.responsavel.doc||"Nao informado",M+1+pdf.getTextWidth("CPF/RG: "),M+23.5);
-  pdf.setFont("helvetica","bold");pdf.text("Contato: ",M+80,M+23.5);
-  pdf.setFont("helvetica","normal");pdf.text(v.responsavel.tel||"--",M+80+pdf.getTextWidth("Contato: "),M+23.5);
-  // Linha 4
-  pdf.line(M,M+25,M+CW,M+25);
-  // Endereco
-  pdf.setFont("helvetica","bold");pdf.text("Endere\xe7o: ",M+1,M+28.5);
-  pdf.setFont("helvetica","normal");pdf.text(v.endereco.rua,M+1+pdf.getTextWidth("Endere\xe7o: "),M+28.5);
-  pdf.setFont("helvetica","bold");pdf.text("N\xba: ",M+95,M+28.5);
-  pdf.setFont("helvetica","normal");pdf.text(v.endereco.num,M+95+pdf.getTextWidth("N\xba: "),M+28.5);
-  if(v.endereco.comp){pdf.setFont("helvetica","bold");pdf.text("Compl.: ",M+115,M+28.5);pdf.setFont("helvetica","normal");pdf.text(v.endereco.comp,M+115+pdf.getTextWidth("Compl.: "),M+28.5);}
-  // Linha 5
-  pdf.line(M,M+30,M+CW,M+30);
-  // Coletor e Estado
-  pdf.setFont("helvetica","bold");pdf.text("Coletor: ",M+1,M+33.5);
-  pdf.setFont("helvetica","normal");pdf.text(v.coletorNome,M+1+pdf.getTextWidth("Coletor: "),M+33.5);
-  if(v.estado){
-    const estLabel="Estado de Conserva\xe7\xe3o: ";
-    pdf.setFont("helvetica","bold");pdf.text(estLabel,M+80,M+33.5);
-    pdf.setFont("helvetica","normal");pdf.text(v.estado+(v.idade?" | Idade Aparente do Im\xf3vel: "+v.idade+" anos":""),M+80+pdf.getTextWidth(estLabel),M+33.5);
-  }
-  // Linha 6 + barra Local/Data
-  pdf.setLineWidth(0.3);pdf.line(M,M+35,M+CW,M+35);
-  pdf.setFillColor(215,215,215);pdf.rect(M,M+35,CW/2,5,"F");pdf.rect(M+CW/2,M+35,CW/2,5,"F");
-  pdf.setLineWidth(0.3);pdf.line(M+CW/2,M+35,M+CW/2,M+40);
-  pdf.setFont("helvetica","bold");pdf.setFontSize(8);
-  pdf.text("Local: "+local,M+1,M+38.5);
-  pdf.text("Data Vistoria: "+v.data,W-M-1,M+38.5,{align:"right"});
+function addHeader(pdf,M,W,CW,v,local,logoSrc,HDR_H){
+  pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.5);pdf.rect(M,M,CW,HDR_H,"S");
+  if(logoSrc&&logoSrc.length>50){try{pdf.addImage(logoSrc,"JPEG",M+1,M+0.5,20,20,"","FAST");}catch(e){}}
+  pdf.setFontSize(12);pdf.setFont("helvetica","bold");pdf.text("RELAT\xd3RIO DE VISTORIA CAUTELAR",M+CW/2,M+7.5,{align:"center"});
+  pdf.setFontSize(9.5);pdf.text("RRT: "+v.clienteRRT,W-M-1,M+7.5,{align:"right"});
+  pdf.setLineWidth(0.3);pdf.line(M,M+10,M+CW,M+10);
+  pdf.setFontSize(8.5);pdf.setFont("helvetica","bold");pdf.text("INFORMA\xc7\xd5ES DO RESPONS\xc1VEL",M+CW/2,M+14,{align:"center"});
+  pdf.line(M,M+15.5,M+CW,M+15.5);
+  const nom="Nome: ";const nomV=v.responsavel&&v.responsavel.nome||"--";
+  pdf.setFontSize(8);pdf.setFont("helvetica","bold");pdf.text(nom,M+1,M+19.5);pdf.setFont("helvetica","normal");pdf.text(nomV,M+1+pdf.getTextWidth(nom),M+19.5);
+  pdf.setLineWidth(0.2);pdf.line(M,M+21,M+CW,M+21);
+  const cpfL="CPF/RG: ";pdf.setFont("helvetica","bold");pdf.text(cpfL,M+1,M+24.5);pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.doc||"Nao informado",M+1+pdf.getTextWidth(cpfL),M+24.5);
+  const contL="Contato: ";pdf.setFont("helvetica","bold");pdf.text(contL,M+80,M+24.5);pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.tel||"--",M+80+pdf.getTextWidth(contL),M+24.5);
+  pdf.line(M,M+26,M+CW,M+26);
+  const endL="Endere\xe7o: ";pdf.setFont("helvetica","bold");pdf.text(endL,M+1,M+29.5);pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.rua||"",M+1+pdf.getTextWidth(endL),M+29.5);
+  const nL="N\xba: ";pdf.setFont("helvetica","bold");pdf.text(nL,M+95,M+29.5);pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.num||"",M+95+pdf.getTextWidth(nL),M+29.5);
+  if(v.endereco&&v.endereco.comp){const cL="Compl.: ";pdf.setFont("helvetica","bold");pdf.text(cL,M+115,M+29.5);pdf.setFont("helvetica","normal");pdf.text(v.endereco.comp,M+115+pdf.getTextWidth(cL),M+29.5);}
+  pdf.line(M,M+31,M+CW,M+31);
+  const colL="Coletor: ";pdf.setFont("helvetica","bold");pdf.text(colL,M+1,M+34.5);pdf.setFont("helvetica","normal");pdf.text(v.coletorNome||"",M+1+pdf.getTextWidth(colL),M+34.5);
+  if(v.estado){const estL="Estado de Conserva\xe7\xe3o: ";pdf.setFont("helvetica","bold");pdf.text(estL,M+75,M+34.5);pdf.setFont("helvetica","normal");pdf.text(v.estado+(v.idade?" | Idade Aparente do Im\xf3vel: "+v.idade+" anos":""),M+75+pdf.getTextWidth(estL),M+34.5);}
+  pdf.setLineWidth(0.3);pdf.line(M,M+36,M+CW,M+36);
+  pdf.setFillColor(215,215,215);pdf.rect(M,M+36,CW/2,HDR_H-36,"F");pdf.rect(M+CW/2,M+36,CW/2,HDR_H-36,"F");
+  pdf.setLineWidth(0.3);pdf.line(M+CW/2,M+36,M+CW/2,M+HDR_H);
+  pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text("Local: "+local,M+1,M+38.5);
+  pdf.text("Data Vistoria: "+(v.data||""),W-M-1,M+38.5,{align:"right"});
 }
-
-function addFooter(pdf,W,H,M,p){
-  pdf.setFontSize(7);pdf.setFont("helvetica","bold");pdf.setTextColor(50,50,50);
-  pdf.text((p.nome||"")+(p.cnpj?" | CNPJ: "+p.cnpj:""),W/2,H-M+2,{align:"center"});
-  pdf.setFont("helvetica","normal");pdf.setFontSize(6.5);pdf.text((p.endereco||"")+(p.email?" | "+p.email:""),W/2,H-M+6,{align:"center"});
-  pdf.setTextColor(0,0,0);
-}
-
-async function loadHistorico(){
-  const el=document.getElementById("lista-historico");el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Carregando...</p>';
-  try{
-    const q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));
-    const snap=await getDocs(q);el.innerHTML="";
-    if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhuma vistoria registrada</p>';return;}
-    const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));
-    docs.sort((a,b)=>(b.criadoEm&&b.criadoEm.seconds||0)-(a.criadoEm&&a.criadoEm.seconds||0));
-    docs.forEach(v=>{
-      const av='<div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></div>';
-      const badge='<span class="badge '+(v.status==="concluida"?"ok":"master")+'">'+(v.status==="concluida"?"Concluida":"Andamento")+"</span>";
-      const sub=(v.endereco&&v.endereco.rua?v.endereco.rua+", "+v.endereco.num:"--")+" | "+(v.totalFotos||0)+" fotos | "+v.data;
-      el.appendChild(mkLI(av,v.responsavel&&v.responsavel.nome||"--",sub,badge));
-    });
-  }catch(e){el.innerHTML='<p style="text-align:center;color:#dc2626;padding:24px">Erro: '+e.message+"</p>";}
-}
+function addFooter(pdf,W,H,M,p){pdf.setFontSize(7);pdf.setFont("helvetica","bold");pdf.setTextColor(50,50,50);pdf.text((p.nome||"")+(p.cnpj?" | CNPJ: "+p.cnpj:""),W/2,H-M+2,{align:"center"});pdf.setFont("helvetica","normal");pdf.setFontSize(6.5);pdf.text((p.endereco||"")+(p.email?" | "+p.email:""),W/2,H-M+6,{align:"center"});pdf.setTextColor(0,0,0);}
 
 </script>
 </body>
