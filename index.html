@@ -394,10 +394,7 @@ function iniciarGPS(){
       const cidade=a.city||a.town||a.municipality||"";
       const estado=a.state_code||a.state||"";
       const cep=a.postcode||"";
-      enderecoGPS=(rua+(num2?" "+num2:""))+(bairro?"
-"+bairro:"")+(cidade?"
-"+cidade+" "+estado:"")+(cep?"
-"+cep:"");
+      enderecoGPS=(rua+(num2?" "+num2:""))+(bairro?" | "+bairro:"")+(cidade?" | "+cidade+" "+estado:"")+(cep?" | "+cep:"");
       if(el)el.textContent="GPS: "+gpsAtual.lat.toFixed(5)+"S "+Math.abs(gpsAtual.lng).toFixed(5)+"W | "+rua+(num2?" "+num2:"");
     }catch(e){}
   },err=>{
