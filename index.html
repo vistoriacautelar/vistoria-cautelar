@@ -280,7 +280,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   <div class="cam-video-wrap"><video id="cam-video" autoplay playsinline muted></video></div>
   <div class="zoom-wrap">
     <span style="color:#aaa;font-size:11px">0.5x</span>
-    <input type="range" id="zoom-slider" class="zoom-slider" min="0.5" max="10" step="0.5" value="1" oninput="onZoomSlider(this.value)">
+    <input type="range" id="zoom-slider" class="zoom-slider" min="1" max="10" step="0.5" value="1" oninput="onZoomSlider(this.value)">
     <span style="color:#aaa;font-size:11px">10x</span>
     <span class="zoom-label" id="zoom-label">1x</span>
   </div>
@@ -551,7 +551,13 @@ window.abrirCamera=async()=>{
   try{
     cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},audio:false});
     const v=document.getElementById("cam-video");v.srcObject=cameraStream;await v.play();
-    const t=cameraStream.getVideoTracks()[0];if(t&&t.getCapabilities){const c=t.getCapabilities();if(c.zoom)document.getElementById("zoom-slider").max=Math.min(10,c.zoom.max);}
+    const t=cameraStream.getVideoTracks()[0];if(t&&t.getCapabilities){const c=t.getCapabilities();if(c.zoom)const zMin=c.zoom.min||1;const zMax=Math.min(10,c.zoom.max||10);
+    document.getElementById("zoom-slider").min=zMin;
+    document.getElementById("zoom-slider").max=zMax;
+    document.getElementById("zoom-slider").value=zMin;
+    document.getElementById("zoom-label").textContent=zMin+"x";
+    // Try to set initial zoom to minimum
+    t.applyConstraints({advanced:[{zoom:zMin}]}).catch(()=>{});}
     document.getElementById("zoom-slider").value=1;document.getElementById("zoom-label").textContent="1x";
     document.getElementById("camera-overlay").style.display="flex";
   }catch(e){alert("Camera indisponivel: "+e.message);}
@@ -758,13 +764,7 @@ function abrirDetalheVistoria(id,data){
   const c=document.getElementById("dv-content");c.innerHTML="";
   // Card dados
   const card1=document.createElement("div");card1.className="card";
-  card1.innerHTML='<h2>Dados do responsavel</h2><div style="font-size:14px;line-height:1.9"><b>'+
-    (data.responsavel&&data.responsavel.nome||"--")+'</b><br>'+
-    (data.responsavel&&data.responsavel.doc?"CPF/RG: "+data.responsavel.doc+"<br>":"")+
-    (data.responsavel&&data.responsavel.tel?"Tel: "+data.responsavel.tel+"<br>":"")+
-    (data.endereco?data.endereco.rua+", "+data.endereco.num+(data.endereco.comp?" - "+data.endereco.comp:"")+"<br>":"")+
-    "Coletor: "+(data.coletorNome||"--")+"<br>"+
-    (data.estado?"Estado: "+data.estado+(data.idade?" | Idade: "+data.idade+" anos":""):"")+"</div>';
+    {const nome2=(data.responsavel&&data.responsavel.nome)||"--";const doc2=(data.responsavel&&data.responsavel.doc)||"";const tel2=(data.responsavel&&data.responsavel.tel)||"";const rua2=(data.endereco&&data.endereco.rua)||"";const num2=(data.endereco&&data.endereco.num)||"";const comp2=(data.endereco&&data.endereco.comp)||"";const est2=data.estado|"";const id2=data.idade||"";let h2="<h2>Dados do responsavel</h2><div style='font-size:14px;line-height:2'><b>"+nome2+"</b><br>";if(doc2)h2+="CPF/RG: "+doc2+"<br>";if(tel2)h2+="Tel: "+tel2+"<br>";h2+=rua2+(num2?", "+num2:"")+(comp2?" - "+comp2:"")+"<br>";h2+="Coletor: "+(data.coletorNome||"--");if(data.estado)h2+="<br>Estado: "+data.estado+(data.idade?" | Idade Aparente: "+data.idade+" anos":"");h2+="</div>";card1.innerHTML=h2;}
   c.appendChild(card1);
   // Card checklist resumo
   if(data.checklist){
@@ -828,7 +828,7 @@ async function regeRarPDF(data){
   try{
     const{jsPDF}=window.jspdf;
     const pdf=new jsPDF("p","mm","a4");
-    const W=210,H=297,M=12.7,CW=W-2*M,HDR_H=40,Y0=M+HDR_H+1,PGB=H-M;
+    const W=210,H=297,M=12.7,CW=W-2*M,HDR_H=50,Y0=M+HDR_H+2,PGB=H-M;
     const FP_W=(CW-1)/2,FP_H=74,F01_H=79,LH=10;
     const prest=prestadorDefault||{nome:"CNRP Arquitetura e Construcoes Ltda.",cnpj:"22.121.094/0001-90",endereco:"Av. Marechal Eurico Gaspar Dutra, n 1292 | Santana | Sao Paulo - SP | CEP 02239-010",email:"ronaldopinto@rbarquitetura.com"};
     const logoSrc=prest.logo||LOGO_CONST;
@@ -873,7 +873,7 @@ window.finalizarVistoria=async()=>{
   try{
     const{jsPDF}=window.jspdf;
     const pdf=new jsPDF("p","mm","a4");
-    const W=210,H=297,M=12.7,CW=W-2*M;
+    const W=210,H=297,M=12.7,CW=W-2*M;const HDR_H2=42;
     const HDR_H=40,Y0=M+HDR_H+1,PGB=H-M;
     const FP_W=(CW-1)/2,FP_H=74,F01_H=79,LH=10;
     const fotos=Object.values(fotosPendentes);
@@ -955,8 +955,21 @@ window.finalizarVistoria=async()=>{
 
 async function renderPar(pdf,fotos,startIdx,count,M,y,CW,FP_W,FP_H,fotoNum){
   pdf.setDrawColor(120,120,120);pdf.setLineWidth(0.4);
-  if(count===1){const f=fotos[startIdx];const fc=M+CW/4;const fw=CW/2;const dims=await getImgDims(f.dataUrl);const fhReal=Math.min(FP_H,Math.round(fw*dims.h/dims.w));const yOff=Math.round((FP_H-fhReal)/2);pdf.rect(fc,y,fw,FP_H,"S");try{await addImgPDF(pdf,f.dataUrl,fc,y+yOff,fw,fhReal);}catch(e){}pdf.setFontSize(8.5);pdf.setFont("helvetica","bold");pdf.text("Foto "+String(fotoNum).padStart(2,"0"),fc+fw/2,y+FP_H+5,{align:"center"});pdf.setFont("helvetica","normal");pdf.text(f.tipo,fc+fw/2,y+FP_H+9.5,{align:"center"});}
-  else{pdf.line(M+FP_W+0.5,y,M+FP_W+0.5,y+FP_H+9);for(let k=0;k<2&&startIdx+k<fotos.length;k++){const f=fotos[startIdx+k];const fx=M+k*(FP_W+1);const dims=await getImgDims(f.dataUrl);const fhReal=Math.min(FP_H,Math.round(FP_W*dims.h/dims.w));const yOff=Math.round((FP_H-fhReal)/2);pdf.rect(fx,y,FP_W,FP_H,"S");try{await addImgPDF(pdf,f.dataUrl,fx,y+yOff,FP_W,fhReal);}catch(e){}pdf.setFontSize(8.5);pdf.setFont("helvetica","bold");pdf.text("Foto "+String(fotoNum+k).padStart(2,"0"),fx+FP_W/2,y+FP_H+5,{align:"center"});pdf.setFont("helvetica","normal");pdf.text(f.tipo,fx+FP_W/2,y+FP_H+9.5,{align:"center"});}}
+  if(count===1){const f=fotos[startIdx];const fc=M+FP_W/2;const fw=FP_W;const dims=await getImgDims(f.dataUrl);const fhReal=Math.min(FP_H,Math.round(fw*dims.h/dims.w));const yOff=Math.round((FP_H-fhReal)/2);pdf.setDrawColor(120,120,120);pdf.setLineWidth(0.4);pdf.rect(fc,y,fw,FP_H,"S");try{await addImgPDF(pdf,f.dataUrl,fc,y+yOff,fw,fhReal);}catch(e){}pdf.setFontSize(8.5);pdf.setFont("helvetica","bold");pdf.text("Foto "+String(fotoNum).padStart(2,"0"),fc+fw/2,y+FP_H+5,{align:"center"});pdf.setFont("helvetica","normal");pdf.text(f.tipo,fc+fw/2,y+FP_H+9.5,{align:"center"});}
+  else{// linha vertical central
+pdf.setDrawColor(120,120,120);pdf.setLineWidth(0.4);
+pdf.line(M+FP_W+0.5,y,M+FP_W+0.5,y+FP_H);
+for(let k=0;k<2&&startIdx+k<fotos.length;k++){
+  const f=fotos[startIdx+k];const fx=M+k*(FP_W+1);
+  const dims=await getImgDims(f.dataUrl);
+  const fhReal=Math.min(FP_H,Math.round(FP_W*dims.h/dims.w));
+  const yOff=Math.round((FP_H-fhReal)/2);
+  pdf.setDrawColor(120,120,120);pdf.setLineWidth(0.4);pdf.rect(fx,y,FP_W,FP_H,"S");
+  try{await addImgPDF(pdf,f.dataUrl,fx,y+yOff,FP_W,fhReal);}catch(e){}
+  pdf.setFontSize(8.5);pdf.setFont("helvetica","bold");
+  pdf.text("Foto "+String(fotoNum+k).padStart(2,"0"),fx+FP_W/2,y+FP_H+5,{align:"center"});
+  pdf.setFont("helvetica","normal");pdf.text(f.tipo,fx+FP_W/2,y+FP_H+9.5,{align:"center"});
+}}
 }
 
 function getImgDims(dataUrl){return new Promise(res=>{const img=new Image();img.onload=()=>res({w:img.naturalWidth||1,h:img.naturalHeight||1});img.onerror=()=>res({w:4,h:3});img.src=dataUrl;});}
@@ -965,29 +978,33 @@ async function shareOrDownload(blob,nome,mime){if(navigator.share&&navigator.can
 
 function addHeader(pdf,M,W,CW,v,local,logoSrc,HDR_H){
   pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.5);pdf.rect(M,M,CW,HDR_H,"S");
-  if(logoSrc&&logoSrc.length>50){try{pdf.addImage(logoSrc,"JPEG",M+1,M+0.5,20,20,"","FAST");}catch(e){}}
-  pdf.setFontSize(12);pdf.setFont("helvetica","bold");pdf.text("RELAT\xd3RIO DE VISTORIA CAUTELAR",M+CW/2,M+7.5,{align:"center"});
-  pdf.setFontSize(9.5);pdf.text("RRT: "+v.clienteRRT,W-M-1,M+7.5,{align:"right"});
-  pdf.setLineWidth(0.3);pdf.line(M,M+10,M+CW,M+10);
-  pdf.setFontSize(8.5);pdf.setFont("helvetica","bold");pdf.text("INFORMA\xc7\xd5ES DO RESPONS\xc1VEL",M+CW/2,M+14,{align:"center"});
-  pdf.line(M,M+15.5,M+CW,M+15.5);
+  if(logoSrc&&logoSrc.length>50){try{pdf.addImage(logoSrc,"JPEG",M+1,M+1,16,16,"","FAST");}catch(e){}}
+  // Titulo centralizado - logo ocupa lado esquerdo
+  pdf.setFontSize(11.5);pdf.setFont("helvetica","bold");
+  pdf.text("RELAT\xd3RIO DE VISTORIA CAUTELAR",M+CW/2,M+8,{align:"center"});
+  pdf.setFontSize(9.5);pdf.text("RRT: "+v.clienteRRT,W-M-1,M+8,{align:"right"});
+  // Linha separadora ABAIXO do logo (logo termina em M+17)
+  pdf.setLineWidth(0.3);pdf.line(M,M+18,M+CW,M+18);
+  pdf.setFontSize(8.5);pdf.setFont("helvetica","bold");
+  pdf.text("INFORMA\xc7\xd5ES DO RESPONS\xc1VEL",M+CW/2,M+21.5,{align:"center"});
+  pdf.line(M,M+23,M+CW,M+23);
   const nom="Nome: ";const nomV=v.responsavel&&v.responsavel.nome||"--";
-  pdf.setFontSize(8);pdf.setFont("helvetica","bold");pdf.text(nom,M+1,M+19.5);pdf.setFont("helvetica","normal");pdf.text(nomV,M+1+pdf.getTextWidth(nom),M+19.5);
-  pdf.setLineWidth(0.2);pdf.line(M,M+21,M+CW,M+21);
-  const cpfL="CPF/RG: ";pdf.setFont("helvetica","bold");pdf.text(cpfL,M+1,M+24.5);pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.doc||"Nao informado",M+1+pdf.getTextWidth(cpfL),M+24.5);
-  const contL="Contato: ";pdf.setFont("helvetica","bold");pdf.text(contL,M+80,M+24.5);pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.tel||"--",M+80+pdf.getTextWidth(contL),M+24.5);
-  pdf.line(M,M+26,M+CW,M+26);
-  const endL="Endere\xe7o: ";pdf.setFont("helvetica","bold");pdf.text(endL,M+1,M+29.5);pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.rua||"",M+1+pdf.getTextWidth(endL),M+29.5);
-  const nL="N\xba: ";pdf.setFont("helvetica","bold");pdf.text(nL,M+95,M+29.5);pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.num||"",M+95+pdf.getTextWidth(nL),M+29.5);
-  if(v.endereco&&v.endereco.comp){const cL="Compl.: ";pdf.setFont("helvetica","bold");pdf.text(cL,M+115,M+29.5);pdf.setFont("helvetica","normal");pdf.text(v.endereco.comp,M+115+pdf.getTextWidth(cL),M+29.5);}
-  pdf.line(M,M+31,M+CW,M+31);
-  const colL="Coletor: ";pdf.setFont("helvetica","bold");pdf.text(colL,M+1,M+34.5);pdf.setFont("helvetica","normal");pdf.text(v.coletorNome||"",M+1+pdf.getTextWidth(colL),M+34.5);
-  if(v.estado){const estL="Estado de Conserva\xe7\xe3o: ";pdf.setFont("helvetica","bold");pdf.text(estL,M+75,M+34.5);pdf.setFont("helvetica","normal");pdf.text(v.estado+(v.idade?" | Idade Aparente do Im\xf3vel: "+v.idade+" anos":""),M+75+pdf.getTextWidth(estL),M+34.5);}
-  pdf.setLineWidth(0.3);pdf.line(M,M+36,M+CW,M+36);
-  pdf.setFillColor(215,215,215);pdf.rect(M,M+36,CW/2,HDR_H-36,"F");pdf.rect(M+CW/2,M+36,CW/2,HDR_H-36,"F");
-  pdf.setLineWidth(0.3);pdf.line(M+CW/2,M+36,M+CW/2,M+HDR_H);
-  pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text("Local: "+local,M+1,M+38.5);
-  pdf.text("Data Vistoria: "+(v.data||""),W-M-1,M+38.5,{align:"right"});
+  pdf.setFontSize(8);pdf.setFont("helvetica","bold");pdf.text(nom,M+1,M+27);pdf.setFont("helvetica","normal");pdf.text(nomV,M+1+pdf.getTextWidth(nom),M+27);
+  pdf.setLineWidth(0.2);pdf.line(M,M+28.5,M+CW,M+28.5);
+  const cpfL="CPF/RG: ";pdf.setFont("helvetica","bold");pdf.text(cpfL,M+1,M+32);pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.doc||"Nao informado",M+1+pdf.getTextWidth(cpfL),M+32);
+  const contL="Contato: ";pdf.setFont("helvetica","bold");pdf.text(contL,M+80,M+32);pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.tel||"--",M+80+pdf.getTextWidth(contL),M+32);
+  pdf.line(M,M+33.5,M+CW,M+33.5);
+  const endL="Endere\xe7o: ";pdf.setFont("helvetica","bold");pdf.text(endL,M+1,M+37);pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.rua||"",M+1+pdf.getTextWidth(endL),M+37);
+  const nL="N\xba: ";pdf.setFont("helvetica","bold");pdf.text(nL,M+95,M+37);pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.num||"",M+95+pdf.getTextWidth(nL),M+37);
+  if(v.endereco&&v.endereco.comp){const cL="Compl.: ";pdf.setFont("helvetica","bold");pdf.text(cL,M+115,M+37);pdf.setFont("helvetica","normal");pdf.text(v.endereco.comp,M+115+pdf.getTextWidth(cL),M+37);}
+  pdf.line(M,M+38.5,M+CW,M+38.5);
+  const colL="Coletor: ";pdf.setFont("helvetica","bold");pdf.text(colL,M+1,M+42);pdf.setFont("helvetica","normal");pdf.text(v.coletorNome||"",M+1+pdf.getTextWidth(colL),M+42);
+  if(v.estado){const estL="Estado de Conservação: ";pdf.setFont("helvetica","bold");pdf.text(estL,M+75,M+42);pdf.setFont("helvetica","normal");pdf.text(v.estado+(v.idade?" | Idade Aparente do Im\xf3vel: "+v.idade+" anos":""),M+75+pdf.getTextWidth(estL),M+42);}
+  pdf.setLineWidth(0.3);pdf.line(M,M+44,M+CW,M+44);
+  pdf.setFillColor(215,215,215);pdf.rect(M,M+44,CW/2,HDR_H-44,"F");pdf.rect(M+CW/2,M+44,CW/2,HDR_H-44,"F");
+  pdf.setLineWidth(0.3);pdf.line(M+CW/2,M+44,M+CW/2,M+HDR_H);
+  pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);pdf.text("Local: "+local,M+1,M+47.5);
+  pdf.text("Data Vistoria: "+(v.data||""),W-M-1,M+47.5,{align:"right"});
 }
 function addFooter(pdf,W,H,M,p){pdf.setFontSize(7);pdf.setFont("helvetica","bold");pdf.setTextColor(50,50,50);pdf.text((p.nome||"")+(p.cnpj?" | CNPJ: "+p.cnpj:""),W/2,H-M+2,{align:"center"});pdf.setFont("helvetica","normal");pdf.setFontSize(6.5);pdf.text((p.endereco||"")+(p.email?" | "+p.email:""),W/2,H-M+6,{align:"center"});pdf.setTextColor(0,0,0);}
 
