@@ -551,14 +551,22 @@ window.abrirCamera=async()=>{
   try{
     cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},audio:false});
     const v=document.getElementById("cam-video");v.srcObject=cameraStream;await v.play();
-    const t=cameraStream.getVideoTracks()[0];if(t&&t.getCapabilities){const c=t.getCapabilities();if(c.zoom)const zMin=c.zoom.min||1;const zMax=Math.min(10,c.zoom.max||10);
-    document.getElementById("zoom-slider").min=zMin;
-    document.getElementById("zoom-slider").max=zMax;
-    document.getElementById("zoom-slider").value=zMin;
-    document.getElementById("zoom-label").textContent=zMin+"x";
-    // Try to set initial zoom to minimum
-    t.applyConstraints({advanced:[{zoom:zMin}]}).catch(()=>{});}
-    document.getElementById("zoom-slider").value=1;document.getElementById("zoom-label").textContent="1x";
+    const t=cameraStream.getVideoTracks()[0];
+    if(t&&t.getCapabilities){
+      const c=t.getCapabilities();
+      if(c.zoom){
+        const zMin=c.zoom.min||1;const zMax=Math.min(10,c.zoom.max||10);
+        document.getElementById("zoom-slider").min=zMin;
+        document.getElementById("zoom-slider").max=zMax;
+        document.getElementById("zoom-slider").value=zMin;
+        document.getElementById("zoom-label").textContent=zMin+"x";
+        t.applyConstraints({advanced:[{zoom:zMin}]}).catch(()=>{});
+      } else {
+        document.getElementById("zoom-slider").value=1;document.getElementById("zoom-label").textContent="1x";
+      }
+    } else {
+      document.getElementById("zoom-slider").value=1;document.getElementById("zoom-label").textContent="1x";
+    }
     document.getElementById("camera-overlay").style.display="flex";
   }catch(e){alert("Camera indisponivel: "+e.message);}
 };
