@@ -39,7 +39,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 .avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex-shrink:0}
 .photo-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .photo-card{border-radius:10px;overflow:hidden;border:1px solid #e5e5e5;position:relative;background:#000}
-.photo-card img{width:100%;height:auto;display:block;max-height:160px;object-fit:contain}
+.photo-card img{width:100%;height:130px;display:block;object-fit:cover;aspect-ratio:4/3}
 .photo-label{background:rgba(0,0,0,.65);color:#fff;font-size:11px;padding:4px 8px;position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center}
 .del-btn{background:rgba(220,38,38,.85);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:11px;cursor:pointer}
 .camera-overlay{position:fixed;inset:0;background:#000;z-index:1000;display:flex;flex-direction:column;overflow:hidden}
@@ -553,7 +553,15 @@ window.abrirCamera=async()=>{
   fotoAtualAmbiente=amb;fotoAtualTipo=document.getElementById("v-tipo-foto").value;
   document.getElementById("cam-label").textContent=amb;document.getElementById("cam-tipo-badge").textContent=fotoAtualTipo;
   try{
-    cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},audio:false});
+    cameraStream=await navigator.mediaDevices.getUserMedia({
+      video:{
+        facingMode:{ideal:"environment"},
+        width:{ideal:4096,min:1280},
+        height:{ideal:2160,min:720},
+        frameRate:{ideal:30}
+      },
+      audio:false
+    });
     const v=document.getElementById("cam-video");v.srcObject=cameraStream;await v.play();
     const t=cameraStream.getVideoTracks()[0];
     if(t&&t.getCapabilities){
@@ -584,57 +592,114 @@ window.abrirCamera=async()=>{
 window.fecharCamera=()=>{if(cameraStream)cameraStream.getTracks().forEach(t=>t.stop());document.getElementById("camera-overlay").style.display="none";};
 window.trocarCamera=async()=>{cameraFacingMode=cameraFacingMode==="environment"?"user":"environment";if(cameraStream)cameraStream.getTracks().forEach(t=>t.stop());try{cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:cameraFacingMode}});const v=document.getElementById("cam-video");v.srcObject=cameraStream;await v.play();}catch(e){alert("Erro ao trocar camera");}};
 
-window.tirarFoto=()=>{
+window.tirarFoto=async()=>{
   const video=document.getElementById("cam-video");
-  const vW=video.videoWidth||1280,vH=video.videoHeight||720;
-  // Detectar orientacao via Screen Orientation API + deviceOrientation fallback
-  let screenAngle=0;
-  if(screen.orientation&&screen.orientation.angle!==undefined){
-    screenAngle=screen.orientation.angle; // 0=retrato, 90=paisagem direita, -90/270=paisagem esquerda
-  } else if(window.orientation!==undefined){
-    screenAngle=window.orientation;
+  // Usar resolucao maxima do video (sensor nativo)
+  const vW=video.videoWidth||1920,vH=video.videoHeight||1080;
+  // Garantir que estamos usando resolucao maxima disponivel
+  if(cameraStream){
+    const track=cameraStream.getVideoTracks()[0];
+    const settings=track.getSettings();
+    // Log para debug
+    console.log("Camera resolution:",settings.width,"x",settings.height);
   }
-  // Se o video é paisagem mas tela é retrato, precisa rotacionar
-  const isFrameLandscape=vW>vH;
-  const isScreenPortrait=Math.abs(screenAngle)===0||Math.abs(screenAngle)===180;
-  const needsRotation=isFrameLandscape&&isScreenPortrait;
-  const rotDir=screenAngle===90||screenAngle===-270?1:-1;
-  const outW=needsRotation?vH:vW;
-  const outH=needsRotation?vW:vH;
-  const canvas=document.createElement("canvas");canvas.width=outW;canvas.height=outH;
-  const ctx=canvas.getContext("2d");
-  if(needsRotation){
-    ctx.translate(outW/2,outH/2);
-    ctx.rotate(rotDir*Math.PI/2);
-    ctx.drawImage(video,-vW/2,-vH/2,vW,vH);
-    ctx.setTransform(1,0,0,1,0,0);
-  }else{ctx.drawImage(video,0,0,vW,vH);}
+  // ============================================================
+  // ORIENTAÇÃO DEFINITIVA: ImageCapture API → fallback canvas
+  // ============================================================
+  let photoBlob=null;
+  let vW2=vW,vH2=vH; // dimensoes finais apos possivel rotacao
+
+  // Tentar ImageCapture API primeiro (captura nativa sem rotacao errada)
+  if(typeof ImageCapture!=="undefined"&&cameraStream){
+    try{
+      const track=cameraStream.getVideoTracks()[0];
+      const ic=new ImageCapture(track);
+      photoBlob=await ic.takePhoto({imageHeight:Math.max(vW,vH),imageWidth:Math.max(vW,vH)});
+    }catch(e){photoBlob=null;}
+  }
+
+  let canvas,ctx;
+  if(photoBlob){
+    // Decodificar o blob para obter dimensoes reais
+    const blobUrl=URL.createObjectURL(photoBlob);
+    const nativeImg=await new Promise(res=>{const i=new Image();i.onload=()=>{URL.revokeObjectURL(blobUrl);res(i);};i.onerror=()=>{URL.revokeObjectURL(blobUrl);res(null);};i.src=blobUrl;});
+    if(nativeImg){
+      vW2=nativeImg.naturalWidth;vH2=nativeImg.naturalHeight;
+      canvas=document.createElement("canvas");canvas.width=vW2;canvas.height=vH2;
+      ctx=canvas.getContext("2d");
+      ctx.drawImage(nativeImg,0,0,vW2,vH2);
+    }else{photoBlob=null;}
+  }
+
+  if(!photoBlob){
+    // Fallback: capturar do video com deteccao de orientacao
+    let screenAngle=0;
+    try{
+      if(screen.orientation&&typeof screen.orientation.angle==="number"){
+        screenAngle=screen.orientation.angle;
+      } else if(typeof window.orientation==="number"){
+        screenAngle=window.orientation;
+      }
+    }catch(e){}
+    const normAngle=((screenAngle%360)+360)%360;
+    const isPortraitScreen=normAngle===0||normAngle===180;
+    const isLandscapeFrame=vW>vH;
+    const mustRotate=isPortraitScreen&&isLandscapeFrame;
+    const rotDir=(normAngle===90||normAngle===0&&vW<vH)?1:-1;
+    const SS=2;vW2=(mustRotate?vH:vW)*SS;vH2=(mustRotate?vW:vH)*SS;
+    canvas=document.createElement("canvas");canvas.width=vW2;canvas.height=vH2;
+    ctx=canvas.getContext("2d");
+    ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
+    if(mustRotate){
+      ctx.save();ctx.translate(vW2/2,vH2/2);
+      ctx.rotate(rotDir*Math.PI/2);
+      // Desenhar na escala 2x
+      ctx.drawImage(video,-(vH2)/2,-(vW2)/2,vH2,vW2);
+      ctx.restore();
+    }else{ctx.drawImage(video,0,0,vW2,vH2);}
+  }
+  const outW=vW2,outH=vH2;
   // Carimbo - usar fonte maior para evitar pixelacao
   const now=new Date();const tsText=now.toLocaleString("pt-BR");
-  const baseRef=Math.max(outW,outH);const fs=Math.max(28,Math.round(baseRef/45));
+  // baseRef sem SS para calculos de fonte (manter tamanho visual correto)
+const baseRefNative=Math.max(outW,outH);const fs=Math.max(32,Math.round(baseRefNative/38));
   const lineH=Math.round(fs*1.35);
   const coordLine=gpsAtual?gpsAtual.lat.toFixed(6)+"\u00b0S "+Math.abs(gpsAtual.lng).toFixed(6)+"\u00b0W":"";
   const allLines=[tsText,...enderecoLinhas,coordLine].filter(Boolean);
   const boxH=allLines.length*lineH+Math.round(fs*0.4);
   ctx.fillStyle="rgba(0,0,0,0.55)";ctx.fillRect(0,outH-boxH,outW,boxH);
-  allLines.forEach((line,i)=>{ctx.fillStyle="#fff";ctx.textBaseline="top";ctx.font=(i===0?"bold ":"")+fs+"px sans-serif";ctx.fillText(line,Math.round(fs*0.3),outH-boxH+Math.round(fs*0.1)+i*lineH);});
+  allLines.forEach((line,i)=>{
+    ctx.fillStyle="#fff";ctx.textBaseline="top";
+    ctx.font=(i===0?"bold ":"")+fs+'px -apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif';
+    // Sombra para melhor legibilidade
+    ctx.shadowColor="rgba(0,0,0,0.8)";ctx.shadowBlur=Math.round(fs*0.3);
+    ctx.fillText(line,Math.round(fs*0.3),outH-boxH+Math.round(fs*0.1)+i*lineH);
+    ctx.shadowBlur=0;
+  });
   // Logo proporcional - sem distorcao
   const logoSrc=prestadorDefault&&prestadorDefault.logo?prestadorDefault.logo:LOGO_CONST;
   const doLogo=src=>{
     if(src&&src.length>50){
       const li=new Image();
       li.onload=()=>{
-        // Tamanho proporcional: largura = 14% da foto, altura calculada pela proporcao real
-        const lW=Math.round(outW*0.14);
-        const lH=Math.round(lW*(li.naturalHeight/li.naturalWidth));
-        const pad=Math.round(outW*0.015);
-        ctx.drawImage(li,outW-lW-pad,pad,lW,lH);
+        // Logo proporcional - alta qualidade
+        const natRatio=li.naturalWidth/li.naturalHeight;
+        // Tamanho: ~15% da largura da foto
+        const maxLW=Math.round(outW*0.15);
+        const maxLH=Math.round(outH*0.14);
+        let lWf=maxLW;let lHf=Math.round(lWf/natRatio);
+        if(lHf>maxLH){lHf=maxLH;lWf=Math.round(lHf*natRatio);}
+        const padF=Math.round(outW*0.012);
+        // Desenhar com alta qualidade usando smoothing
+        ctx.imageSmoothingEnabled=true;
+        ctx.imageSmoothingQuality="high";
+        ctx.drawImage(li,outW-lWf-padF,padF,lWf,lHf);
         finish();
       };
       li.onerror=finish;li.src=src;
     }else{finish();}
   };
-  const finish=()=>{fecharCamera();fotoAtualBlob=canvas.toDataURL("image/jpeg",0.95);processarFoto();};
+  const finish=()=>{fecharCamera();fotoAtualBlob=canvas.toDataURL("image/jpeg",1.0);processarFoto();};
   doLogo(logoSrc);
 };
 
@@ -691,7 +756,7 @@ function desenharSeta(ctx,tipX,tipY,canvasW){
 function desenharSetas(){const canvas=document.getElementById("arrow-canvas");const ctx=canvas.getContext("2d");ctx.clearRect(0,0,canvas.width,canvas.height);if(arrowImage)ctx.drawImage(arrowImage,0,0,canvas.width,canvas.height);arrowPoints.forEach(p=>desenharSeta(ctx,p.x*canvas.width,p.y*canvas.height,canvas.width));}
 window.desfazerSeta=()=>{arrowPoints.pop();document.getElementById("arrow-counter").textContent=arrowPoints.length+" seta(s)";desenharSetas();};
 window.limparSetas=()=>{arrowPoints=[];document.getElementById("arrow-counter").textContent="0 setas";desenharSetas();};
-window.confirmarSetas=()=>{const canvas=document.getElementById("arrow-canvas");fotoAtualBlob=canvas.toDataURL("image/jpeg",0.93);document.getElementById("arrow-overlay").style.display="none";abrirModalPatologias();};
+window.confirmarSetas=()=>{const canvas=document.getElementById("arrow-canvas");fotoAtualBlob=canvas.toDataURL("image/jpeg",1.0);document.getElementById("arrow-overlay").style.display="none";abrirModalPatologias();};
 
 function abrirModalPatologias(){
   document.getElementById("pat-modal-info").textContent="Ambiente: "+fotoAtualAmbiente;
@@ -882,12 +947,12 @@ async function regeRarPDF(data){
     cx=M;pdf.setFontSize(7.5);pdf.setFont("helvetica","bold");colsH.forEach((c,i)=>{pdf.text(c,cx+1.5,y+4.8);cx+=colW[i];});y+=7;
     ambTotal.forEach((amb,ri)=>{
       const vals=COLS.map(k=>{const v=(data.checklist&&data.checklist[amb]&&data.checklist[amb][k])||[];return Array.isArray(v)?v:[];});
-      const maxN=Math.max(...vals.map(v=>v.length),1);const rowH=Math.max(7,maxN*3.8+2.5);
+      const rowH=13.5;// 3 patologias x 3.5mm + margem (3*3.5+2=12.5mm)
       if(y+rowH>PGB-10){pdf.addPage();y=20;}
       if(ri%2===0){pdf.setFillColor(247,247,247);cx=M;colW.forEach(w=>{pdf.rect(cx,y,w,rowH,"F");cx+=w;});}
       pdf.setDrawColor(180,180,180);pdf.setLineWidth(0.2);pdf.rect(M,y,CW,rowH,"S");
       cx=M;pdf.setFont("helvetica","bold");pdf.setFontSize(7);pdf.text(amb,cx+1.5,y+4.5);cx+=colW[0];
-      vals.forEach((arr,ki)=>{pdf.setFont("helvetica","normal");if(!arr.length){pdf.text("--",cx+1.5,y+4.5);}else{arr.forEach((p,pi)=>{const s=p==="Fissura/Trinca/Rachadura"?"Fissura/Trinca":p==="Umidade/Infiltra\xe7\xe3o"?"Umid./Infiltr.":p;pdf.text(s,cx+1.5,y+3.5+pi*3.8);});}cx+=colW[ki+1];});
+      vals.forEach((arr,ki)=>{pdf.setFont("helvetica","normal");pdf.setFontSize(6);const allP=["Fissura/Trinca/Rachadura","Umidade/Infiltração","Danificado"];const lblP=["Fissura/Trinca","Umid./Infiltr.","Danificado"];allP.forEach((pp,pi)=>{const mk=arr.includes(pp);pdf.text((mk?"☑":"☐")+" "+lblP[pi],cx+1,y+3.2+pi*3.5);});cx+=colW[ki+1];});
       y+=rowH;
     });
     y+=8;if(data.observacoes){pdf.setFont("helvetica","bold");pdf.setFontSize(8.5);pdf.text("Observa\xe7\xf5es:",M,y);y+=5;pdf.setFont("helvetica","normal");const lines=pdf.splitTextToSize(data.observacoes,CW);pdf.text(lines,M,y);y+=lines.length*5+6;}
@@ -910,6 +975,10 @@ window.finalizarVistoria=async()=>{
   try{
     const{jsPDF}=window.jspdf;
     const pdf=new jsPDF("p","mm","a4");
+    // Pre-renderizar logo com proporcao correta para PDF
+    // Cabeçalho: logo ocupa area de ~90mm x 17mm (lado esquerdo)
+    const logoPrep=await prepLogoForPDF(logoSrc,90,17);
+    const logoRatio=logoPrep?(logoPrep.w/logoPrep.h):2.0;
     // === DIMENSOES EXATAS DO MODELO2 ===
     const PW=210,PH=297;
     const ML=3,MT=15,MR=5,MB=5;
@@ -949,17 +1018,20 @@ window.finalizarVistoria=async()=>{
       const pF=pagFotos[pg].fotos;
       const isP=pagFotos[pg].isPrimeira;
       const locais=[...new Set(pF.map(f=>f.ambiente))];
-      pdfHeader(pdf,ML,PW,CW,currentVistoria,locais.join(" / "),logoSrc,HDR,MT);
+      pdfHeader(pdf,ML,PW,CW,currentVistoria,locais.join(" / "),logoSrc,HDR,MT,logoPrep);
       let y=Y0;
 
       if(isP&&pF.length>0){
         // === FOTO 01: largura total, legenda "Fachada" ===
         const f0=pF[0];
         const dims=await getImgDims(f0.dataUrl);
-        const fhReal=Math.min(F01H,Math.round(CW*dims.h/dims.w));
-        const yOff=Math.round((F01H-fhReal)/2);
+        // Manter proporcao: calcular dimensoes que cabem no box CW x F01H
+        const scaleW=CW/dims.w;const scaleH=F01H/dims.h;
+        const scale=Math.min(scaleW,scaleH);
+        const fwReal=Math.round(dims.w*scale);const fhReal=Math.round(dims.h*scale);
+        const xOff=Math.round((CW-fwReal)/2);const yOff=Math.round((F01H-fhReal)/2);
         pdf.setDrawColor(100,100,100);pdf.setLineWidth(0.3);pdf.rect(ML,y,CW,F01H,"S");
-        try{await addImgPDF(pdf,f0.dataUrl,ML,y+yOff,CW,fhReal);}catch(e){}
+        try{await addImgPDF(pdf,f0.dataUrl,ML+xOff,y+yOff,fwReal,fhReal);}catch(e){}
         // Legenda foto 01
         pdf.setFontSize(8);pdf.setFont("helvetica","bold");
         pdf.text("Foto 01",ML+CW/2,y+F01H+4,{align:"center"});
@@ -978,7 +1050,7 @@ window.finalizarVistoria=async()=>{
         for(let i=0;i<pF.length;i+=2){
           if(y+FPH+LEGH>PGB){
             pdf.addPage();
-            pdfHeader(pdf,ML,PW,CW,currentVistoria,locais.join(" / "),logoSrc,HDR,MT);
+            pdfHeader(pdf,ML,PW,CW,currentVistoria,locais.join(" / "),logoSrc,HDR,MT,logoPrep);
             y=Y0;
           }
           const count=Math.min(2,pF.length-i);
@@ -992,13 +1064,13 @@ window.finalizarVistoria=async()=>{
 
     // === CHECKLIST ===
     pdf.addPage();
-    pdfHeader(pdf,ML,PW,CW,currentVistoria,"Checklist de Patologias",logoSrc,HDR,MT);
+    pdfHeader(pdf,ML,PW,CW,currentVistoria,"",logoSrc,HDR,MT,logoPrep);
     let yc=Y0+3;
     pdf.setFontSize(9);pdf.setFont("helvetica","bold");
     pdf.text("IDENTIFICA\xc7\xc3O DE PATOLOGIAS",ML+CW/2,yc,{align:"center"});yc+=7;
     const ambTotal=[...AMBIENTES,...ambientesExtras];
     const colsH=["Local","Estrutura","Parede e muro","Cobert. a teto","Porta e esq.","Piso e calc."];
-    const colW=[34,31,34,33,34,36]; // soma=202mm
+    const colW=[34,31,34,32,35,36]; // soma=202mm
     pdf.setFillColor(200,200,200);let cx=ML;
     colW.forEach(w=>{pdf.rect(cx,yc,w,7,"F");cx+=w;});
     pdf.setDrawColor(130,130,130);pdf.setLineWidth(0.25);pdf.rect(ML,yc,CW,7,"S");
@@ -1012,9 +1084,13 @@ window.finalizarVistoria=async()=>{
       pdf.setDrawColor(180,180,180);pdf.setLineWidth(0.2);pdf.rect(ML,yc,CW,rowH,"S");
       cx=ML;pdf.setFont("helvetica","bold");pdf.setFontSize(6.5);pdf.text(amb,cx+1.5,yc+4);cx+=colW[0];
       vals.forEach((arr,ki)=>{
-        pdf.setFont("helvetica","normal");
-        if(!arr.length){pdf.text("--",cx+1.5,yc+4);}
-        else{arr.forEach((p,pi)=>{const s=p.includes("Fissura")?"Fissura/Trinca":p.includes("Umidade")?"Umid./Infiltr.":p;pdf.text(s,cx+1.5,yc+3.2+pi*3.5);});}
+        pdf.setFont("helvetica","normal");pdf.setFontSize(6);
+        const allP2=["Fissura/Trinca/Rachadura","Umidade/Infiltração","Danificado"];
+        const lblP2=["Fissura/Trinca","Umid./Infiltr.","Danificado"];
+        allP2.forEach((pp2,pi2)=>{
+          const mk2=arr.includes(pp2);
+          pdf.text((mk2?"☑":"☐")+" "+lblP2[pi2],cx+1,yc+3+pi2*3.5);
+        });
         cx+=colW[ki+1];
       });
       yc+=rowH;
@@ -1070,10 +1146,11 @@ async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
     const f=fotos[startIdx];
     const fx=ML+(CW-FPL)/2;
     const dims=await getImgDims(f.dataUrl);
-    const fhReal=Math.min(FPH,Math.round(FPL*dims.h/dims.w));
-    const yOff=Math.round((FPH-fhReal)/2);
-    pdf.rect(fx,y,FPL,FPH,"S");
-    try{await addImgPDF(pdf,f.dataUrl,fx,y+yOff,FPL,fhReal);}catch(e){}
+    const sc=Math.min(FPL/dims.w,FPH/dims.h);
+    const fw_r=Math.round(dims.w*sc);const fh_r=Math.round(dims.h*sc);
+    const x_off=Math.round((FPL-fw_r)/2);const y_off=Math.round((FPH-fh_r)/2);
+    pdf.setDrawColor(100,100,100);pdf.setLineWidth(0.3);pdf.rect(fx,y,FPL,FPH,"S");
+    try{await addImgPDF(pdf,f.dataUrl,fx+x_off,y+y_off,fw_r,fh_r);}catch(e){}
     pdf.setFontSize(8);pdf.setFont("helvetica","bold");
     pdf.text("Foto "+String(fotoNum).padStart(2,"0"),fx+FPL/2,y+FPH+4,{align:"center"});
     pdf.setFont("helvetica","normal");pdf.text(f.tipo,fx+FPL/2,y+FPH+8.5,{align:"center"});
@@ -1085,10 +1162,11 @@ async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
     for(let k=0;k<2&&startIdx+k<fotos.length;k++){
       const f=fotos[startIdx+k];const fw=ws[k];
       const dims=await getImgDims(f.dataUrl);
-      const fhReal=Math.min(FPH,Math.round(fw*dims.h/dims.w));
-      const yOff=Math.round((FPH-fhReal)/2);
+      const sc3=Math.min(fw/dims.w,FPH/dims.h);
+      const fw3=Math.round(dims.w*sc3);const fh3=Math.round(dims.h*sc3);
+      const xo3=Math.round((fw-fw3)/2);const yo3=Math.round((FPH-fh3)/2);
       pdf.setDrawColor(100,100,100);pdf.setLineWidth(0.3);pdf.rect(fx,y,fw,FPH,"S");
-      try{await addImgPDF(pdf,f.dataUrl,fx,y+yOff,fw,fhReal);}catch(e){}
+      try{await addImgPDF(pdf,f.dataUrl,fx+xo3,y+yo3,fw3,fh3);}catch(e){}
       pdf.setFontSize(8);pdf.setFont("helvetica","bold");
       pdf.text("Foto "+String(fotoNum+k).padStart(2,"0"),fx+fw/2,y+FPH+4,{align:"center"});
       pdf.setFont("helvetica","normal");pdf.text(f.tipo,fx+fw/2,y+FPH+8.5,{align:"center"});
@@ -1097,11 +1175,69 @@ async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
   }
 }
 
+// Pre-renderiza logo em canvas garantindo proporcao correta
+async function prepLogoForPDF(logoSrc,maxW,maxH){
+  // Gemini tip: usar OffscreenCanvas 2x para logo nítido no PDF
+  return new Promise(res=>{
+    if(!logoSrc||logoSrc.length<50){res(null);return;}
+    const img=new Image();
+    img.onload=()=>{
+      try{
+        const ratio=img.naturalWidth/img.naturalHeight;
+        let w=maxW,h=Math.round(w/ratio);
+        if(h>maxH){h=maxH;w=Math.round(h*ratio);}
+        // 2x supersampling: canvas 2x do tamanho final
+        const scale=3;// 3x para máxima nitidez
+        let oc;
+        if(typeof OffscreenCanvas!=="undefined"){
+          oc=new OffscreenCanvas(Math.round(w*scale*3.78),Math.round(h*scale*3.78));
+        }else{
+          oc=document.createElement("canvas");
+          oc.width=Math.round(w*scale*3.78);// mm->px: 1mm=3.78px @96dpi, mas usamos 3x
+          oc.height=Math.round(h*scale*3.78);
+        }
+        const ctx=oc.getContext("2d");
+        ctx.imageSmoothingEnabled=true;
+        ctx.imageSmoothingQuality="high";
+        ctx.drawImage(img,0,0,oc.width,oc.height);
+        // Converter para dataURL
+        if(oc.convertToBlob){
+          // OffscreenCanvas: usar convertToBlob
+          oc.convertToBlob({type:"image/png"}).then(blob=>{
+            const reader=new FileReader();
+            reader.onload=e=>res({dataUrl:e.target.result,w,h});
+            reader.readAsDataURL(blob);
+          }).catch(()=>{
+            // fallback se falhar
+            const fc=document.createElement("canvas");
+            fc.width=oc.width;fc.height=oc.height;
+            fc.getContext("2d").drawImage(img,0,0,oc.width,oc.height);
+            res({dataUrl:fc.toDataURL("image/png"),w,h});
+          });
+        }else{
+          res({dataUrl:oc.toDataURL("image/png"),w,h});
+        }
+      }catch(e){
+        // Fallback simples
+        const fc=document.createElement("canvas");
+        const ratio2=img.naturalWidth/img.naturalHeight;
+        let w2=maxW,h2=Math.round(w2/ratio2);
+        if(h2>maxH){h2=maxH;w2=Math.round(h2*ratio2);}
+        fc.width=img.naturalWidth;fc.height=img.naturalHeight;
+        fc.getContext("2d").drawImage(img,0,0,fc.width,fc.height);
+        res({dataUrl:fc.toDataURL("image/png"),w:w2,h:h2});
+      }
+    };
+    img.onerror=()=>res(null);
+    img.src=logoSrc;
+  });
+}
+
 function getImgDims(dataUrl){return new Promise(res=>{const img=new Image();img.onload=()=>res({w:img.naturalWidth||1,h:img.naturalHeight||1});img.onerror=()=>res({w:4,h:3});img.src=dataUrl;});}
-function addImgPDF(pdf,dataUrl,x,y,w,h){return new Promise(res=>{try{pdf.addImage(dataUrl,"JPEG",x,y,w,h,"","FAST");}catch(e){}res();});}
+function addImgPDF(pdf,dataUrl,x,y,w,h){return new Promise(res=>{try{pdf.addImage(dataUrl,"JPEG",x,y,w,h,"","NONE");}catch(e){}res();});}
 async function shareOrDownload(blob,nome,mime){if(navigator.share&&navigator.canShare){try{const f=new File([blob],nome,{type:mime});if(navigator.canShare({files:[f]})){await navigator.share({files:[f],title:nome});return;}}catch(e){if(e.name==="AbortError")return;}}const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=nome;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),2000);}
 
-function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT){
+function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep){
   // === CABEÇALHO FIEL AO MODELO2 ===
   // Borda externa completa do cabeçalho
   pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.4);pdf.rect(ML,MT,CW,HDR,"S");
@@ -1119,10 +1255,13 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT){
   // Logo ocupa ~69% da largura (cols A:I de A:L)
   if(logoSrc&&logoSrc.length>50){
     try{
-      // Logo proporcional dentro da area rows 1-3 lado esquerdo
-      const logoW=Math.round(CW*0.45);
-      const logoH=18; // 18.3mm = rows 1-3
-      pdf.addImage(logoSrc,"JPEG",ML+1,MT+0.5,logoW,logoH,"","FAST");
+      // Usar logo pre-renderizado (proporcao garantida) ou fallback
+      const lSrc=logoPrep?logoPrep.dataUrl:logoSrc;
+      const lW=logoPrep?logoPrep.w:(Math.round(CW*0.40));
+      const lH=logoPrep?logoPrep.h:Math.round(lW*0.5);
+      const lY=MT+0.5+Math.round((18-lH)/2);
+      const lFmt=logoPrep?"PNG":"JPEG";
+      pdf.addImage(lSrc,lFmt,ML+1,lY,lW,lH,"","FAST");
     }catch(e){}
   }
 
@@ -1139,7 +1278,7 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT){
 
   // ROW 5 (5.1mm): Nome
   const r5y=MT+26.3;
-  const nomL="Nome: ";
+  const nomL="Nome:  ";
   pdf.setFont("helvetica","bold");pdf.text(nomL,ML+1,r5y);
   pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.nome||"--",ML+1+pdf.getTextWidth(nomL),r5y);
 
@@ -1148,7 +1287,7 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT){
 
   // ROW 6 (5.1mm): CPF/RG + Contato
   const r6y=MT+31.4;
-  const cpfL="CPF/RG: ";const ctL="Contato: ";
+  const cpfL="CPF/RG:  ";const ctL="Contato:  ";
   pdf.setFont("helvetica","bold");pdf.text(cpfL,ML+1,r6y);
   pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.doc||"Nao informado",ML+1+pdf.getTextWidth(cpfL),r6y);
   pdf.setFont("helvetica","bold");pdf.text(ctL,ML+80,r6y);
@@ -1165,7 +1304,7 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT){
   pdf.setFont("helvetica","bold");pdf.text(nL,ML+97,r7y);
   pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.num||"",ML+97+pdf.getTextWidth(nL),r7y);
   if(v.endereco&&v.endereco.comp){
-    const cL="Compl.: ";
+    const cL="Compl.:  ";
     pdf.setFont("helvetica","bold");pdf.text(cL,ML+118,r7y);
     pdf.setFont("helvetica","normal");pdf.text(v.endereco.comp,ML+118+pdf.getTextWidth(cL),r7y);
   }
@@ -1175,7 +1314,7 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT){
 
   // ROW 8 (5.1mm): Coletor + Estado de Conservacao + Idade
   const r8y=MT+41.6;
-  const colL="Coletor: ";
+  const colL="Coletor:  ";
   pdf.setFont("helvetica","bold");pdf.text(colL,ML+1,r8y);
   pdf.setFont("helvetica","normal");pdf.text(v.coletorNome||"",ML+1+pdf.getTextWidth(colL),r8y);
   if(v.estado){
@@ -1194,17 +1333,20 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT){
   pdf.setLineWidth(0.3);pdf.line(ML+CW/2,l7y,ML+CW/2,MT+HDR);
   const r9y=MT+47.3;
   pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
-  pdf.text("Local: "+local,ML+1,r9y);
-  pdf.text("Data Vistoria: "+(v.data||""),ML+CW-1,r9y,{align:"right"});
+  pdf.text("Local:  "+local,ML+1,r9y);
+  pdf.text("Data Vistoria:  "+(v.data||""),ML+CW-1,r9y,{align:"right"});
 }
 
 function pdfFooter(pdf,PW,PH,ML,MR,MB,p){
-  const fy=PH-MB+1;
-  pdf.setDrawColor(160,160,160);pdf.setLineWidth(0.2);pdf.line(ML,PH-MB-1,PW-MR,PH-MB-1);
-  pdf.setFontSize(7);pdf.setFont("helvetica","bold");pdf.setTextColor(50,50,50);
-  pdf.text((p.nome||"")+(p.cnpj?" | CNPJ: "+p.cnpj:""),PW/2,fy,{align:"center"});
+  // Rodape fixo nos ultimos 10mm da pagina
+  const fyLine=PH-10;const fy1=PH-7;const fy2=PH-3;
+  pdf.setDrawColor(160,160,160);pdf.setLineWidth(0.2);pdf.line(ML,fyLine,PW-MR,fyLine);
+  pdf.setFontSize(7.5);pdf.setFont("helvetica","bold");pdf.setTextColor(50,50,50);
+  const linha1=(p.nome||"")+(p.cnpj?" | CNPJ: "+p.cnpj:"");
+  pdf.text(linha1,PW/2,fy1,{align:"center"});
   pdf.setFont("helvetica","normal");pdf.setFontSize(6.5);
-  pdf.text((p.endereco||"")+(p.email?" | "+p.email:""),PW/2,fy+4,{align:"center"});
+  const linha2=(p.endereco||"")+(p.email?" | "+p.email:"");
+  pdf.text(linha2,PW/2,fy2,{align:"center"});
   pdf.setTextColor(0,0,0);
 }
 
