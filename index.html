@@ -584,27 +584,46 @@ window.abrirCamera=async()=>{
   const amb=document.getElementById("v-ambiente").value;if(!amb)return alert("Selecione o ambiente primeiro");
   fotoAtualAmbiente=amb;fotoAtualTipo=document.getElementById("v-tipo-foto").value;
   document.getElementById("cam-label").textContent=amb;document.getElementById("cam-tipo-badge").textContent=fotoAtualTipo;
+  // Mostrar overlay ANTES (evita interrupcao do play por load request)
+  document.getElementById("camera-overlay").style.display="flex";
+  // Reset video element
+  const v=document.getElementById("cam-video");
+  v.srcObject=null;
   try{
-    // Tentar camera traseira com max resolucao e zoom nativo disponivel
+    // Tentar camera traseira com zoom nativo
     let constraints={
       video:{
         facingMode:{ideal:"environment"},
         width:{ideal:4096,min:1280},
         height:{ideal:2160,min:720},
-        frameRate:{ideal:30},
-        // Permitir zoom digital/optico do sensor
-        zoom:true
+        frameRate:{ideal:30}
       },
       audio:false
     };
+    // Tentar com zoom primeiro (para Xiaomi wide-angle)
     try{
-      cameraStream=await navigator.mediaDevices.getUserMedia(constraints);
+      const constr2=JSON.parse(JSON.stringify(constraints));
+      constr2.video.zoom=true;
+      cameraStream=await navigator.mediaDevices.getUserMedia(constr2);
     }catch(e){
-      // Fallback sem zoom constraint
-      delete constraints.video.zoom;
       cameraStream=await navigator.mediaDevices.getUserMedia(constraints);
     }
-    const v=document.getElementById("cam-video");v.srcObject=cameraStream;await v.play();
+    v.srcObject=cameraStream;
+    // Esperar metadata carregar antes de play (evita AbortError)
+    await new Promise((res,rej)=>{
+      const timer=setTimeout(()=>res(),2500); // timeout seguranca
+      v.onloadedmetadata=()=>{clearTimeout(timer);res();};
+      v.onerror=()=>{clearTimeout(timer);rej(new Error("Video load error"));};
+    });
+    // Play silencioso (ignorar AbortError - nao eh erro real)
+    try{await v.play();}catch(e){
+      if(e.name!=="AbortError"&&e.name!=="NotAllowedError"){
+        console.warn("Play warning:",e.message);
+      }
+      // Retry apos pequeno delay
+      await new Promise(r=>setTimeout(r,200));
+      try{await v.play();}catch(e2){/* ignorar */}
+    }
     const t=cameraStream.getVideoTracks()[0];
     if(t&&t.getCapabilities){
       const c=t.getCapabilities();
@@ -621,8 +640,10 @@ window.abrirCamera=async()=>{
     } else {
       document.getElementById("zoom-slider").value=1;document.getElementById("zoom-label").textContent="1x";
     }
-    document.getElementById("camera-overlay").style.display="flex";
-  }catch(e){alert("Camera indisponivel: "+e.message);}
+  }catch(e){
+    document.getElementById("camera-overlay").style.display="none";
+    alert("Camera indisponível: "+e.message);
+  }
 };
 // Pinch-to-zoom na camera
 (function(){
@@ -651,7 +672,10 @@ window.trocarCamera=async()=>{
         video:{deviceId:{exact:dev.deviceId},width:{ideal:4096},height:{ideal:2160}},
         audio:false
       });
-      const v=document.getElementById("cam-video");v.srcObject=cameraStream;await v.play();
+      const v=document.getElementById("cam-video");
+      v.srcObject=cameraStream;
+      await new Promise(res=>{const t=setTimeout(res,2000);v.onloadedmetadata=()=>{clearTimeout(t);res();};});
+      try{await v.play();}catch(e){/* ignorar AbortError */}
       // Atualizar zoom range
       const track=cameraStream.getVideoTracks()[0];
       if(track&&track.getCapabilities){
@@ -672,7 +696,10 @@ window.trocarCamera=async()=>{
     if(cameraStream)cameraStream.getTracks().forEach(t=>t.stop());
     try{
       cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:cameraFacingMode}});
-      const v=document.getElementById("cam-video");v.srcObject=cameraStream;await v.play();
+      const v=document.getElementById("cam-video");
+      v.srcObject=cameraStream;
+      await new Promise(res=>{const t=setTimeout(res,2000);v.onloadedmetadata=()=>{clearTimeout(t);res();};});
+      try{await v.play();}catch(e){/* ignorar AbortError */}
     }catch(e){alert("Erro ao trocar câmera");}
   }
 };
