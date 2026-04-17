@@ -269,8 +269,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   <div class="topbar"><button class="back" onclick="goTo('s-checklist')">&#8249; Checklist</button><h1>Finalizacao</h1></div>
   <div class="content">
     <div class="card"><h2>Estado de conservacao</h2>
-      <div class="field"><label>Estado de Conservacao</label><select id="fin-estado"><option>Bom</option><option>Regular</option><option>Ruim</option><option>Pessimo</option></select></div>
-      <div class="field"><label>Idade Aparente do Imovel (anos)</label><input type="number" id="fin-idade" placeholder="Ex: 30" min="0" max="200" inputmode="numeric"></div>
+      <div class="field"><label>Estado de Conservacao</label><select id="fin-estado"><option>Bom</option><option selected>Regular</option><option>Ruim</option><option>Péssimo</option></select></div>
+      <div class="field"><label>Idade Aparente do Imóvel (anos) *</label><input type="number" id="fin-idade" placeholder="Ex: 30" min="0" max="200" inputmode="numeric" required></div>
     </div>
     <div class="card"><h2>Assinatura do responsavel pelo imovel</h2>
       <div id="assin-info" style="font-size:13px;color:#555;line-height:1.8;margin-bottom:14px;padding:12px;background:#f9f9f9;border-radius:8px"></div>
@@ -660,22 +660,30 @@ window.abrirCamera=async()=>{
   v.srcObject=null;
   try{
     // Tentar camera traseira com zoom nativo
+    // Solicitar resolução máxima do sensor
     let constraints={
       video:{
         facingMode:{ideal:"environment"},
-        width:{ideal:4096,min:1280},
-        height:{ideal:2160,min:720},
-        frameRate:{ideal:30}
+        width:{ideal:9999,min:1280},   // pede máximo disponível
+        height:{ideal:9999,min:720},
+        frameRate:{ideal:30,max:30},
+        // Desativar processamento automático para preservar qualidade bruta
+        whiteBalanceMode:"continuous",
+        exposureMode:"continuous",
+        focusMode:"continuous"
       },
       audio:false
     };
-    // Tentar com zoom primeiro (para Xiaomi wide-angle)
     try{
-      const constr2=JSON.parse(JSON.stringify(constraints));
-      constr2.video.zoom=true;
-      cameraStream=await navigator.mediaDevices.getUserMedia(constr2);
-    }catch(e){
-      cameraStream=await navigator.mediaDevices.getUserMedia(constraints);
+      const c2=JSON.parse(JSON.stringify(constraints));
+      c2.video.zoom=true;
+      cameraStream=await navigator.mediaDevices.getUserMedia(c2);
+    }catch(e1){
+      // Fallback: sem propriedades avançadas
+      cameraStream=await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:{ideal:"environment"},width:{ideal:4096,min:1280},height:{ideal:4096,min:720}},
+        audio:false
+      });
     }
     // Atribuir stream e aguardar estar pronto
     v.srcObject=null; // reset limpo
@@ -805,7 +813,20 @@ window.tirarFoto=async()=>{
     try{
       const track=cameraStream.getVideoTracks()[0];
       const ic=new ImageCapture(track);
-      photoBlob=await ic.takePhoto({imageHeight:Math.max(vW,vH),imageWidth:Math.max(vW,vH)});
+      // Solicitar máxima resolução disponível no ImageCapture
+      const photoCapabilities=await ic.getPhotoCapabilities().catch(()=>({}));
+      const imgSettings={};
+      if(photoCapabilities.imageWidth&&photoCapabilities.imageWidth.max){
+        imgSettings.imageWidth=photoCapabilities.imageWidth.max;
+        imgSettings.imageHeight=photoCapabilities.imageHeight.max;
+      }
+      if(photoCapabilities.fillLightMode&&photoCapabilities.fillLightMode.includes("auto")){
+        imgSettings.fillLightMode="auto";
+      }
+      if(photoCapabilities.redEyeReduction){
+        imgSettings.redEyeReduction=true;
+      }
+      photoBlob=await ic.takePhoto(Object.keys(imgSettings).length?imgSettings:{});
     }catch(e){photoBlob=null;}
   }
 
@@ -921,28 +942,28 @@ window.uploadFoto=()=>{const amb=document.getElementById("v-ambiente").value;if(
 window.handleFileUpload=e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{fotoAtualBlob=ev.target.result;processarFoto();};r.readAsDataURL(file);e.target.value="";};
 
 function abrirEditorSetas(imgDataUrl){
-  arrowPoints=[];document.getElementById("arrow-counter").textContent="0 setas";
+  arrowPoints=[];
+  document.getElementById("arrow-counter").textContent="0 setas";
   document.getElementById("arrow-overlay").style.display="flex";
   const canvas=document.getElementById("arrow-canvas");
   const img=new Image();
   img.onload=()=>{
     arrowImage=img;
-    // Usar toda a área disponível da tela
+    // Canvas de EXIBIÇÃO: tamanho da tela para interação fluida
     const isLandscape=window.innerWidth>window.innerHeight;
-    const controlsH=isLandscape?0:70; // em landscape controles ficam na lateral
-    const controlsW=isLandscape?80:0;
-    const maxW=window.innerWidth-controlsW;
-    const maxH=window.innerHeight-controlsH;
-    // Calcular escala mantendo proporção da imagem
-    const scaleW=maxW/img.naturalWidth;
-    const scaleH=maxH/img.naturalHeight;
-    const scale=Math.min(scaleW,scaleH,1);
-    canvas.width=Math.round(img.naturalWidth*scale);
-    canvas.height=Math.round(img.naturalHeight*scale);
-    // Centralizar canvas
+    const ctrlH=isLandscape?0:70;
+    const ctrlW=isLandscape?80:0;
+    const maxW=window.innerWidth-ctrlW;
+    const maxH=window.innerHeight-ctrlH;
+    const scaleDisplay=Math.min(maxW/img.naturalWidth,maxH/img.naturalHeight,1);
+    canvas.width=Math.round(img.naturalWidth*scaleDisplay);
+    canvas.height=Math.round(img.naturalHeight*scaleDisplay);
     canvas.style.maxWidth="100%";
     canvas.style.maxHeight="100%";
-    canvas.style.objectFit="contain";
+    // Guardar escala de exibição para usar ao exportar
+    canvas.dataset.displayScale=scaleDisplay;
+    canvas.dataset.origW=img.naturalWidth;
+    canvas.dataset.origH=img.naturalHeight;
     desenharSetas();
   };
   img.src=imgDataUrl;
@@ -950,37 +971,82 @@ function abrirEditorSetas(imgDataUrl){
   canvas.onclick=e=>{const r=canvas.getBoundingClientRect();arrowPoints.push({x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height});document.getElementById("arrow-counter").textContent=arrowPoints.length+" seta(s)";desenharSetas();};
 }
 
-function desenharSeta(ctx,tipX,tipY,canvasW){
-  // Seta com ponta triangular bem definida - estilo técnico
-  const sz=Math.max(40,Math.round(canvasW*0.10));
-  const angle=Math.PI*0.75; // 135° - aponta diagonal baixo-direita
-  // Calcular ponto da cauda
+// Função para desenhar seta em qualquer canvas (coordenadas absolutas)
+function desenharSetaEmCanvas(ctx,tipX,tipY,canvasW){
+  const sz=Math.max(40,Math.round(canvasW*0.08));// 8% da largura
+  const angle=Math.PI*0.75;
   const bodyLen=sz*1.2;
   const tailX=tipX-bodyLen*Math.cos(angle);
   const tailY=tipY-bodyLen*Math.sin(angle);
-  // Ponto onde o corpo termina (recuado da ponta para não sobrepor triangulo)
   const headLen=sz*0.55;
   const bodyEndX=tipX-headLen*Math.cos(angle);
   const bodyEndY=tipY-headLen*Math.sin(angle);
   const lw=Math.max(3,Math.round(sz*0.10));
   ctx.save();
-  // Corpo da seta (linha do rabo até antes da ponta)
+  // Sombra para contraste em qualquer fundo
+  ctx.shadowColor="rgba(0,0,0,0.7)";
+  ctx.shadowBlur=Math.round(lw*1.5);
   ctx.strokeStyle="#FF0000";ctx.lineWidth=lw;ctx.lineCap="round";
   ctx.beginPath();ctx.moveTo(tailX,tailY);ctx.lineTo(bodyEndX,bodyEndY);ctx.stroke();
-  // Ponta triangular sólida e bem visível
   const hAngle=0.42;
-  const p1x=tipX;const p1y=tipY;
-  const p2x=tipX-headLen*Math.cos(angle-hAngle);const p2y=tipY-headLen*Math.sin(angle-hAngle);
-  const p3x=tipX-headLen*Math.cos(angle+hAngle);const p3y=tipY-headLen*Math.sin(angle+hAngle);
+  const p1x=tipX,p1y=tipY;
+  const p2x=tipX-headLen*Math.cos(angle-hAngle),p2y=tipY-headLen*Math.sin(angle-hAngle);
+  const p3x=tipX-headLen*Math.cos(angle+hAngle),p3y=tipY-headLen*Math.sin(angle+hAngle);
   ctx.fillStyle="#FF0000";
   ctx.beginPath();ctx.moveTo(p1x,p1y);ctx.lineTo(p2x,p2y);ctx.lineTo(p3x,p3y);
   ctx.closePath();ctx.fill();
   ctx.restore();
 }
-function desenharSetas(){const canvas=document.getElementById("arrow-canvas");const ctx=canvas.getContext("2d");ctx.clearRect(0,0,canvas.width,canvas.height);if(arrowImage)ctx.drawImage(arrowImage,0,0,canvas.width,canvas.height);arrowPoints.forEach(p=>desenharSeta(ctx,p.x*canvas.width,p.y*canvas.height,canvas.width));}
+
+function desenharSeta(ctx,tipX,tipY,canvasW){
+  desenharSetaEmCanvas(ctx,tipX,tipY,canvasW);
+}
+
+// (old desenharSeta removed)
+
+function desenharSetas(){
+  const canvas=document.getElementById("arrow-canvas");
+  const ctx=canvas.getContext("2d");
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
+  if(arrowImage)ctx.drawImage(arrowImage,0,0,canvas.width,canvas.height);
+  arrowPoints.forEach(p=>desenharSetaEmCanvas(ctx,p.x*canvas.width,p.y*canvas.height,canvas.width));
+}
 window.desfazerSeta=()=>{arrowPoints.pop();document.getElementById("arrow-counter").textContent=arrowPoints.length+" seta(s)";desenharSetas();};
 window.limparSetas=()=>{arrowPoints=[];document.getElementById("arrow-counter").textContent="0 setas";desenharSetas();};
-window.confirmarSetas=()=>{const canvas=document.getElementById("arrow-canvas");fotoAtualBlob=canvas.toDataURL("image/jpeg",1.0);document.getElementById("arrow-overlay").style.display="none";abrirModalPatologias();};
+window.confirmarSetas=()=>{
+  const displayCanvas=document.getElementById("arrow-canvas");
+  const origW=parseInt(displayCanvas.dataset.origW)||displayCanvas.width;
+  const origH=parseInt(displayCanvas.dataset.origH)||displayCanvas.height;
+  const displayScale=parseFloat(displayCanvas.dataset.displayScale)||1;
+
+  // Criar canvas de SAÍDA na resolução original da foto
+  const outCanvas=document.createElement("canvas");
+  outCanvas.width=origW;
+  outCanvas.height=origH;
+  const ctx=outCanvas.getContext("2d");
+  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingQuality="high";
+
+  // Desenhar foto original em resolução máxima
+  if(arrowImage){
+    ctx.drawImage(arrowImage,0,0,origW,origH);
+  }
+
+  // Redesenhar setas na escala original (converter coordenadas de display para original)
+  const scaleToOrig=1/displayScale;
+  arrowPoints.forEach(p=>{
+    // p.x e p.y são frações (0-1) relativas ao canvas de display
+    const tipX=p.x*origW;
+    const tipY=p.y*origH;
+    desenharSetaEmCanvas(ctx,tipX,tipY,origW);
+  });
+
+  // Exportar em JPEG qualidade máxima
+  fotoAtualBlob=outCanvas.toDataURL("image/jpeg",1.0);
+  document.getElementById("arrow-overlay").style.display="none";
+  abrirModalPatologias();
+};
 
 function abrirModalPatologias(){
   document.getElementById("pat-modal-info").textContent="Ambiente: "+fotoAtualAmbiente;
@@ -1228,6 +1294,8 @@ async function regeRarPDF(data){
 
 // ===== GERAR PDF COMPLETO =====
 window.finalizarVistoria=async()=>{
+  const idadeVal=document.getElementById("fin-idade").value;
+  if(!idadeVal||isNaN(parseInt(idadeVal)))return alert("Informe a Idade Aparente do Imóvel (obrigatório)");
   if(!assinaturaData)return alert("Confirme a assinatura do responsavel");
   if(!assinaturaTecnico)return alert("Cadastre sua assinatura em Perfil");
   const btn=document.getElementById("btn-finalizar");btn.textContent="Gerando...";btn.disabled=true;
@@ -1321,67 +1389,114 @@ window.finalizarVistoria=async()=>{
       pdfFooter(pdf,PW,PH,ML,MR,MB,prest);
     }
 
-    // === PAGINA CHECKLIST ===
+    // === PAGINA CHECKLIST SEM CABEÇALHO ===
     pdf.addPage();
-    pdfHeader(pdf,ML,PW,CW,currentVistoria,"",logoSrc,HDR,MT,logoPrep);
-    let yc=Y0+3;
-    // Caixa título "IDENTIFICAÇÃO DE PATOLOGIAS" centralizada com fundo cinza
-    pdf.setFillColor(230,230,230);pdf.rect(ML,yc-5,CW,7,"F");
-    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(ML,yc-5,CW,7,"S");
-    pdf.setFontSize(9);pdf.setFont("helvetica","bold");
-    pdf.text("IDENTIFICAÇÃO DE PATOLOGIAS",ML+CW/2,yc,{align:"center"});yc+=4;
+    // Borda da página
+    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.5);
+    pdf.rect(ML,ML,PW-ML-MR,PH-ML-MB,"S");
+    let yc=ML+4;
+    // Título com fundo cinza
+    pdf.setFillColor(220,220,220);pdf.rect(ML,yc,CW,8,"F");
+    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(ML,yc,CW,8,"S");
+    pdf.setFontSize(10);pdf.setFont("helvetica","bold");
+    pdf.text("IDENTIFICAÇÃO DE PATOLOGIAS",ML+CW/2,yc+5.5,{align:"center"});yc+=10;
+    // Mini cabeçalho com nome e endereço
+    pdf.setFontSize(7.5);
+    const nomLc="Nome:  ";pdf.setFont("helvetica","bold");pdf.text(nomLc,ML+1.5,yc+4.5);
+    pdf.setFont("helvetica","normal");pdf.text(currentVistoria.responsavel&&currentVistoria.responsavel.nome||"",ML+1.5+pdf.getTextWidth(nomLc),yc+4.5);
+    const endLc="Endereço:  ";pdf.setFont("helvetica","bold");pdf.text(endLc,ML+CW/2+1.5,yc+4.5);
+    pdf.setFont("helvetica","normal");const endVc=(currentVistoria.endereco&&currentVistoria.endereco.rua||"")+" "+(currentVistoria.endereco&&currentVistoria.endereco.num||"");
+    pdf.text(endVc,ML+CW/2+1.5+pdf.getTextWidth(endLc),yc+4.5);
+    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(ML,yc,CW,7,"S");yc+=9;
+
     const ambTotal=[...AMBIENTES,...ambientesExtras];
-    const colsH=["Local","Estrutura","Parede e muro","Cobert. a teto","Porta e esq.","Piso e calc."];
-    const nc=CW/6;const colW=[nc,nc,nc,nc,nc,nc];
-    pdf.setFillColor(220,220,220);let cx=ML;
-    colW.forEach(w=>{pdf.rect(cx,yc,w,7,"F");cx+=w;});
+    // Colunas com nomes completos
+    const colsH=["Local","Estrutura","Parede e muro","Cobertura a teto","Porta e esquadria","Piso e calçamento"];
+    const colWRaw=[28,31,32,33,32,29];
+    const cwSum=colWRaw.reduce((a,b)=>a+b,0);
+    const colWN=colWRaw.map(w=>w*(CW/cwSum));
+    // Cabeçalho tabela
+    pdf.setFillColor(200,200,200);
+    let cx=ML;colWN.forEach(w=>{pdf.rect(cx,yc,w,7,"F");cx+=w;});
     pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(ML,yc,CW,7,"S");
+    cx=ML;colWN.forEach((w,i)=>{if(i>0){pdf.setDrawColor(80,80,80);pdf.setLineWidth(0.3);pdf.line(cx,yc,cx,yc+7);}cx+=w;});
+    pdf.setDrawColor(0,0,0);
     cx=ML;pdf.setFontSize(7);pdf.setFont("helvetica","bold");
-    colsH.forEach((c,i)=>{pdf.text(c,cx+colW[i]/2,yc+4.8,{align:"center"});cx+=colW[i];});yc+=7;
+    colsH.forEach((c,i)=>{pdf.text(c,cx+colWN[i]/2,yc+4.8,{align:"center"});cx+=colWN[i];});yc+=7;
+    // Altura dinâmica por linha
+    const sigAreaH=52;const footH=14;
+    const availH=PH-MB-yc-sigAreaH-footH;
+    const rowH=Math.max(7.5,Math.floor(availH/ambTotal.length*10)/10);
     ambTotal.forEach((amb,ri)=>{
       const vals=COLS.map(k=>{const v=(currentVistoria.checklist&&currentVistoria.checklist[amb]&&currentVistoria.checklist[amb][k])||[];return Array.isArray(v)?v:[];});
-      const rowH=8.5;// Compactado para caber na pagina
-      if(yc+rowH>PGB-15){pdf.addPage();yc=20;}
-      if(ri%2===0){pdf.setFillColor(248,248,248);cx=ML;colW.forEach(w=>{pdf.rect(cx,yc,w,rowH,"F");cx+=w;});}
-      pdf.setDrawColor(160,160,160);pdf.setLineWidth(0.15);pdf.rect(ML,yc,CW,rowH,"S");
-      cx=ML;pdf.setFont("helvetica","bold");pdf.setFontSize(6.5);
-      pdf.text(amb,cx+1.5,yc+4);cx+=colW[0];
+      const hasAny=vals.some(a=>a.length>0);
+      if(yc+rowH>PH-MB-sigAreaH-footH){
+        pdf.addPage();
+        pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.5);pdf.rect(ML,ML,PW-ML-MR,PH-ML-MB,"S");
+        yc=ML+4;
+      }
+      // Fundo
+      if(hasAny){pdf.setFillColor(255,248,210);}
+      else if(ri%2===0){pdf.setFillColor(248,248,248);}
+      else{pdf.setFillColor(255,255,255);}
+      cx=ML;colWN.forEach(w=>{pdf.rect(cx,yc,w,rowH,"F");cx+=w;});
+      // Borda linha
+      pdf.setDrawColor(0,0,0);pdf.setLineWidth(hasAny?0.35:0.15);pdf.rect(ML,yc,CW,rowH,"S");
+      // Divisores verticais
+      cx=ML;colWN.forEach((w,i)=>{
+        if(i>0){pdf.setDrawColor(120,120,120);pdf.setLineWidth(0.2);pdf.line(cx,yc,cx,yc+rowH);}
+        cx+=w;
+      });
+      pdf.setDrawColor(0,0,0);
+      // Local
+      cx=ML;pdf.setFont("helvetica","bold");pdf.setFontSize(7);
+      pdf.text(amb,cx+1.5,yc+rowH*0.62);cx+=colWN[0];
+      // Patologias
+      const step=(rowH-2.5)/3;
       vals.forEach((arr,ki)=>{
-        pdf.setFont("helvetica","normal");pdf.setFontSize(5.2);
         const allP=["Fissura/Trinca/Rachadura","Umidade/Infiltração","Danificado"];
         allP.forEach((pp,pi)=>{
           const mk=arr.includes(pp);
-          pdf.text((mk?"[X]":"[ ]")+" "+pp,cx+1,yc+2+pi*2.7);
+          const ty=yc+1.8+pi*step;
+          const bx=cx+1;const by=ty-0.3;const bs=3.2;
+          if(mk){
+            // Marcado: caixa escura com X branco, texto negrito
+            pdf.setFillColor(30,30,30);pdf.rect(bx,by,bs,bs,"F");
+            pdf.setTextColor(255,255,255);pdf.setFontSize(5.5);pdf.setFont("helvetica","bold");
+            pdf.text("X",bx+bs/2,by+bs*0.75,{align:"center"});
+            pdf.setTextColor(0,0,0);pdf.setFont("helvetica","bold");pdf.setFontSize(6.2);
+            pdf.text(pp,cx+bs+2,ty+2.2);
+          }else{
+            // Vazio: só borda
+            pdf.setDrawColor(150,150,150);pdf.setLineWidth(0.2);pdf.rect(bx,by,bs,bs,"S");
+            pdf.setDrawColor(0,0,0);
+            pdf.setFont("helvetica","normal");pdf.setFontSize(5.8);
+            pdf.setTextColor(130,130,130);
+            pdf.text(pp,cx+bs+2,ty+2.2);
+            pdf.setTextColor(0,0,0);
+          }
         });
-        cx+=colW[ki+1];
+        cx+=colWN[ki+1];
       });
       yc+=rowH;
     });
-    yc+=10;
-    if(currentVistoria.observacoes){
-      pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text("Observações:",ML,yc);yc+=5;
-      pdf.setFont("helvetica","normal");const lines=pdf.splitTextToSize(currentVistoria.observacoes,CW);
-      pdf.text(lines,ML,yc);yc+=lines.length*5+6;
-    }
-    // Assinaturas e rodapé sempre no final da página
-    yc+=10;
+    // === ASSINATURAS COM DATA CENTRALIZADA ===
+    yc+=8;
     pdf.setFontSize(9);pdf.setFont("helvetica","normal");
-    pdf.text("São Paulo, "+currentVistoria.dataCompleta,ML,yc);yc+=14;
-    // Assinatura responsável (esquerda)
-    if(assinaturaData){try{pdf.addImage(assinaturaData,"PNG",ML,yc,70,20);}catch(e){}}
-    // Assinatura técnico (direita)
-    const sigX=ML+CW-78;
-    if(assinaturaTecnico){try{pdf.addImage(assinaturaTecnico,"PNG",sigX,yc,70,20);}catch(e){}}
-    yc+=22;
-    // Linhas de assinatura
+    pdf.text("São Paulo, "+currentVistoria.dataCompleta,ML+CW/2,yc,{align:"center"});yc+=12;
+    const sigXL=ML+CW*0.05;const sigXR=ML+CW*0.55;
+    const sigW=CW*0.38;const sigImgH=20;
+    if(assinaturaData){try{pdf.addImage(assinaturaData,"PNG",sigXL,yc,sigW,sigImgH);}catch(e){}}
+    if(assinaturaTecnico){try{pdf.addImage(assinaturaTecnico,"PNG",sigXR,yc,sigW,sigImgH);}catch(e){}}
+    yc+=sigImgH+2;
     pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
-    pdf.line(ML,yc,ML+78,yc);
-    pdf.line(sigX,yc,sigX+78,yc);
+    pdf.line(sigXL,yc,sigXL+sigW,yc);
+    pdf.line(sigXR,yc,sigXR+sigW,yc);
     pdf.setFontSize(8.5);pdf.setFont("helvetica","normal");
-    pdf.text(currentVistoria.responsavel.nome,ML,yc+4.5);
-    pdf.text("Responsável pelo Imóvel",ML,yc+8.5);
-    pdf.text(currentUserData&&currentUserData.nome||"Responsavel Tecnico",sigX,yc+4.5);
-    pdf.text("Responsável Técnico",sigX,yc+8.5);
+    pdf.text(currentVistoria.responsavel.nome,sigXL+sigW/2,yc+4.5,{align:"center"});
+    pdf.text("Responsável pelo Imóvel",sigXL+sigW/2,yc+8.5,{align:"center"});
+    pdf.text(currentUserData&&currentUserData.nome||"Responsavel Tecnico",sigXR+sigW/2,yc+4.5,{align:"center"});
+    pdf.text("Responsável Técnico",sigXR+sigW/2,yc+8.5,{align:"center"});
     pdfFooter(pdf,PW,PH,ML,MR,MB,prest);
 
     // Salvar Firebase + download
@@ -1520,150 +1635,132 @@ function getImgDims(dataUrl){return new Promise(res=>{const img=new Image();img.
 function addImgPDF(pdf,dataUrl,x,y,w,h){return new Promise(res=>{try{pdf.addImage(dataUrl,"JPEG",x,y,w,h,"","NONE");}catch(e){}res();});}
 async function shareOrDownload(blob,nome,mime){if(navigator.share&&navigator.canShare){try{const f=new File([blob],nome,{type:mime});if(navigator.canShare({files:[f]})){await navigator.share({files:[f],title:nome});return;}}catch(e){if(e.name==="AbortError")return;}}const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=nome;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),2000);}
 
-function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep){
-  // ===== CABEÇALHO FIEL AO MODELO xlsx =====
-  // Altura total HDR = 47mm, dividido em 9 linhas proporcionais ao modelo
-  // Proporcoes originais (49.1mm): R1=5.6 R2=5.1 R3=7.7 R4=5.1 R5=5.1 R6=5.1 R7=5.1 R8=5.1 R9=5.3
-  // Adaptado para 47mm: escala = 47/49.1 = 0.957
+function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
+  // showLocalBar=false na página de checklist (remove linha Local/Data)
+  // Proporções das 9 linhas do modelo (total 49.1mm, escalado para HDR)
   const SC=HDR/49.1;
-  const h1=5.6*SC, h2=5.1*SC, h3=7.7*SC, h4=5.1*SC, h5=5.1*SC;
-  const h6=5.1*SC, h7=5.1*SC, h8=5.1*SC, h9=5.3*SC;
+  const h1=5.6*SC,h2=5.1*SC,h3=7.7*SC,h4=5.1*SC,h5=5.1*SC;
+  const h6=5.1*SC,h7=5.1*SC,h8=5.1*SC,h9=showLocalBar!==false?5.3*SC:0;
+  const totalH=h1+h2+h3+h4+h5+h6+h7+h8+h9;
 
-  // y positions (baseline text no meio de cada linha)
-  const yR1=MT+h1*0.75;
-  const yR4=MT+h1+h2+h3+h4*0.75;
-  const yR5=MT+h1+h2+h3+h4+h5*0.72;
-  const yR6=MT+h1+h2+h3+h4+h5+h6*0.72;
-  const yR7=MT+h1+h2+h3+h4+h5+h6+h7*0.72;
-  const yR8=MT+h1+h2+h3+h4+h5+h6+h7+h8*0.72;
-  const yR9=MT+h1+h2+h3+h4+h5+h6+h7+h8+h9*0.7;
+  // Posições Y de cada linha
+  const lY1=MT+h1;
+  const lY2=MT+h1+h2+h3;
+  const lY3=lY2+h4;
+  const lY4=lY3+h5;
+  const lY5=lY4+h6;
+  const lY6=lY5+h7;
+  const lY7=lY6+h8;
 
-  // Linhas separadoras (modelo tem borda ao redor + divisoes internas)
-  const lY1=MT+h1;                          // linha apos R1 (titulo)
-  const lY2=MT+h1+h2+h3;                    // linha apos R3 (logo area)
-  const lY3=MT+h1+h2+h3+h4;                 // linha apos R4 (INFORMACOES)
-  const lY4=MT+h1+h2+h3+h4+h5;              // linha apos R5 (Nome)
-  const lY5=MT+h1+h2+h3+h4+h5+h6;           // linha apos R6 (CPF)
-  const lY6=MT+h1+h2+h3+h4+h5+h6+h7;        // linha apos R7 (Endereco)
-  const lY7=MT+h1+h2+h3+h4+h5+h6+h7+h8;     // linha apos R8 (Coletor)
+  // Centros Y de cada linha (para texto)
+  const cy=(y,h)=>y+h*0.72;
 
-  // ===== LOGO (area rows 1-3, merged A1:I3) =====
-  // Area logo: 9/12 da largura = 75% do CW
-  const logoAreaW=CW*(9/12);
-  const logoAreaH=h1+h2+h3;
-  if(logoPrep&&logoPrep.dataUrl){
-    const pad=1.5;
-    const maxW=logoAreaW*0.22,maxH=logoAreaH*0.88;
-    const ratio=logoPrep.w/logoPrep.h;
-    let lW=maxW,lH=lW/ratio;
-    if(lH>maxH){lH=maxH;lW=lH*ratio;}
-    const lx=ML+pad;
-    const ly=MT+pad+(logoAreaH-lH-pad)/2;
-    try{pdf.addImage(logoPrep.dataUrl,"PNG",lx,ly,lW,lH,"","FAST");}catch(e){}
-  }
-
-  // ===== TITULO centralizado (no meio das rows 1-3) =====
-  pdf.setFontSize(12);pdf.setFont("helvetica","bold");pdf.setTextColor(0,0,0);
-  pdf.text("RELATÓRIO DE VISTORIA CAUTELAR",ML+CW/2,MT+(h1+h2+h3)/2+1.5,{align:"center"});
-
-  // ===== RRT (area J1:L2, mesclado e centralizado verticalmente) =====
-  // Caixa RRT: canto direito, altura = h1+h2+h3 (mesclado como no modelo)
-  const rrtBoxX=ML+CW*(9/12);
-  const rrtBoxW=CW*(3/12);
-  const rrtBoxH=h1+h2+h3;
-  // Fundo branco + borda já desenhada pela borda externa
-  // Centralizar texto verticalmente no box
-  pdf.setFontSize(9.5);pdf.setFont("helvetica","bold");
-  pdf.text("RRT: "+v.clienteRRT,rrtBoxX+rrtBoxW/2,MT+rrtBoxH/2+1.5,{align:"center"});
-
-  // ===== R4: "INFORMAÇÕES DO RESPONSÁVEL" centralizado =====
-  pdf.setFontSize(9);pdf.setFont("helvetica","bold");
-  pdf.text("INFORMAÇÕES DO RESPONSÁVEL",ML+CW/2,yR4,{align:"center"});
-
-  // ===== R5: "Nome: ..." (toda a largura) =====
-  pdf.setFontSize(8);pdf.setFont("helvetica","bold");
-  const nomL="Nome:  ";pdf.text(nomL,ML+1.5,yR5);
-  pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.nome||"--",ML+1.5+pdf.getTextWidth(nomL),yR5);
-
-  // ===== R6: "CPF/RG: ..." (A-D) | "Contato: ..." (E-H) =====
-  const cpfL="CPF/RG:  ";const ctL="Contato:  ";
-  pdf.setFont("helvetica","bold");pdf.text(cpfL,ML+1.5,yR6);
-  pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.doc||"",ML+1.5+pdf.getTextWidth(cpfL),yR6);
-  pdf.setFont("helvetica","bold");pdf.text(ctL,ML+CW*(4/12)+1.5,yR6);
-  pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.tel||"",ML+CW*(4/12)+1.5+pdf.getTextWidth(ctL),yR6);
-
-  // ===== R7: "Endereço: ..." (A-G) | "Nº: ..." (H-I) | "Compl.: ..." (J-L) =====
-  const endL="Endereço:  ";const nL="Nº:  ";const cL="Compl.:  ";
-  pdf.setFont("helvetica","bold");pdf.text(endL,ML+1.5,yR7);
-  pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.rua||"",ML+1.5+pdf.getTextWidth(endL),yR7);
-  pdf.setFont("helvetica","bold");pdf.text(nL,ML+CW*(7/12)+1.5,yR7);
-  pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.num||"",ML+CW*(7/12)+1.5+pdf.getTextWidth(nL),yR7);
-  pdf.setFont("helvetica","bold");pdf.text(cL,ML+CW*(9/12)+1.5,yR7);
-  pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.comp||"",ML+CW*(9/12)+1.5+pdf.getTextWidth(cL),yR7);
-
-  // ===== R8: "Coletor: ..." (A:F) | "Estado de Conservação: ..." (G:L) =====
-  const colL="Coletor:  ";
-  pdf.setFont("helvetica","bold");pdf.text(colL,ML+1.5,yR8);
-  pdf.setFont("helvetica","normal");pdf.text(v.coletorNome||"",ML+1.5+pdf.getTextWidth(colL),yR8);
-  if(v.estado){
-    const estL="Estado de Conservação:  ";
-    pdf.setFont("helvetica","bold");pdf.setFontSize(7);
-    pdf.text(estL,ML+CW*(6/12)+1.5,yR8);
-    const estVal=v.estado+(v.idade?"  |  Idade Aparente:  "+v.idade+" anos":"");
-    // Truncar se ultrapassar a borda direita
-    const maxW=CW*(6/12)-3;
-    const fullTxt=estVal;const tw=pdf.getTextWidth(fullTxt);
-    const finalTxt=tw>maxW?estVal.replace("Idade Aparente:","Id.Ap.:"):fullTxt;
-    pdf.setFont("helvetica","normal");
-    pdf.text(finalTxt,ML+CW*(6/12)+1.5+pdf.getTextWidth(estL),yR8);
-    pdf.setFontSize(8); // restaurar
-  }
-
-  // ===== R9: "Local: ..." (A:F) | "Data Vistoria: ..." (G:L) - fundo BOLD =====
-  pdf.setFont("helvetica","bold");pdf.setFontSize(8);
-  pdf.text("Local: "+local,ML+1.5,yR9);
-  pdf.text("Data Vistoria: "+(v.data||""),ML+CW-1.5,yR9,{align:"right"});
-
-  // ===== BORDAS =====
+  // === BORDA EXTERNA DO CABEÇALHO ===
   pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.4);
-  pdf.rect(ML,MT,CW,HDR,"S"); // borda externa
-  // Linhas internas
-  pdf.setLineWidth(0.25);
-  pdf.line(ML,lY2,ML+CW,lY2); // abaixo do logo
-  pdf.line(ML,lY3,ML+CW,lY3); // abaixo de INFORMACOES
-  pdf.line(ML,lY4,ML+CW,lY4); // abaixo Nome
-  pdf.line(ML,lY5,ML+CW,lY5); // abaixo CPF
-  pdf.line(ML,lY6,ML+CW,lY6); // abaixo Endereco
-  pdf.line(ML,lY7,ML+CW,lY7); // abaixo Coletor
+  pdf.rect(ML,MT,CW,totalH,"S");
 
-  // Divisorias verticais R6: CPF | Contato
-  pdf.line(ML+CW*(4/12),lY4,ML+CW*(4/12),lY5);
-  // Divisorias R7: Endereco | N | Compl
-  pdf.line(ML+CW*(7/12),lY5,ML+CW*(7/12),lY6);
-  pdf.line(ML+CW*(9/12),lY5,ML+CW*(9/12),lY6);
-  // Divisoria R8: Coletor | Estado
-  pdf.line(ML+CW*(6/12),lY6,ML+CW*(6/12),lY7);
-  // Divisoria R9: Local | Data
-  pdf.line(ML+CW/2,lY7,ML+CW/2,MT+HDR);
-  // RRT box: linha vertical separando logo/titulo do RRT
-  // Ocupa rows 1-3 completo (mesclado verticalmente)
+  // === LOGO (A1:I3 = 75% da largura, rows 1-3) ===
+  if(logoPrep&&logoPrep.dataUrl){
+    try{
+      const pad=1.5;
+      const maxW=CW*0.28,maxH=(h1+h2+h3)*0.88;
+      const ratio=logoPrep.w/logoPrep.h;
+      let lW=maxW,lH=lW/ratio;
+      if(lH>maxH){lH=maxH;lW=lH*ratio;}
+      pdf.addImage(logoPrep.dataUrl,"PNG",ML+pad,MT+pad+(h1+h2+h3-lH)/2,lW,lH,"","FAST");
+    }catch(e){}
+  }
+
+  // === TÍTULO (centralizado em rows 1-3) ===
+  pdf.setFontSize(12);pdf.setFont("helvetica","bold");
+  pdf.text("RELATÓRIO DE VISTORIA CAUTELAR",ML+CW*(4.5/12),MT+(h1+h2+h3)/2+1.5,{align:"center"});
+
+  // === RRT (célula mesclada J:L rows 1-3, sem linha interna) ===
+  pdf.setFontSize(9.5);pdf.setFont("helvetica","bold");
+  pdf.text("RRT: "+v.clienteRRT,ML+CW*(10.5/12),MT+(h1+h2+h3)/2+1.5,{align:"center"});
+
+  // Linha divisória vertical RRT (cols 9/12 da largura)
+  pdf.setLineWidth(0.25);
   pdf.line(ML+CW*(9/12),MT,ML+CW*(9/12),lY2);
-  // SEM linha horizontal interna no box RRT - célula mesclada
+
+  // === LINHA apos logo area ===
+  pdf.line(ML,lY2,ML+CW,lY2);
+
+  // === R4: INFORMAÇÕES DO RESPONSÁVEL ===
+  pdf.setFontSize(8);pdf.setFont("helvetica","bold");
+  pdf.text("INFORMAÇÕES DO RESPONSÁVEL",ML+CW/2,cy(lY2,h4),{align:"center"});
+  pdf.setLineWidth(0.2);pdf.line(ML,lY3,ML+CW,lY3);
+
+  // === R5: Nome ===
+  pdf.setFontSize(7.5);
+  const nomL="Nome:  ";pdf.setFont("helvetica","bold");pdf.text(nomL,ML+1.5,cy(lY3,h5));
+  pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.nome||"--",ML+1.5+pdf.getTextWidth(nomL),cy(lY3,h5));
+  pdf.line(ML,lY4,ML+CW,lY4);
+
+  // === R6: CPF/RG | Contato ===
+  const cpfL="CPF/RG:  ",ctL="Contato:  ";
+  pdf.setFont("helvetica","bold");pdf.text(cpfL,ML+1.5,cy(lY4,h6));
+  pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.doc||"",ML+1.5+pdf.getTextWidth(cpfL),cy(lY4,h6));
+  pdf.setFont("helvetica","bold");pdf.text(ctL,ML+CW*(4/12)+1.5,cy(lY4,h6));
+  pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.tel||"",ML+CW*(4/12)+1.5+pdf.getTextWidth(ctL),cy(lY4,h6));
+  pdf.setLineWidth(0.2);pdf.line(ML+CW*(4/12),lY3,ML+CW*(4/12),lY5);
+  pdf.line(ML,lY5,ML+CW,lY5);
+
+  // === R7: Endereço | Nº | Compl. ===
+  const endL="Endereço:  ",nL="Nº:  ",cL="Compl.:  ";
+  pdf.setFont("helvetica","bold");pdf.text(endL,ML+1.5,cy(lY5,h7));
+  pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.rua||"",ML+1.5+pdf.getTextWidth(endL),cy(lY5,h7));
+  pdf.setFont("helvetica","bold");pdf.text(nL,ML+CW*(7/12)+1.5,cy(lY5,h7));
+  pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.num||"",ML+CW*(7/12)+1.5+pdf.getTextWidth(nL),cy(lY5,h7));
+  pdf.setFont("helvetica","bold");pdf.text(cL,ML+CW*(9.3/12)+1.5,cy(lY5,h7));
+  pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.comp||"",ML+CW*(9.3/12)+1.5+pdf.getTextWidth(cL),cy(lY5,h7));
+  pdf.setLineWidth(0.2);
+  pdf.line(ML+CW*(7/12),lY5,ML+CW*(7/12),lY6);
+  pdf.line(ML+CW*(9.3/12),lY5,ML+CW*(9.3/12),lY6);
+  pdf.line(ML,lY6,ML+CW,lY6);
+
+  // === R8: Coletor | Estado de Conservação (valores na célula seguinte) ===
+  const colL="Coletor:  ";
+  pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
+  pdf.text(colL,ML+1.5,cy(lY6,h8));
+  pdf.setFont("helvetica","normal");pdf.text(v.coletorNome||"",ML+1.5+pdf.getTextWidth(colL),cy(lY6,h8));
+  if(v.estado){
+    // Label na célula esquerda, valor na célula direita (separadas por linha vertical)
+    const estL="Estado de Conservação:  ";
+    pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
+    pdf.text(estL,ML+CW*(5/12)+1.5,cy(lY6,h8));
+    // Valor na mesma célula após o label (não ultrapassa pois h8 é a última antes da barra)
+    const estValTxt=v.estado+(v.idade?"  |  Idade Aparente:  "+v.idade+" anos":"");
+    pdf.setFont("helvetica","normal");
+    pdf.text(estValTxt,ML+CW*(5/12)+1.5+pdf.getTextWidth(estL),cy(lY6,h8));
+    pdf.setLineWidth(0.2);pdf.line(ML+CW*(5/12),lY6,ML+CW*(5/12),lY7);
+  }
+  pdf.setLineWidth(0.3);pdf.line(ML,lY7,ML+CW,lY7);
+
+  // === R9: Local | Data (apenas em páginas de fotos) ===
+  if(showLocalBar!==false){
+    pdf.setFont("helvetica","bold");pdf.setFontSize(8);
+    pdf.text("Local:  "+local,ML+1.5,cy(lY7,h9));
+    pdf.text("Data Vistoria:  "+(v.data||""),ML+CW-1.5,cy(lY7,h9),{align:"right"});
+    pdf.setLineWidth(0.2);pdf.line(ML+CW/2,lY7,ML+CW/2,MT+totalH);
+  }
 }
 
 function pdfFooter(pdf,PW,PH,ML,MR,MB,p){
-  // Borda externa da pagina inteira (como no modelo)
+  // Borda externa da página
   pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.5);
   pdf.rect(ML,ML,PW-ML-MR,PH-ML-MB,"S");
-  // Rodape centralizado 3 linhas
-  const fy1=PH-MB-6;
-  const fy2=PH-MB-3;
-  const fy3=PH-MB;
-  pdf.setFontSize(8);pdf.setFont("helvetica","bold");pdf.setTextColor(0,0,0);
-  pdf.text(p.nome||"CNRP ARQUITETURA E CONSTRUÇÕES LTDA.",PW/2,fy1,{align:"center"});
-  pdf.setFontSize(6.5);pdf.setFont("helvetica","normal");
-  pdf.text(p.endereco||"",PW/2,fy2,{align:"center"});
-  pdf.text((p.cnpj?"CNPJ: "+p.cnpj+" ":"")+(p.email?p.email:""),PW/2,fy3,{align:"center"});
+  // Linha separadora do rodapé
+  const footTop=PH-MB-12;
+  pdf.setLineWidth(0.2);pdf.line(ML,footTop,PW-MR,footTop);
+  // Nome da empresa (menor)
+  pdf.setFontSize(7);pdf.setFont("helvetica","bold");pdf.setTextColor(0,0,0);
+  pdf.text(p.nome||"CNRP ARQUITETURA E CONSTRUÇÕES LTDA.",PW/2,footTop+4,{align:"center"});
+  // Endereço e CNPJ
+  pdf.setFontSize(6);pdf.setFont("helvetica","normal");
+  pdf.text((p.endereco||""),PW/2,footTop+7.5,{align:"center"});
+  pdf.text((p.cnpj?"CNPJ: "+p.cnpj:"")+(p.email?"  |  "+p.email:""),PW/2,footTop+10.5,{align:"center"});
+  pdf.setTextColor(0,0,0);
 }
 
 
