@@ -566,18 +566,22 @@ function iniciarGPS(){
 
 window.onZoomSlider=async v=>{
   const val=parseFloat(v);
-  document.getElementById("zoom-label").textContent=val.toFixed(1).replace(/\.0$/,"")+"x";
+  const label=val%1===0?val+"x":val.toFixed(1)+"x";
+  document.getElementById("zoom-label").textContent=label;
   if(!cameraStream)return;
   try{
     const t=cameraStream.getVideoTracks()[0];
-    if(!t||!t.getCapabilities)return;
-    const c=t.getCapabilities();
-    if(c.zoom){
-      // Clamp ao range real do dispositivo (inclui <1 se tiver wide-angle)
-      const zoom=Math.min(c.zoom.max,Math.max(c.zoom.min,val));
-      await t.applyConstraints({advanced:[{zoom}]});
+    if(!t)return;
+    // Tentar getCapabilities (nem todos browsers suportam)
+    const caps=t.getCapabilities?t.getCapabilities():{};
+    if(caps.zoom){
+      const zoom=Math.min(caps.zoom.max,Math.max(caps.zoom.min,val));
+      await t.applyConstraints({advanced:[{zoom}]}).catch(()=>{});
+    } else {
+      // Fallback: tentar applyConstraints sem verificar caps
+      await t.applyConstraints({advanced:[{zoom:val}]}).catch(()=>{});
     }
-  }catch(e){}
+  }catch(e){/* silencioso */}
 };
 
 window.abrirCamera=async()=>{
@@ -608,37 +612,47 @@ window.abrirCamera=async()=>{
     }catch(e){
       cameraStream=await navigator.mediaDevices.getUserMedia(constraints);
     }
+    // Atribuir stream e aguardar estar pronto
+    v.srcObject=null; // reset limpo
+    await new Promise(r=>setTimeout(r,50)); // micro-delay
     v.srcObject=cameraStream;
-    // Esperar metadata carregar antes de play (evita AbortError)
-    await new Promise((res,rej)=>{
-      const timer=setTimeout(()=>res(),2500); // timeout seguranca
-      v.onloadedmetadata=()=>{clearTimeout(timer);res();};
-      v.onerror=()=>{clearTimeout(timer);rej(new Error("Video load error"));};
-    });
-    // Play silencioso (ignorar AbortError - nao eh erro real)
-    try{await v.play();}catch(e){
-      if(e.name!=="AbortError"&&e.name!=="NotAllowedError"){
-        console.warn("Play warning:",e.message);
-      }
-      // Retry apos pequeno delay
-      await new Promise(r=>setTimeout(r,200));
-      try{await v.play();}catch(e2){/* ignorar */}
+    // Aguardar video estar pronto para play
+    if(v.readyState<2){
+      await new Promise(res=>{
+        const t=setTimeout(res,3000);
+        v.onloadedmetadata=()=>{clearTimeout(t);res();};
+      });
     }
-    const t=cameraStream.getVideoTracks()[0];
-    if(t&&t.getCapabilities){
-      const c=t.getCapabilities();
-      if(c.zoom){
-        const zMin=c.zoom.min||1;const zMax=Math.min(10,c.zoom.max||10);
-        document.getElementById("zoom-slider").min=zMin;
-        document.getElementById("zoom-slider").max=zMax;
-        document.getElementById("zoom-slider").value=zMin;
-        document.getElementById("zoom-label").textContent=zMin+"x";
-        t.applyConstraints({advanced:[{zoom:zMin}]}).catch(()=>{});
-      } else {
-        document.getElementById("zoom-slider").value=1;document.getElementById("zoom-label").textContent="1x";
+    // Play com retry robusto
+    for(let attempt=0;attempt<3;attempt++){
+      try{await v.play();break;}
+      catch(e){
+        if(e.name==="AbortError"){
+          await new Promise(r=>setTimeout(r,300*(attempt+1)));
+          continue;
+        }
+        throw e; // outro erro = fatal
       }
-    } else {
-      document.getElementById("zoom-slider").value=1;document.getElementById("zoom-label").textContent="1x";
+    }
+    // Configurar zoom slider baseado nas capacidades reais da camera
+    try{
+      const t=cameraStream.getVideoTracks()[0];
+      const sl=document.getElementById("zoom-slider");
+      const lbl=document.getElementById("zoom-label");
+      if(t&&t.getCapabilities){
+        const c=t.getCapabilities();
+        if(c.zoom){
+          const zMin=Math.round(c.zoom.min*10)/10;
+          const zMax=Math.min(10,Math.round(c.zoom.max*10)/10);
+          sl.min=zMin;sl.max=zMax;sl.step=0.1;
+          sl.value=zMin;
+          lbl.textContent=(zMin%1===0?zMin:zMin.toFixed(1))+"x";
+          await t.applyConstraints({advanced:[{zoom:zMin}]}).catch(()=>{});
+        } else {sl.min=1;sl.max=10;sl.value=1;lbl.textContent="1x";}
+      } else {sl.min=1;sl.max=10;sl.value=1;document.getElementById("zoom-label").textContent="1x";}
+    }catch(e){
+      document.getElementById("zoom-slider").value=1;
+      document.getElementById("zoom-label").textContent="1x";
     }
   }catch(e){
     document.getElementById("camera-overlay").style.display="none";
@@ -1325,6 +1339,56 @@ async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
       fx+=fw_k+1; // +1 para linha divisoria
     }
   }
+}
+
+// Pre-renderiza logo com OffscreenCanvas 2x para PDF nítido
+async function prepLogoForPDF(logoSrc, maxW, maxH){
+  return new Promise(res=>{
+    if(!logoSrc||logoSrc.length<50){res(null);return;}
+    const img=new Image();
+    img.onload=()=>{
+      try{
+        const ratio=img.naturalWidth/(img.naturalHeight||1);
+        let w=maxW, h=w/ratio;
+        if(h>maxH){h=maxH;w=h*ratio;}
+        w=Math.round(w);h=Math.round(h);
+        // Canvas 3x para nitidez maxima
+        const cw=img.naturalWidth, ch=img.naturalHeight;
+        let oc;
+        try{oc=new OffscreenCanvas(cw,ch);}
+        catch(e){oc=document.createElement("canvas");oc.width=cw;oc.height=ch;}
+        const ctx=oc.getContext("2d");
+        ctx.imageSmoothingEnabled=true;
+        ctx.imageSmoothingQuality="high";
+        ctx.drawImage(img,0,0,cw,ch);
+        if(oc.convertToBlob){
+          oc.convertToBlob({type:"image/png"}).then(blob=>{
+            const r=new FileReader();
+            r.onload=e=>res({dataUrl:e.target.result,w,h});
+            r.readAsDataURL(blob);
+          }).catch(()=>{
+            const fc=document.createElement("canvas");
+            fc.width=cw;fc.height=ch;
+            fc.getContext("2d").drawImage(img,0,0,cw,ch);
+            res({dataUrl:fc.toDataURL("image/png"),w,h});
+          });
+        } else {
+          res({dataUrl:oc.toDataURL("image/png"),w,h});
+        }
+      }catch(e){
+        // Fallback minimo
+        const fc=document.createElement("canvas");
+        const r2=img.naturalWidth/(img.naturalHeight||1);
+        let w2=maxW,h2=w2/r2;
+        if(h2>maxH){h2=maxH;w2=h2*r2;}
+        fc.width=img.naturalWidth;fc.height=img.naturalHeight;
+        fc.getContext("2d").drawImage(img,0,0,fc.width,fc.height);
+        res({dataUrl:fc.toDataURL("image/png"),w:Math.round(w2),h:Math.round(h2)});
+      }
+    };
+    img.onerror=()=>res(null);
+    img.src=logoSrc;
+  });
 }
 
 function getImgDims(dataUrl){return new Promise(res=>{const img=new Image();img.onload=()=>res({w:img.naturalWidth||1,h:img.naturalHeight||1});img.onerror=()=>res({w:4,h:3});img.src=dataUrl;});}
