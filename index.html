@@ -565,8 +565,19 @@ function iniciarGPS(){
 }
 
 window.onZoomSlider=async v=>{
-  document.getElementById("zoom-label").textContent=v+"x";
-  if(cameraStream){const t=cameraStream.getVideoTracks()[0];if(t&&t.getCapabilities){const c=t.getCapabilities();if(c.zoom){await t.applyConstraints({advanced:[{zoom:Math.min(c.zoom.max,Math.max(c.zoom.min,parseFloat(v)))}]}).catch(()=>{});}}}
+  const val=parseFloat(v);
+  document.getElementById("zoom-label").textContent=val.toFixed(1).replace(/\.0$/,"")+"x";
+  if(!cameraStream)return;
+  try{
+    const t=cameraStream.getVideoTracks()[0];
+    if(!t||!t.getCapabilities)return;
+    const c=t.getCapabilities();
+    if(c.zoom){
+      // Clamp ao range real do dispositivo (inclui <1 se tiver wide-angle)
+      const zoom=Math.min(c.zoom.max,Math.max(c.zoom.min,val));
+      await t.applyConstraints({advanced:[{zoom}]});
+    }
+  }catch(e){}
 };
 
 window.abrirCamera=async()=>{
@@ -574,15 +585,25 @@ window.abrirCamera=async()=>{
   fotoAtualAmbiente=amb;fotoAtualTipo=document.getElementById("v-tipo-foto").value;
   document.getElementById("cam-label").textContent=amb;document.getElementById("cam-tipo-badge").textContent=fotoAtualTipo;
   try{
-    cameraStream=await navigator.mediaDevices.getUserMedia({
+    // Tentar camera traseira com max resolucao e zoom nativo disponivel
+    let constraints={
       video:{
         facingMode:{ideal:"environment"},
         width:{ideal:4096,min:1280},
         height:{ideal:2160,min:720},
-        frameRate:{ideal:30}
+        frameRate:{ideal:30},
+        // Permitir zoom digital/optico do sensor
+        zoom:true
       },
       audio:false
-    });
+    };
+    try{
+      cameraStream=await navigator.mediaDevices.getUserMedia(constraints);
+    }catch(e){
+      // Fallback sem zoom constraint
+      delete constraints.video.zoom;
+      cameraStream=await navigator.mediaDevices.getUserMedia(constraints);
+    }
     const v=document.getElementById("cam-video");v.srcObject=cameraStream;await v.play();
     const t=cameraStream.getVideoTracks()[0];
     if(t&&t.getCapabilities){
@@ -611,7 +632,50 @@ window.abrirCamera=async()=>{
   document.addEventListener("touchmove",e=>{if(e.target.closest("#cam-video-wrap")&&e.touches.length===2){e.preventDefault();const dist=getPinchDist(e);const factor=dist/pinchStartDist;const sl=document.getElementById("zoom-slider");const mn=parseFloat(sl.min)||1;const mx=parseFloat(sl.max)||10;const nv=Math.min(mx,Math.max(mn,pinchStartZoom*factor));sl.value=nv;onZoomSlider(nv.toFixed(1));}},{passive:false});
 })();
 window.fecharCamera=()=>{if(cameraStream)cameraStream.getTracks().forEach(t=>t.stop());document.getElementById("camera-overlay").style.display="none";};
-window.trocarCamera=async()=>{cameraFacingMode=cameraFacingMode==="environment"?"user":"environment";if(cameraStream)cameraStream.getTracks().forEach(t=>t.stop());try{cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:cameraFacingMode}});const v=document.getElementById("cam-video");v.srcObject=cameraStream;await v.play();}catch(e){alert("Erro ao trocar camera");}};
+// Enumerar cameras e ciclar entre traseiras (incluindo wide-angle em Xiaomi)
+let currentCameraIdx=0;let availableCameras=[];
+async function refreshCameras(){
+  try{
+    const devices=await navigator.mediaDevices.enumerateDevices();
+    availableCameras=devices.filter(d=>d.kind==="videoinput");
+  }catch(e){availableCameras=[];}
+}
+window.trocarCamera=async()=>{
+  await refreshCameras();
+  if(availableCameras.length>1){
+    currentCameraIdx=(currentCameraIdx+1)%availableCameras.length;
+    const dev=availableCameras[currentCameraIdx];
+    if(cameraStream)cameraStream.getTracks().forEach(t=>t.stop());
+    try{
+      cameraStream=await navigator.mediaDevices.getUserMedia({
+        video:{deviceId:{exact:dev.deviceId},width:{ideal:4096},height:{ideal:2160}},
+        audio:false
+      });
+      const v=document.getElementById("cam-video");v.srcObject=cameraStream;await v.play();
+      // Atualizar zoom range
+      const track=cameraStream.getVideoTracks()[0];
+      if(track&&track.getCapabilities){
+        const caps=track.getCapabilities();
+        if(caps.zoom){
+          const slider=document.getElementById("zoom-slider");
+          slider.min=caps.zoom.min||1;
+          slider.max=Math.min(10,caps.zoom.max||10);
+          slider.value=caps.zoom.min||1;
+          document.getElementById("zoom-label").textContent=(caps.zoom.min||1)+"x";
+        }
+      }
+      showToast("Câmera: "+(dev.label||("Câmera "+(currentCameraIdx+1))),1500);
+    }catch(e){alert("Erro ao trocar câmera: "+e.message);}
+  } else {
+    // Fallback: facing mode toggle
+    cameraFacingMode=cameraFacingMode==="environment"?"user":"environment";
+    if(cameraStream)cameraStream.getTracks().forEach(t=>t.stop());
+    try{
+      cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:cameraFacingMode}});
+      const v=document.getElementById("cam-video");v.srcObject=cameraStream;await v.play();
+    }catch(e){alert("Erro ao trocar câmera");}
+  }
+};
 
 window.tirarFoto=async()=>{
   const video=document.getElementById("cam-video");
@@ -969,34 +1033,54 @@ async function regeRarPDF(data){
   try{
     const{jsPDF}=window.jspdf;
     const pdf=new jsPDF("p","mm","a4");
-    const W=210,H=297,M=12.7,CW=W-2*M,HDR_H=50,Y0=M+HDR_H+2,PGB=H-M;
-    const FP_W=(CW-1)/2,FP_H=74,F01_H=79,LH=10;
-    const prest=prestadorDefault||{nome:"CNRP Arquitetura e Construcoes Ltda.",cnpj:"22.121.094/0001-90",endereco:"Av. Marechal Eurico Gaspar Dutra, n 1292 | Santana | Sao Paulo - SP | CEP 02239-010",email:"ronaldopinto@rbarquitetura.com"};
+    const PW=210,PH=297;
+    const ML=12.7,MT=12.7,MR=12.7,MB=12.7;
+    const CW=PW-ML-MR;
+    const HDR=47;
+    const Y0=MT+HDR,PGB=PH-MB;
+    const prest=prestadorDefault||{nome:"CNRP ARQUITETURA E CONSTRU\xc7\xd5ES LTDA.",cnpj:"22.121.094/0001-90",endereco:"Av. Marechal Eurico Gaspar Dutra, n\xba 1292 | Santana | S\xe3o Paulo \u2013 SP | CEP 02239-010",email:"ronaldopinto@rbarquitetura.com"};
     const logoSrc=prest.logo||LOGO_CONST;
-    // Sem fotos no historico - gerar apenas checklist
-    pdf.addPage();
-    pdfHeader(pdf,M,W,CW,data,"Checklist de Patologias",logoSrc,HDR_H);
-    let y=Y0+4;
-    pdf.setFontSize(9.5);pdf.setFont("helvetica","bold");pdf.text("IDENTIFICA\xc7\xc3O DE PATOLOGIAS",M+CW/2,y,{align:"center"});y+=8;
+    const logoPrep=await prepLogoForPDF(logoSrc,45,15);
+
+    // Gerar apenas pagina checklist
+    pdfHeader(pdf,ML,PW,CW,data,"",logoSrc,HDR,MT,logoPrep);
+    let yc=Y0+3;
+    pdf.setFontSize(9);pdf.setFont("helvetica","bold");
+    pdf.text("IDENTIFICA\xc7\xc3O DE PATOLOGIAS",ML+CW/2,yc,{align:"center"});yc+=7;
     const ambTotal=AMBIENTES;
-    const colsH=["Local","Estrutura","Parede e muro","Cobertura a teto","Porta e esquadria","Piso e cal\xe7amento"];
-    const colW=[32,30,34,34,30,24.6];
-    pdf.setFillColor(200,200,200);let cx=M;colW.forEach(w=>{pdf.rect(cx,y,w,7,"F");cx+=w;});
-    pdf.setDrawColor(130,130,130);pdf.setLineWidth(0.3);pdf.rect(M,y,CW,7,"S");
-    cx=M;pdf.setFontSize(7.5);pdf.setFont("helvetica","bold");colsH.forEach((c,i)=>{pdf.text(c,cx+1.5,y+4.8);cx+=colW[i];});y+=7;
+    const colsH=["Local","Estrutura","Parede e muro","Cobert. a teto","Porta e esq.","Piso e calc."];
+    const nc=CW/6;const colW=[nc,nc,nc,nc,nc,nc];
+    pdf.setFillColor(220,220,220);let cx=ML;
+    colW.forEach(w=>{pdf.rect(cx,yc,w,7,"F");cx+=w;});
+    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(ML,yc,CW,7,"S");
+    cx=ML;pdf.setFontSize(7);pdf.setFont("helvetica","bold");
+    colsH.forEach((c,i)=>{pdf.text(c,cx+colW[i]/2,yc+4.8,{align:"center"});cx+=colW[i];});yc+=7;
     ambTotal.forEach((amb,ri)=>{
       const vals=COLS.map(k=>{const v=(data.checklist&&data.checklist[amb]&&data.checklist[amb][k])||[];return Array.isArray(v)?v:[];});
-      const rowH=13.5;// 3 patologias x 3.5mm + margem (3*3.5+2=12.5mm)
-      if(y+rowH>PGB-10){pdf.addPage();y=20;}
-      if(ri%2===0){pdf.setFillColor(247,247,247);cx=M;colW.forEach(w=>{pdf.rect(cx,y,w,rowH,"F");cx+=w;});}
-      pdf.setDrawColor(180,180,180);pdf.setLineWidth(0.2);pdf.rect(M,y,CW,rowH,"S");
-      cx=M;pdf.setFont("helvetica","bold");pdf.setFontSize(7);pdf.text(amb,cx+1.5,y+4.5);cx+=colW[0];
-      vals.forEach((arr,ki)=>{pdf.setFont("helvetica","normal");pdf.setFontSize(6);const allP=["Fissura/Trinca/Rachadura","Umidade/Infiltração","Danificado"];const lblP=["Fissura/Trinca","Umid./Infiltr.","Danificado"];allP.forEach((pp,pi)=>{const mk=arr.includes(pp);pdf.text((mk?"☑":"☐")+" "+lblP[pi],cx+1,y+3.2+pi*3.5);});cx+=colW[ki+1];});
-      y+=rowH;
+      const rowH=12;
+      if(yc+rowH>PGB-15){pdf.addPage();yc=20;}
+      if(ri%2===0){pdf.setFillColor(248,248,248);cx=ML;colW.forEach(w=>{pdf.rect(cx,yc,w,rowH,"F");cx+=w;});}
+      pdf.setDrawColor(160,160,160);pdf.setLineWidth(0.15);pdf.rect(ML,yc,CW,rowH,"S");
+      cx=ML;pdf.setFont("helvetica","bold");pdf.setFontSize(6.5);pdf.text(amb,cx+1.5,yc+4);cx+=colW[0];
+      vals.forEach((arr,ki)=>{
+        pdf.setFont("helvetica","normal");pdf.setFontSize(5.5);
+        const allP=["Fissura/Trinca/Rachadura","Umidade/Infiltra\xe7\xe3o","Danificado"];
+        allP.forEach((pp,pi)=>{
+          const mk=arr.includes(pp);
+          pdf.text((mk?"\u2611":"\u2610")+" "+pp,cx+1,yc+2.8+pi*3);
+        });
+        cx+=colW[ki+1];
+      });
+      yc+=rowH;
     });
-    y+=8;if(data.observacoes){pdf.setFont("helvetica","bold");pdf.setFontSize(8.5);pdf.text("Observa\xe7\xf5es:",M,y);y+=5;pdf.setFont("helvetica","normal");const lines=pdf.splitTextToSize(data.observacoes,CW);pdf.text(lines,M,y);y+=lines.length*5+6;}
-    y+=8;pdf.setFontSize(9);pdf.setFont("helvetica","normal");pdf.text("S\xe3o Paulo, "+(data.dataCompleta||data.data||""),M,y);
-    pdfFooter(pdf,W,H,M,prest);
+    yc+=8;if(data.observacoes){
+      pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text("Observa\xe7\xf5es:",ML,yc);yc+=5;
+      pdf.setFont("helvetica","normal");const lines=pdf.splitTextToSize(data.observacoes,CW);
+      pdf.text(lines,ML,yc);yc+=lines.length*5+6;
+    }
+    yc+=8;pdf.setFontSize(9);pdf.setFont("helvetica","normal");
+    pdf.text("S\xe3o Paulo, "+(data.dataCompleta||data.data||""),ML,yc);
+    pdfFooter(pdf,PW,PH,ML,MR,MB,prest);
     const nomeArq=(data.coletorNome||"vistoria").replace(/[^a-zA-Z0-9]/g,"_")+"-"+(data.data||"").replace(/\//g,"-")+".pdf";
     await shareOrDownload(pdf.output("blob"),nomeArq,"application/pdf");
     showToast("PDF gerado!");
@@ -1014,32 +1098,36 @@ window.finalizarVistoria=async()=>{
   try{
     const{jsPDF}=window.jspdf;
     const pdf=new jsPDF("p","mm","a4");
-    // === DIMENSOES EXATAS DO MODELO2 ===
-    const PW=210,PH=297,ML=3,MT=15,MR=5,MB=5;
-    const CW=PW-ML-MR;
-    const HDR=49.1,F01H=84.6,FPH=79.3,FPL=103.0,FPR=99.0,LEGH=10.6;
-    const Y0=MT+HDR,PGB=PH-MB;
+    // === LAYOUT MODELO EXATO (margens 0.5" = 12.7mm em todos) ===
+    const PW=210,PH=297;
+    const ML=12.7,MT=12.7,MR=12.7,MB=12.7; // 0.5 inch todos os lados
+    const CW=PW-ML-MR; // 184.6mm largura util
+
+    // Cabecalho proporcional (modelo: 49.1mm em pagina com margem 5mm)
+    // Adaptado: 47mm para caber 2 pares + foto01 na pg1
+    const HDR=47;
+    const F01H=74;   // foto 01 altura (reduzida para caber layout)
+    const FPH=60;    // foto par altura
+    const FPL=(CW-1)/2; // foto par esquerda (metade do CW menos linha divisoria)
+    const FPR=(CW-1)/2; // foto par direita (igual - modelo divide meio a meio)
+    const LEGH=8;    // altura das 2 linhas de legenda
+    const Y0=MT+HDR; // y inicial apos cabecalho
+    const PGB=PH-MB; // limite inferior
 
     const fotos=Object.values(fotosPendentes);
-    const prest=prestadorDefault||{nome:"CNRP Arquitetura e Construcoes Ltda.",cnpj:"22.121.094/0001-90",endereco:"Av. Marechal Eurico Gaspar Dutra, n\u00ba 1292 | Santana | S\u00e3o Paulo - SP | CEP 02239-010",email:"ronaldopinto@rbarquitetura.com"};
-    // logoSrc ANTES de logoPrep (fix: Cannot access before initialization)
+    const prest=prestadorDefault||{nome:"CNRP ARQUITETURA E CONSTRUÇÕES LTDA.",cnpj:"22.121.094/0001-90",endereco:"Av. Marechal Eurico Gaspar Dutra, nº 1292 | Santana | São Paulo – SP | CEP 02239-010",email:"ronaldopinto@rbarquitetura.com"};
+    // logoSrc ANTES de logoPrep (fix Cannot access before initialization)
     const logoSrc=prest.logo||LOGO_CONST;
-    const logoPrep=await prepLogoForPDF(logoSrc,90,17);
-    const logoRatio=logoPrep?(logoPrep.w/logoPrep.h):2.0;
+    const logoPrep=await prepLogoForPDF(logoSrc,45,15);
 
-    // Pg1: cabecalho + foto01 + leg + 1 par (fotos 02+03)
-    // Pg2+: cabecalho + 2 pares por pagina
-    // Ultima pg de fotos: se par impar, foto centralizada
-
-    // Agrupar fotos em paginas:
-    // Pg1: fotos[0] (foto01) + fotos[1..2] (par1)  = 3 fotos max
-    // Pg2+: grupos de 4 (2 pares)
+    // === MONTAGEM DAS PAGINAS ===
+    // Pg1: foto01 (grande) + 2 pares (fotos 02-05)  = 5 fotos
+    // Pg2+: 3 pares por pagina = 6 fotos
     const pagFotos=[];
     if(fotos.length>0){
-      const pg1fotos=fotos.slice(0,3); // foto01 + 1 par
-      pagFotos.push({fotos:pg1fotos,isPrimeira:true});
-      for(let i=3;i<fotos.length;i+=4){
-        pagFotos.push({fotos:fotos.slice(i,i+4),isPrimeira:false});
+      pagFotos.push({fotos:fotos.slice(0,5),isPrimeira:true});
+      for(let i=5;i<fotos.length;i+=6){
+        pagFotos.push({fotos:fotos.slice(i,i+6),isPrimeira:false});
       }
     }
 
@@ -1053,74 +1141,74 @@ window.finalizarVistoria=async()=>{
       let y=Y0;
 
       if(isP&&pF.length>0){
-        // === FOTO 01: largura total, legenda "Fachada" ===
+        // FOTO 01: largura total, legenda "Fachada"
         const f0=pF[0];
         const dims=await getImgDims(f0.dataUrl);
-        // Manter proporcao: calcular dimensoes que cabem no box CW x F01H
-        const scaleW=CW/dims.w;const scaleH=F01H/dims.h;
-        const scale=Math.min(scaleW,scaleH);
-        const fwReal=Math.round(dims.w*scale);const fhReal=Math.round(dims.h*scale);
-        const xOff=Math.round((CW-fwReal)/2);const yOff=Math.round((F01H-fhReal)/2);
-        pdf.setDrawColor(100,100,100);pdf.setLineWidth(0.3);pdf.rect(ML,y,CW,F01H,"S");
-        try{await addImgPDF(pdf,f0.dataUrl,ML+xOff,y+yOff,fwReal,fhReal);}catch(e){}
-        // Legenda foto 01
-        pdf.setFontSize(8);pdf.setFont("helvetica","bold");
-        pdf.text("Foto 01",ML+CW/2,y+F01H+4,{align:"center"});
-        pdf.setFont("helvetica","normal");
-        pdf.text("Fachada",ML+CW/2,y+F01H+8.5,{align:"center"});
-        fotoNum++;y+=F01H+LEGH+1;
-        // === PAR 1 (fotos 02+03) ===
-        const par1=pF.slice(1);
-        if(par1.length>0){
-          await pdfPar(pdf,par1,0,Math.min(2,par1.length),ML,y,CW,FPL,FPR,FPH,fotoNum);
-          fotoNum+=Math.min(2,par1.length);
-          y+=FPH+LEGH+1;
+        const sc=Math.min(CW/dims.w,F01H/dims.h);
+        const fw=Math.round(dims.w*sc),fh=Math.round(dims.h*sc);
+        const xo=Math.round((CW-fw)/2),yo=Math.round((F01H-fh)/2);
+        pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(ML,y,CW,F01H,"S");
+        try{await addImgPDF(pdf,f0.dataUrl,ML+xo,y+yo,fw,fh);}catch(e){}
+        // Legenda foto 01 (2 rows 4mm cada)
+        pdf.setFont("helvetica","bold");pdf.setFontSize(9);
+        pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
+        pdf.rect(ML,y+F01H,CW,4,"S");
+        pdf.rect(ML,y+F01H+4,CW,4,"S");
+        pdf.text("Foto 01",ML+CW/2,y+F01H+3,{align:"center"});
+        pdf.setFont("helvetica","normal");pdf.setFontSize(8.5);
+        pdf.text("Fachada",ML+CW/2,y+F01H+7,{align:"center"});
+        fotoNum++;
+        y+=F01H+LEGH;
+        // Pares seguintes (fotos 02-05)
+        const resto=pF.slice(1);
+        for(let i=0;i<resto.length;i+=2){
+          if(y+FPH+LEGH>PGB){break;} // safety
+          const count=Math.min(2,resto.length-i);
+          await pdfPar(pdf,resto,i,count,ML,y,CW,FPL,FPR,FPH,fotoNum);
+          fotoNum+=count;
+          y+=FPH+LEGH;
         }
       } else {
-        // Paginas 2+: 2 pares por pagina
+        // Paginas 2+: 3 pares
         for(let i=0;i<pF.length;i+=2){
-          if(y+FPH+LEGH>PGB){
-            pdf.addPage();
-            pdfHeader(pdf,ML,PW,CW,currentVistoria,locais.join(" / "),logoSrc,HDR,MT,logoPrep);
-            y=Y0;
-          }
+          if(y+FPH+LEGH>PGB){break;}
           const count=Math.min(2,pF.length-i);
           await pdfPar(pdf,pF,i,count,ML,y,CW,FPL,FPR,FPH,fotoNum);
           fotoNum+=count;
-          y+=FPH+LEGH+1;
+          y+=FPH+LEGH;
         }
       }
       pdfFooter(pdf,PW,PH,ML,MR,MB,prest);
     }
 
-    // === CHECKLIST ===
+    // === PAGINA CHECKLIST ===
     pdf.addPage();
     pdfHeader(pdf,ML,PW,CW,currentVistoria,"",logoSrc,HDR,MT,logoPrep);
     let yc=Y0+3;
     pdf.setFontSize(9);pdf.setFont("helvetica","bold");
-    pdf.text("IDENTIFICA\xc7\xc3O DE PATOLOGIAS",ML+CW/2,yc,{align:"center"});yc+=7;
+    pdf.text("IDENTIFICAÇÃO DE PATOLOGIAS",ML+CW/2,yc,{align:"center"});yc+=7;
     const ambTotal=[...AMBIENTES,...ambientesExtras];
     const colsH=["Local","Estrutura","Parede e muro","Cobert. a teto","Porta e esq.","Piso e calc."];
-    const colW=[34,31,34,32,35,36]; // soma=202mm
-    pdf.setFillColor(200,200,200);let cx=ML;
+    const nc=CW/6;const colW=[nc,nc,nc,nc,nc,nc];
+    pdf.setFillColor(220,220,220);let cx=ML;
     colW.forEach(w=>{pdf.rect(cx,yc,w,7,"F");cx+=w;});
-    pdf.setDrawColor(130,130,130);pdf.setLineWidth(0.25);pdf.rect(ML,yc,CW,7,"S");
+    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(ML,yc,CW,7,"S");
     cx=ML;pdf.setFontSize(7);pdf.setFont("helvetica","bold");
-    colsH.forEach((c,i)=>{pdf.text(c,cx+1.5,yc+4.8);cx+=colW[i];});yc+=7;
+    colsH.forEach((c,i)=>{pdf.text(c,cx+colW[i]/2,yc+4.8,{align:"center"});cx+=colW[i];});yc+=7;
     ambTotal.forEach((amb,ri)=>{
       const vals=COLS.map(k=>{const v=(currentVistoria.checklist&&currentVistoria.checklist[amb]&&currentVistoria.checklist[amb][k])||[];return Array.isArray(v)?v:[];});
-      const maxN=Math.max(...vals.map(v=>v.length),1);const rowH=Math.max(6.5,maxN*3.6+2);
+      const rowH=12;// 3 patologias
       if(yc+rowH>PGB-15){pdf.addPage();yc=20;}
-      if(ri%2===0){pdf.setFillColor(246,246,246);cx=ML;colW.forEach(w=>{pdf.rect(cx,yc,w,rowH,"F");cx+=w;});}
-      pdf.setDrawColor(180,180,180);pdf.setLineWidth(0.2);pdf.rect(ML,yc,CW,rowH,"S");
-      cx=ML;pdf.setFont("helvetica","bold");pdf.setFontSize(6.5);pdf.text(amb,cx+1.5,yc+4);cx+=colW[0];
+      if(ri%2===0){pdf.setFillColor(248,248,248);cx=ML;colW.forEach(w=>{pdf.rect(cx,yc,w,rowH,"F");cx+=w;});}
+      pdf.setDrawColor(160,160,160);pdf.setLineWidth(0.15);pdf.rect(ML,yc,CW,rowH,"S");
+      cx=ML;pdf.setFont("helvetica","bold");pdf.setFontSize(6.5);
+      pdf.text(amb,cx+1.5,yc+4);cx+=colW[0];
       vals.forEach((arr,ki)=>{
-        pdf.setFont("helvetica","normal");pdf.setFontSize(6);
-        const allP2=["Fissura/Trinca/Rachadura","Umidade/Infiltração","Danificado"];
-        const lblP2=["Fissura/Trinca","Umid./Infiltr.","Danificado"];
-        allP2.forEach((pp2,pi2)=>{
-          const mk2=arr.includes(pp2);
-          pdf.text((mk2?"☑":"☐")+" "+lblP2[pi2],cx+1,yc+3+pi2*3.5);
+        pdf.setFont("helvetica","normal");pdf.setFontSize(5.5);
+        const allP=["Fissura/Trinca/Rachadura","Umidade/Infiltração","Danificado"];
+        allP.forEach((pp,pi)=>{
+          const mk=arr.includes(pp);
+          pdf.text((mk?"☑":"☐")+" "+pp,cx+1,yc+2.8+pi*3);
         });
         cx+=colW[ki+1];
       });
@@ -1128,24 +1216,25 @@ window.finalizarVistoria=async()=>{
     });
     yc+=10;
     if(currentVistoria.observacoes){
-      pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text("Observa\xe7\xf5es:",ML,yc);yc+=5;
+      pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text("Observações:",ML,yc);yc+=5;
       pdf.setFont("helvetica","normal");const lines=pdf.splitTextToSize(currentVistoria.observacoes,CW);
       pdf.text(lines,ML,yc);yc+=lines.length*5+6;
     }
     yc+=8;pdf.setFontSize(9);pdf.setFont("helvetica","normal");
-    pdf.text("S\xe3o Paulo, "+currentVistoria.dataCompleta,ML,yc);yc+=16;
+    pdf.text("São Paulo, "+currentVistoria.dataCompleta,ML,yc);yc+=16;
     if(assinaturaData){try{pdf.addImage(assinaturaData,"PNG",ML,yc,70,22);}catch(e){}}
     pdf.line(ML,yc+24,ML+78,yc+24);pdf.setFontSize(8);
     pdf.text(currentVistoria.responsavel.nome,ML,yc+28);
-    pdf.text("Respons\xe1vel pelo im\xf3vel",ML,yc+32.5);
-    if(assinaturaTecnico){try{pdf.addImage(assinaturaTecnico,"PNG",ML+112,yc,70,22);}catch(e){}}
-    pdf.line(ML+112,yc+24,ML+190,yc+24);
-    pdf.text(currentUserData&&currentUserData.nome||"Responsavel Tecnico",ML+112,yc+28);
-    pdf.text("Respons\xe1vel T\xe9cnico",ML+112,yc+32.5);
+    pdf.text("Responsável pelo imóvel",ML,yc+32.5);
+    const sigX=ML+CW-78;
+    if(assinaturaTecnico){try{pdf.addImage(assinaturaTecnico,"PNG",sigX,yc,70,22);}catch(e){}}
+    pdf.line(sigX,yc+24,sigX+78,yc+24);
+    pdf.text(currentUserData&&currentUserData.nome||"Responsavel Tecnico",sigX,yc+28);
+    pdf.text("Responsável Técnico",sigX,yc+32.5);
     pdfFooter(pdf,PW,PH,ML,MR,MB,prest);
 
-    // Salvar Firebase
-    const vDoc={clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,coletorNome:currentVistoria.coletorNome,responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,ocupacao:currentVistoria.ocupacao,tipo:currentVistoria.tipo,estado:currentVistoria.estado,idade:currentVistoria.idade,data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,userId:currentUser.uid,checklist:currentVistoria.checklist,observacoes:currentVistoria.observacoes,totalFotos:Object.keys(fotosPendentes).length,status:"concluida",criadoEm:serverTimestamp()};
+    // Salvar Firebase + download
+    const vDoc={clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,coletorNome:currentVistoria.coletorNome,responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,ocupacao:currentVistoria.ocupacao,tipo:currentVistoria.tipo,estado:currentVistoria.estado,idade:currentVistoria.idade,data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,userId:currentUser.uid,checklist:currentVistoria.checklist,ambientesExtras:ambientesExtras||[],observacoes:currentVistoria.observacoes,totalFotos:Object.keys(fotosPendentes).length,status:"concluida",criadoEm:serverTimestamp()};
     await addDoc(collection(db,"vistorias"),vDoc);
 
     const dataArq=currentVistoria.data.replace(/\//g,"-");
@@ -1170,98 +1259,45 @@ window.finalizarVistoria=async()=>{
 };
 
 async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
-  pdf.setDrawColor(100,100,100);pdf.setLineWidth(0.3);
-  const LEGH=10.6;
+  // Par de fotos lado a lado, com linha divisoria vertical central
+  const LEGH=8;
   if(count===1){
-    // Foto impar: centralizada com largura FPL
+    // Foto impar: centralizada
     const f=fotos[startIdx];
     const fx=ML+(CW-FPL)/2;
     const dims=await getImgDims(f.dataUrl);
     const sc=Math.min(FPL/dims.w,FPH/dims.h);
-    const fw_r=Math.round(dims.w*sc);const fh_r=Math.round(dims.h*sc);
-    const x_off=Math.round((FPL-fw_r)/2);const y_off=Math.round((FPH-fh_r)/2);
-    pdf.setDrawColor(100,100,100);pdf.setLineWidth(0.3);pdf.rect(fx,y,FPL,FPH,"S");
-    try{await addImgPDF(pdf,f.dataUrl,fx+x_off,y+y_off,fw_r,fh_r);}catch(e){}
-    pdf.setFontSize(8);pdf.setFont("helvetica","bold");
-    pdf.text("Foto "+String(fotoNum).padStart(2,"0"),fx+FPL/2,y+FPH+4,{align:"center"});
-    pdf.setFont("helvetica","normal");pdf.text(f.tipo,fx+FPL/2,y+FPH+8.5,{align:"center"});
+    const fw=Math.round(dims.w*sc),fh=Math.round(dims.h*sc);
+    const xo=Math.round((FPL-fw)/2),yo=Math.round((FPH-fh)/2);
+    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(fx,y,FPL,FPH,"S");
+    try{await addImgPDF(pdf,f.dataUrl,fx+xo,y+yo,fw,fh);}catch(e){}
+    // Legendas (2 rows 4mm cada)
+    pdf.rect(fx,y+FPH,FPL,4,"S");pdf.rect(fx,y+FPH+4,FPL,4,"S");
+    pdf.setFont("helvetica","bold");pdf.setFontSize(8);
+    pdf.text("Foto "+String(fotoNum).padStart(2,"0"),fx+FPL/2,y+FPH+3,{align:"center"});
+    pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);
+    pdf.text(f.tipo,fx+FPL/2,y+FPH+7,{align:"center"});
   } else {
-    // Par: linha divisoria vertical no centro
-    pdf.setLineWidth(0.3);pdf.line(ML+FPL,y,ML+FPL,y+FPH+LEGH);
+    // Par
     const ws=[FPL,FPR];
     let fx=ML;
     for(let k=0;k<2&&startIdx+k<fotos.length;k++){
-      const f=fotos[startIdx+k];const fw=ws[k];
+      const f=fotos[startIdx+k];const fw_k=ws[k];
       const dims=await getImgDims(f.dataUrl);
-      const sc3=Math.min(fw/dims.w,FPH/dims.h);
-      const fw3=Math.round(dims.w*sc3);const fh3=Math.round(dims.h*sc3);
-      const xo3=Math.round((fw-fw3)/2);const yo3=Math.round((FPH-fh3)/2);
-      pdf.setDrawColor(100,100,100);pdf.setLineWidth(0.3);pdf.rect(fx,y,fw,FPH,"S");
-      try{await addImgPDF(pdf,f.dataUrl,fx+xo3,y+yo3,fw3,fh3);}catch(e){}
-      pdf.setFontSize(8);pdf.setFont("helvetica","bold");
-      pdf.text("Foto "+String(fotoNum+k).padStart(2,"0"),fx+fw/2,y+FPH+4,{align:"center"});
-      pdf.setFont("helvetica","normal");pdf.text(f.tipo,fx+fw/2,y+FPH+8.5,{align:"center"});
-      fx+=fw;
+      const sc=Math.min(fw_k/dims.w,FPH/dims.h);
+      const fwR=Math.round(dims.w*sc),fhR=Math.round(dims.h*sc);
+      const xo=Math.round((fw_k-fwR)/2),yo=Math.round((FPH-fhR)/2);
+      pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(fx,y,fw_k,FPH,"S");
+      try{await addImgPDF(pdf,f.dataUrl,fx+xo,y+yo,fwR,fhR);}catch(e){}
+      // Legendas
+      pdf.rect(fx,y+FPH,fw_k,4,"S");pdf.rect(fx,y+FPH+4,fw_k,4,"S");
+      pdf.setFont("helvetica","bold");pdf.setFontSize(8);
+      pdf.text("Foto "+String(fotoNum+k).padStart(2,"0"),fx+fw_k/2,y+FPH+3,{align:"center"});
+      pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);
+      pdf.text(f.tipo,fx+fw_k/2,y+FPH+7,{align:"center"});
+      fx+=fw_k+1; // +1 para linha divisoria
     }
   }
-}
-
-// Pre-renderiza logo em canvas garantindo proporcao correta
-async function prepLogoForPDF(logoSrc,maxW,maxH){
-  // Gemini tip: usar OffscreenCanvas 2x para logo nítido no PDF
-  return new Promise(res=>{
-    if(!logoSrc||logoSrc.length<50){res(null);return;}
-    const img=new Image();
-    img.onload=()=>{
-      try{
-        const ratio=img.naturalWidth/img.naturalHeight;
-        let w=maxW,h=Math.round(w/ratio);
-        if(h>maxH){h=maxH;w=Math.round(h*ratio);}
-        // 2x supersampling: canvas 2x do tamanho final
-        const scale=3;// 3x para máxima nitidez
-        let oc;
-        if(typeof OffscreenCanvas!=="undefined"){
-          oc=new OffscreenCanvas(Math.round(w*scale*3.78),Math.round(h*scale*3.78));
-        }else{
-          oc=document.createElement("canvas");
-          oc.width=Math.round(w*scale*3.78);// mm->px: 1mm=3.78px @96dpi, mas usamos 3x
-          oc.height=Math.round(h*scale*3.78);
-        }
-        const ctx=oc.getContext("2d");
-        ctx.imageSmoothingEnabled=true;
-        ctx.imageSmoothingQuality="high";
-        ctx.drawImage(img,0,0,oc.width,oc.height);
-        // Converter para dataURL
-        if(oc.convertToBlob){
-          // OffscreenCanvas: usar convertToBlob
-          oc.convertToBlob({type:"image/png"}).then(blob=>{
-            const reader=new FileReader();
-            reader.onload=e=>res({dataUrl:e.target.result,w,h});
-            reader.readAsDataURL(blob);
-          }).catch(()=>{
-            // fallback se falhar
-            const fc=document.createElement("canvas");
-            fc.width=oc.width;fc.height=oc.height;
-            fc.getContext("2d").drawImage(img,0,0,oc.width,oc.height);
-            res({dataUrl:fc.toDataURL("image/png"),w,h});
-          });
-        }else{
-          res({dataUrl:oc.toDataURL("image/png"),w,h});
-        }
-      }catch(e){
-        // Fallback simples
-        const fc=document.createElement("canvas");
-        const ratio2=img.naturalWidth/img.naturalHeight;
-        let w2=maxW,h2=Math.round(w2/ratio2);
-        if(h2>maxH){h2=maxH;w2=Math.round(h2*ratio2);}
-        fc.width=img.naturalWidth;fc.height=img.naturalHeight;
-        fc.getContext("2d").drawImage(img,0,0,fc.width,fc.height);
-        res({dataUrl:fc.toDataURL("image/png"),w:w2,h:h2});
-      }
-    };
-    img.onerror=()=>res(null);
-    img.src=logoSrc;
-  });
 }
 
 function getImgDims(dataUrl){return new Promise(res=>{const img=new Image();img.onload=()=>res({w:img.naturalWidth||1,h:img.naturalHeight||1});img.onerror=()=>res({w:4,h:3});img.src=dataUrl;});}
@@ -1269,116 +1305,133 @@ function addImgPDF(pdf,dataUrl,x,y,w,h){return new Promise(res=>{try{pdf.addImag
 async function shareOrDownload(blob,nome,mime){if(navigator.share&&navigator.canShare){try{const f=new File([blob],nome,{type:mime});if(navigator.canShare({files:[f]})){await navigator.share({files:[f],title:nome});return;}}catch(e){if(e.name==="AbortError")return;}}const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=nome;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),2000);}
 
 function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep){
-  // === CABEÇALHO FIEL AO MODELO2 ===
-  // Borda externa completa do cabeçalho
-  pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.4);pdf.rect(ML,MT,CW,HDR,"S");
+  // ===== CABEÇALHO FIEL AO MODELO xlsx =====
+  // Altura total HDR = 47mm, dividido em 9 linhas proporcionais ao modelo
+  // Proporcoes originais (49.1mm): R1=5.6 R2=5.1 R3=7.7 R4=5.1 R5=5.1 R6=5.1 R7=5.1 R8=5.1 R9=5.3
+  // Adaptado para 47mm: escala = 47/49.1 = 0.957
+  const SC=HDR/49.1;
+  const h1=5.6*SC, h2=5.1*SC, h3=7.7*SC, h4=5.1*SC, h5=5.1*SC;
+  const h6=5.1*SC, h7=5.1*SC, h8=5.1*SC, h9=5.3*SC;
 
-  // ROW 1 (5.6mm): Titulo centralizado + RRT à direita
-  const r1y=MT+4.5;
-  pdf.setFontSize(12);pdf.setFont("helvetica","bold");
-  pdf.text("RELAT\xd3RIO DE VISTORIA CAUTELAR",ML+CW/2,r1y,{align:"center"});
-  pdf.setFontSize(9);pdf.text("RRT: "+v.clienteRRT,ML+CW-1,r1y,{align:"right"});
+  // y positions (baseline text no meio de cada linha)
+  const yR1=MT+h1*0.75;
+  const yR4=MT+h1+h2+h3+h4*0.75;
+  const yR5=MT+h1+h2+h3+h4+h5*0.72;
+  const yR6=MT+h1+h2+h3+h4+h5+h6*0.72;
+  const yR7=MT+h1+h2+h3+h4+h5+h6+h7*0.72;
+  const yR8=MT+h1+h2+h3+h4+h5+h6+h7+h8*0.72;
+  const yR9=MT+h1+h2+h3+h4+h5+h6+h7+h8+h9*0.7;
 
-  // Linha 1 (abaixo row 1, em y=MT+5.6)
-  const l1y=MT+5.6;pdf.setLineWidth(0.3);pdf.line(ML,l1y,ML+CW,l1y);
+  // Linhas separadoras (modelo tem borda ao redor + divisoes internas)
+  const lY1=MT+h1;                          // linha apos R1 (titulo)
+  const lY2=MT+h1+h2+h3;                    // linha apos R3 (logo area)
+  const lY3=MT+h1+h2+h3+h4;                 // linha apos R4 (INFORMACOES)
+  const lY4=MT+h1+h2+h3+h4+h5;              // linha apos R5 (Nome)
+  const lY5=MT+h1+h2+h3+h4+h5+h6;           // linha apos R6 (CPF)
+  const lY6=MT+h1+h2+h3+h4+h5+h6+h7;        // linha apos R7 (Endereco)
+  const lY7=MT+h1+h2+h3+h4+h5+h6+h7+h8;     // linha apos R8 (Coletor)
 
-  // ROWS 2-3 (5.1+7.7=12.8mm): Logo à esquerda (A1:I3 merged)
-  // Logo ocupa ~69% da largura (cols A:I de A:L)
-  if(logoSrc&&logoSrc.length>50){
-    try{
-      // Usar logo pre-renderizado (proporcao garantida) ou fallback
-      const lSrc=logoPrep?logoPrep.dataUrl:logoSrc;
-      const lW=logoPrep?logoPrep.w:(Math.round(CW*0.40));
-      const lH=logoPrep?logoPrep.h:Math.round(lW*0.5);
-      const lY=MT+0.5+Math.round((18-lH)/2);
-      const lFmt=logoPrep?"PNG":"JPEG";
-      pdf.addImage(lSrc,lFmt,ML+1,lY,lW,lH,"","FAST");
-    }catch(e){}
+  // ===== LOGO (area rows 1-3, merged A1:I3) =====
+  // Area logo: 9/12 da largura = 75% do CW
+  const logoAreaW=CW*(9/12);
+  const logoAreaH=h1+h2+h3;
+  if(logoPrep&&logoPrep.dataUrl){
+    const pad=1.5;
+    const maxW=logoAreaW*0.22,maxH=logoAreaH*0.88;
+    const ratio=logoPrep.w/logoPrep.h;
+    let lW=maxW,lH=lW/ratio;
+    if(lH>maxH){lH=maxH;lW=lH*ratio;}
+    const lx=ML+pad;
+    const ly=MT+pad+(logoAreaH-lH-pad)/2;
+    try{pdf.addImage(logoPrep.dataUrl,"PNG",lx,ly,lW,lH,"","FAST");}catch(e){}
   }
 
-  // Linha 2 (abaixo rows 2-3, em y=MT+5.6+12.8=18.4)
-  const l2y=MT+18.4;pdf.line(ML,l2y,ML+CW,l2y);
+  // ===== TITULO centralizado (no meio das rows 1-3) =====
+  pdf.setFontSize(12);pdf.setFont("helvetica","bold");pdf.setTextColor(0,0,0);
+  pdf.text("RELATÓRIO DE VISTORIA CAUTELAR",ML+CW/2,MT+(h1+h2+h3)/2+1.5,{align:"center"});
 
-  // ROW 4 (5.1mm): "INFORMACOES DO RESPONSAVEL" centralizado
-  const r4y=MT+20.9;
+  // ===== RRT (area J1:L2, direita do titulo, row 1-2) =====
+  pdf.setFontSize(10);pdf.setFont("helvetica","bold");
+  pdf.text("RRT: "+v.clienteRRT,ML+CW-1.5,MT+(h1+h2)/2+1.5,{align:"right"});
+
+  // ===== R4: "INFORMAÇÕES DO RESPONSÁVEL" centralizado =====
+  pdf.setFontSize(9);pdf.setFont("helvetica","bold");
+  pdf.text("INFORMAÇÕES DO RESPONSÁVEL",ML+CW/2,yR4,{align:"center"});
+
+  // ===== R5: "Nome: ..." (toda a largura) =====
   pdf.setFontSize(8);pdf.setFont("helvetica","bold");
-  pdf.text("INFORMA\xc7\xd5ES DO RESPONS\xc1VEL",ML+CW/2,r4y,{align:"center"});
+  const nomL="Nome: ";pdf.text(nomL,ML+1.5,yR5);
+  pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.nome||"--",ML+1.5+pdf.getTextWidth(nomL),yR5);
 
-  // Linha 3 (abaixo row 4, em y=MT+23.5)
-  const l3y=MT+23.5;pdf.setLineWidth(0.2);pdf.line(ML,l3y,ML+CW,l3y);
+  // ===== R6: "CPF/RG: ..." (A-D) | "Contato: ..." (E-H) =====
+  const cpfL="CPF/RG: ";const ctL="Contato: ";
+  pdf.setFont("helvetica","bold");pdf.text(cpfL,ML+1.5,yR6);
+  pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.doc||"",ML+1.5+pdf.getTextWidth(cpfL),yR6);
+  pdf.setFont("helvetica","bold");pdf.text(ctL,ML+CW*(4/12)+1.5,yR6);
+  pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.tel||"",ML+CW*(4/12)+1.5+pdf.getTextWidth(ctL),yR6);
 
-  // ROW 5 (5.1mm): Nome
-  const r5y=MT+26.3;
-  const nomL="Nome:  ";
-  pdf.setFont("helvetica","bold");pdf.text(nomL,ML+1,r5y);
-  pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.nome||"--",ML+1+pdf.getTextWidth(nomL),r5y);
+  // ===== R7: "Endereço: ..." (A-G) | "Nº: ..." (H-I) | "Compl.: ..." (J-L) =====
+  const endL="Endereço: ";const nL="Nº: ";const cL="Compl.: ";
+  pdf.setFont("helvetica","bold");pdf.text(endL,ML+1.5,yR7);
+  pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.rua||"",ML+1.5+pdf.getTextWidth(endL),yR7);
+  pdf.setFont("helvetica","bold");pdf.text(nL,ML+CW*(7/12)+1.5,yR7);
+  pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.num||"",ML+CW*(7/12)+1.5+pdf.getTextWidth(nL),yR7);
+  pdf.setFont("helvetica","bold");pdf.text(cL,ML+CW*(9/12)+1.5,yR7);
+  pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.comp||"",ML+CW*(9/12)+1.5+pdf.getTextWidth(cL),yR7);
 
-  // Linha 4 (abaixo row 5)
-  const l4y=MT+28.6;pdf.line(ML,l4y,ML+CW,l4y);
-
-  // ROW 6 (5.1mm): CPF/RG + Contato
-  const r6y=MT+31.4;
-  const cpfL="CPF/RG:  ";const ctL="Contato:  ";
-  pdf.setFont("helvetica","bold");pdf.text(cpfL,ML+1,r6y);
-  pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.doc||"Nao informado",ML+1+pdf.getTextWidth(cpfL),r6y);
-  pdf.setFont("helvetica","bold");pdf.text(ctL,ML+80,r6y);
-  pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.tel||"--",ML+80+pdf.getTextWidth(ctL),r6y);
-
-  // Linha 5
-  const l5y=MT+33.7;pdf.line(ML,l5y,ML+CW,l5y);
-
-  // ROW 7 (5.1mm): Endereço + Nº + Compl.
-  const r7y=MT+36.5;
-  const endL="Endere\xe7o: ";const nL="N\xba: ";
-  pdf.setFont("helvetica","bold");pdf.text(endL,ML+1,r7y);
-  pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.rua||"",ML+1+pdf.getTextWidth(endL),r7y);
-  pdf.setFont("helvetica","bold");pdf.text(nL,ML+97,r7y);
-  pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.num||"",ML+97+pdf.getTextWidth(nL),r7y);
-  if(v.endereco&&v.endereco.comp){
-    const cL="Compl.:  ";
-    pdf.setFont("helvetica","bold");pdf.text(cL,ML+118,r7y);
-    pdf.setFont("helvetica","normal");pdf.text(v.endereco.comp,ML+118+pdf.getTextWidth(cL),r7y);
-  }
-
-  // Linha 6
-  const l6y=MT+38.8;pdf.line(ML,l6y,ML+CW,l6y);
-
-  // ROW 8 (5.1mm): Coletor + Estado de Conservacao + Idade
-  const r8y=MT+41.6;
-  const colL="Coletor:  ";
-  pdf.setFont("helvetica","bold");pdf.text(colL,ML+1,r8y);
-  pdf.setFont("helvetica","normal");pdf.text(v.coletorNome||"",ML+1+pdf.getTextWidth(colL),r8y);
+  // ===== R8: "Coletor: ..." (A:F) | "Estado de Conservação: ..." (G:L) =====
+  const colL="Coletor: ";
+  pdf.setFont("helvetica","bold");pdf.text(colL,ML+1.5,yR8);
+  pdf.setFont("helvetica","normal");pdf.text(v.coletorNome||"",ML+1.5+pdf.getTextWidth(colL),yR8);
   if(v.estado){
-    const estL="Estado de Conserva\xe7\xe3o: ";
-    pdf.setFont("helvetica","bold");pdf.text(estL,ML+68,r8y);
-    const estVal=v.estado+(v.idade?" | Idade Aparente do Im\xf3vel: "+v.idade+" anos":"");
-    pdf.setFont("helvetica","normal");pdf.text(estVal,ML+68+pdf.getTextWidth(estL),r8y);
+    const estL="Estado de Conservação: ";
+    pdf.setFont("helvetica","bold");pdf.text(estL,ML+CW*(6/12)+1.5,yR8);
+    const estVal=v.estado+(v.idade?" | Idade Aparente: "+v.idade+" anos":"");
+    pdf.setFont("helvetica","normal");pdf.text(estVal,ML+CW*(6/12)+1.5+pdf.getTextWidth(estL),yR8);
   }
 
-  // Linha 7
-  const l7y=MT+43.8;pdf.setLineWidth(0.3);pdf.line(ML,l7y,ML+CW,l7y);
+  // ===== R9: "Local: ..." (A:F) | "Data Vistoria: ..." (G:L) - fundo BOLD =====
+  pdf.setFont("helvetica","bold");pdf.setFontSize(8);
+  pdf.text("Local: "+local,ML+1.5,yR9);
+  pdf.text("Data Vistoria: "+(v.data||""),ML+CW-1.5,yR9,{align:"right"});
 
-  // ROW 9 (5.3mm): Local | Data - fundo cinza
-  pdf.setFillColor(215,215,215);pdf.rect(ML,l7y,CW/2,HDR-(l7y-MT),"F");
-  pdf.setFillColor(215,215,215);pdf.rect(ML+CW/2,l7y,CW/2,HDR-(l7y-MT),"F");
-  pdf.setLineWidth(0.3);pdf.line(ML+CW/2,l7y,ML+CW/2,MT+HDR);
-  const r9y=MT+47.3;
-  pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
-  pdf.text("Local:  "+local,ML+1,r9y);
-  pdf.text("Data Vistoria:  "+(v.data||""),ML+CW-1,r9y,{align:"right"});
+  // ===== BORDAS =====
+  pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.4);
+  pdf.rect(ML,MT,CW,HDR,"S"); // borda externa
+  // Linhas internas
+  pdf.setLineWidth(0.25);
+  pdf.line(ML,lY2,ML+CW,lY2); // abaixo do logo
+  pdf.line(ML,lY3,ML+CW,lY3); // abaixo de INFORMACOES
+  pdf.line(ML,lY4,ML+CW,lY4); // abaixo Nome
+  pdf.line(ML,lY5,ML+CW,lY5); // abaixo CPF
+  pdf.line(ML,lY6,ML+CW,lY6); // abaixo Endereco
+  pdf.line(ML,lY7,ML+CW,lY7); // abaixo Coletor
+
+  // Divisorias verticais R6: CPF | Contato
+  pdf.line(ML+CW*(4/12),lY4,ML+CW*(4/12),lY5);
+  // Divisorias R7: Endereco | N | Compl
+  pdf.line(ML+CW*(7/12),lY5,ML+CW*(7/12),lY6);
+  pdf.line(ML+CW*(9/12),lY5,ML+CW*(9/12),lY6);
+  // Divisoria R8: Coletor | Estado
+  pdf.line(ML+CW*(6/12),lY6,ML+CW*(6/12),lY7);
+  // Divisoria R9: Local | Data
+  pdf.line(ML+CW/2,lY7,ML+CW/2,MT+HDR);
+  // Divisoria vertical titulo | RRT (linha vertical em J, que eh coluna 10/12)
+  pdf.line(ML+CW*(9/12),MT,ML+CW*(9/12),lY2);
+  // Linha horizontal entre titulo (R1) e logo (R2-3) na area direita
+  pdf.line(ML+CW*(9/12),MT+h1+h2,ML+CW,MT+h1+h2);
 }
 
 function pdfFooter(pdf,PW,PH,ML,MR,MB,p){
-  // Rodape fixo nos ultimos 10mm da pagina
-  const fyLine=PH-10;const fy1=PH-7;const fy2=PH-3;
-  pdf.setDrawColor(160,160,160);pdf.setLineWidth(0.2);pdf.line(ML,fyLine,PW-MR,fyLine);
-  pdf.setFontSize(7.5);pdf.setFont("helvetica","bold");pdf.setTextColor(50,50,50);
-  const linha1=(p.nome||"")+(p.cnpj?" | CNPJ: "+p.cnpj:"");
-  pdf.text(linha1,PW/2,fy1,{align:"center"});
-  pdf.setFont("helvetica","normal");pdf.setFontSize(6.5);
-  const linha2=(p.endereco||"")+(p.email?" | "+p.email:"");
-  pdf.text(linha2,PW/2,fy2,{align:"center"});
-  pdf.setTextColor(0,0,0);
+  // Rodape centralizado 3 linhas
+  const fy1=PH-MB-6;
+  const fy2=PH-MB-3;
+  const fy3=PH-MB;
+  pdf.setFontSize(8);pdf.setFont("helvetica","bold");pdf.setTextColor(0,0,0);
+  pdf.text(p.nome||"CNRP ARQUITETURA E CONSTRUÇÕES LTDA.",PW/2,fy1,{align:"center"});
+  pdf.setFontSize(6.5);pdf.setFont("helvetica","normal");
+  pdf.text(p.endereco||"",PW/2,fy2,{align:"center"});
+  pdf.text((p.cnpj?"CNPJ: "+p.cnpj+" ":"")+(p.email?p.email:""),PW/2,fy3,{align:"center"});
 }
 
 
