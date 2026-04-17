@@ -50,14 +50,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 .zoom-wrap{background:#111;padding:4px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
 /* Paisagem: controles ao lado, video ocupa tudo */
 @media (orientation:landscape){
-  .camera-overlay{flex-direction:row}
+  .camera-overlay{flex-direction:row;align-items:stretch}
   .cam-header{display:none}
-  .cam-video-wrap{flex:1;height:100%}
-  .cam-video-wrap video{object-fit:contain}
-  .cam-side-controls{display:flex!important;flex-direction:column;justify-content:space-between;align-items:center;padding:16px 12px;background:#000;width:90px;flex-shrink:0}
-  .zoom-wrap{flex-direction:column;width:90px;height:auto;padding:8px}
-  .zoom-wrap .zoom-slider{writing-mode:vertical-lr;direction:rtl;height:120px;width:4px}
-  .camera-controls{flex-direction:column;justify-content:space-between;padding:16px 12px;width:90px;flex-shrink:0;background:#000}
+  .cam-video-wrap{flex:1;min-width:0;min-height:0}
+  .cam-video-wrap video{object-fit:contain;width:100%;height:100%;background:#000}
+  .zoom-wrap{flex-direction:column;width:58px;padding:6px 4px;align-items:center;background:#111;justify-content:center;gap:4px}
+  .zoom-wrap>span{font-size:9px;color:#aaa}
+  .zoom-wrap .zoom-slider{writing-mode:vertical-lr;direction:rtl;height:90px;width:4px;accent-color:#fff}
+  .zoom-label{font-size:11px!important;font-weight:700;color:#fff}
+  .camera-controls{flex-direction:column;justify-content:space-around;align-items:center;padding:8px 6px;width:68px;flex-shrink:0;background:#000}
+  .shutter{width:50px;height:50px}
+  .btn-cam{padding:6px 8px;font-size:11px;width:100%;white-space:nowrap}
 }
 .zoom-slider{flex:1;height:4px;cursor:pointer;accent-color:#fff}
 .zoom-label{color:#fff;font-size:14px;font-weight:600;min-width:38px;text-align:right}
@@ -65,8 +68,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 .shutter:active{background:#ccc;transform:scale(.93)}
 .btn-cam{background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:10px;padding:10px 16px;font-size:13px;cursor:pointer;-webkit-appearance:none;white-space:nowrap}
 .canvas-overlay{position:fixed;inset:0;z-index:1001;display:flex;flex-direction:column;background:#000;overflow:hidden}
-.canvas-overlay canvas{flex:1;width:100%;touch-action:none;display:block;min-height:0}
-.canvas-controls{background:#111;padding:14px 16px;display:flex;gap:10px;align-items:center;flex-shrink:0}
+.canvas-overlay canvas{flex:1;width:100%;height:100%;touch-action:none;display:block;min-height:0;min-width:0;object-fit:contain}
+.canvas-controls{background:#111;padding:10px 16px;display:flex;gap:10px;align-items:center;flex-shrink:0}
+/* Canvas landscape: usar toda a largura */
+@media (orientation:landscape){
+  .canvas-overlay{flex-direction:row}
+  .canvas-controls{flex-direction:column;width:80px;flex-shrink:0;padding:10px 8px;justify-content:center}
+}
 .bottom-sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1002;display:flex;align-items:flex-end;justify-content:center}
 .sheet-body{background:#fff;border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:600px;max-height:85vh;overflow-y:auto}
 .sheet-body h3{font-size:17px;font-weight:600;margin-bottom:6px}
@@ -303,6 +311,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 </div>
 
 <!-- EDITOR SETAS -->
+<div id="preview-overlay" style="display:none;position:fixed;inset:0;background:#000;z-index:1000;flex-direction:column;overflow:hidden">
+  <div style="background:#1a1a1a;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0">
+    <span id="preview-label" style="color:#fff;font-size:14px;font-weight:600;flex:1"></span>
+    <span style="color:#aaa;font-size:12px">Confirme a foto</span>
+  </div>
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden;background:#000">
+    <img id="preview-img" style="max-width:100%;max-height:100%;object-fit:contain;display:block">
+  </div>
+  <div style="background:#111;padding:14px 20px;display:flex;gap:12px;flex-shrink:0">
+    <button onclick="descartarFoto()" style="flex:1;padding:14px;border-radius:10px;background:#3a1a1a;color:#ff6b6b;border:1px solid #ff6b6b;font-size:15px;font-weight:600;cursor:pointer">✕ Descartar</button>
+    <button onclick="usarFotoPreview()" style="flex:1;padding:14px;border-radius:10px;background:#1a3a2a;color:#6bffb8;border:1px solid #6bffb8;font-size:15px;font-weight:600;cursor:pointer">✓ Usar foto</button>
+  </div>
+</div>
 <div id="arrow-overlay" class="canvas-overlay" style="display:none">
   <div style="background:#111;padding:12px 16px;color:#fff;font-size:14px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
     <span style="font-weight:600">Toque para marcar patologias</span>
@@ -830,9 +851,28 @@ const baseRefNative=Math.max(outW,outH);const fs=Math.max(32,Math.round(baseRefN
 };
 
 function processarFoto(){
+  // Mostrar preview primeiro - usuario decide usar ou descartar
+  mostrarPreviewFoto(fotoAtualBlob);
+}
+
+function mostrarPreviewFoto(dataUrl){
+  document.getElementById("preview-img").src=dataUrl;
+  document.getElementById("preview-label").textContent=fotoAtualAmbiente+" | "+fotoAtualTipo;
+  document.getElementById("preview-overlay").style.display="flex";
+}
+
+window.descartarFoto=()=>{
+  document.getElementById("preview-overlay").style.display="none";
+  fotoAtualBlob=null;
+  // Reabrir camera diretamente
+  abrirCamera();
+};
+
+window.usarFotoPreview=()=>{
+  document.getElementById("preview-overlay").style.display="none";
   if(fotoAtualTipo==="Vista"){salvarFotoFinal(fotoAtualBlob,[]);}
   else{abrirEditorSetas(fotoAtualBlob);}
-}
+};
 window.uploadFoto=()=>{const amb=document.getElementById("v-ambiente").value;if(!amb)return alert("Selecione o ambiente primeiro");fotoAtualAmbiente=amb;fotoAtualTipo=document.getElementById("v-tipo-foto").value;document.getElementById("file-input").click();};
 window.handleFileUpload=e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{fotoAtualBlob=ev.target.result;processarFoto();};r.readAsDataURL(file);e.target.value="";};
 
@@ -842,9 +882,23 @@ function abrirEditorSetas(imgDataUrl){
   const canvas=document.getElementById("arrow-canvas");
   const img=new Image();
   img.onload=()=>{
-    arrowImage=img;const maxW=window.innerWidth,maxH=window.innerHeight-130;
-    const scale=Math.min(maxW/img.width,maxH/img.height,1);
-    canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);
+    arrowImage=img;
+    // Usar toda a área disponível da tela
+    const isLandscape=window.innerWidth>window.innerHeight;
+    const controlsH=isLandscape?0:70; // em landscape controles ficam na lateral
+    const controlsW=isLandscape?80:0;
+    const maxW=window.innerWidth-controlsW;
+    const maxH=window.innerHeight-controlsH;
+    // Calcular escala mantendo proporção da imagem
+    const scaleW=maxW/img.naturalWidth;
+    const scaleH=maxH/img.naturalHeight;
+    const scale=Math.min(scaleW,scaleH,1);
+    canvas.width=Math.round(img.naturalWidth*scale);
+    canvas.height=Math.round(img.naturalHeight*scale);
+    // Centralizar canvas
+    canvas.style.maxWidth="100%";
+    canvas.style.maxHeight="100%";
+    canvas.style.objectFit="contain";
     desenharSetas();
   };
   img.src=imgDataUrl;
@@ -1104,11 +1158,11 @@ async function regeRarPDF(data){
       pdf.setDrawColor(160,160,160);pdf.setLineWidth(0.15);pdf.rect(ML,yc,CW,rowH,"S");
       cx=ML;pdf.setFont("helvetica","bold");pdf.setFontSize(6.5);pdf.text(amb,cx+1.5,yc+4);cx+=colW[0];
       vals.forEach((arr,ki)=>{
-        pdf.setFont("helvetica","normal");pdf.setFontSize(5.5);
+        pdf.setFont("helvetica","normal");pdf.setFontSize(5.2);
         const allP=["Fissura/Trinca/Rachadura","Umidade/Infiltra\xe7\xe3o","Danificado"];
         allP.forEach((pp,pi)=>{
           const mk=arr.includes(pp);
-          pdf.text((mk?"\u2611":"\u2610")+" "+pp,cx+1,yc+2.8+pi*3);
+          pdf.text((mk?"[X]":"[ ]")+" "+pp,cx+1,yc+2+pi*2.7);
         });
         cx+=colW[ki+1];
       });
@@ -1147,8 +1201,8 @@ window.finalizarVistoria=async()=>{
     // Cabecalho proporcional (modelo: 49.1mm em pagina com margem 5mm)
     // Adaptado: 47mm para caber 2 pares + foto01 na pg1
     const HDR=47;
-    const F01H=74;   // foto 01 altura (reduzida para caber layout)
-    const FPH=60;    // foto par altura
+    const F01H=68;   // foto 01 altura
+    const FPH=54;    // foto par altura
     const FPL=(CW-1)/2; // foto par esquerda (metade do CW menos linha divisoria)
     const FPR=(CW-1)/2; // foto par direita (igual - modelo divide meio a meio)
     const LEGH=8;    // altura das 2 linhas de legenda
@@ -1238,18 +1292,18 @@ window.finalizarVistoria=async()=>{
     colsH.forEach((c,i)=>{pdf.text(c,cx+colW[i]/2,yc+4.8,{align:"center"});cx+=colW[i];});yc+=7;
     ambTotal.forEach((amb,ri)=>{
       const vals=COLS.map(k=>{const v=(currentVistoria.checklist&&currentVistoria.checklist[amb]&&currentVistoria.checklist[amb][k])||[];return Array.isArray(v)?v:[];});
-      const rowH=12;// 3 patologias
+      const rowH=8.5;// Compactado para caber na pagina
       if(yc+rowH>PGB-15){pdf.addPage();yc=20;}
       if(ri%2===0){pdf.setFillColor(248,248,248);cx=ML;colW.forEach(w=>{pdf.rect(cx,yc,w,rowH,"F");cx+=w;});}
       pdf.setDrawColor(160,160,160);pdf.setLineWidth(0.15);pdf.rect(ML,yc,CW,rowH,"S");
       cx=ML;pdf.setFont("helvetica","bold");pdf.setFontSize(6.5);
       pdf.text(amb,cx+1.5,yc+4);cx+=colW[0];
       vals.forEach((arr,ki)=>{
-        pdf.setFont("helvetica","normal");pdf.setFontSize(5.5);
+        pdf.setFont("helvetica","normal");pdf.setFontSize(5.2);
         const allP=["Fissura/Trinca/Rachadura","Umidade/Infiltração","Danificado"];
         allP.forEach((pp,pi)=>{
           const mk=arr.includes(pp);
-          pdf.text((mk?"☑":"☐")+" "+pp,cx+1,yc+2.8+pi*3);
+          pdf.text((mk?"[X]":"[ ]")+" "+pp,cx+1,yc+2+pi*2.7);
         });
         cx+=colW[ki+1];
       });
@@ -1441,9 +1495,15 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep){
   pdf.setFontSize(12);pdf.setFont("helvetica","bold");pdf.setTextColor(0,0,0);
   pdf.text("RELATÓRIO DE VISTORIA CAUTELAR",ML+CW/2,MT+(h1+h2+h3)/2+1.5,{align:"center"});
 
-  // ===== RRT (area J1:L2, direita do titulo, row 1-2) =====
-  pdf.setFontSize(10);pdf.setFont("helvetica","bold");
-  pdf.text("RRT: "+v.clienteRRT,ML+CW-1.5,MT+(h1+h2)/2+1.5,{align:"right"});
+  // ===== RRT (area J1:L2, mesclado e centralizado verticalmente) =====
+  // Caixa RRT: canto direito, altura = h1+h2+h3 (mesclado como no modelo)
+  const rrtBoxX=ML+CW*(9/12);
+  const rrtBoxW=CW*(3/12);
+  const rrtBoxH=h1+h2+h3;
+  // Fundo branco + borda já desenhada pela borda externa
+  // Centralizar texto verticalmente no box
+  pdf.setFontSize(9.5);pdf.setFont("helvetica","bold");
+  pdf.text("RRT: "+v.clienteRRT,rrtBoxX+rrtBoxW/2,MT+rrtBoxH/2+1.5,{align:"center"});
 
   // ===== R4: "INFORMAÇÕES DO RESPONSÁVEL" centralizado =====
   pdf.setFontSize(9);pdf.setFont("helvetica","bold");
@@ -1514,6 +1574,9 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep){
 }
 
 function pdfFooter(pdf,PW,PH,ML,MR,MB,p){
+  // Borda externa da pagina inteira (como no modelo)
+  pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.5);
+  pdf.rect(ML,ML,PW-ML-MR,PH-ML-MB,"S");
   // Rodape centralizado 3 linhas
   const fy1=PH-MB-6;
   const fy2=PH-MB-3;
