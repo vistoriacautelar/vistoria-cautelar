@@ -35,7 +35,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 .list-item .title{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .list-item .sub{font-size:13px;color:#888;margin-top:2px}
 .badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600;white-space:nowrap}
-.badge.master{background:#ede9fe;color:#5b21b6}.badge.cad{background:#e0f2fe;color:#0369a1}.badge.ok{background:#d1fae5;color:#065f46}
+.badge.master{background:#ede9fe;color:#5b21b6}.badge.cad{background:#e0f2fe;color:#0369a1}.badge.ok{background:#d1fae5;color:#065f46}.badge.com{background:#fff7ed;color:#c2410c}
 .avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex-shrink:0}
 .photo-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .photo-card{border-radius:10px;overflow:hidden;border:1px solid #e5e5e5;position:relative;background:#000}
@@ -145,9 +145,51 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div class="list-item" onclick="goTo('s-usuarios')"><div class="avatar" style="background:#d1fae5;color:#065f46"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg></div><div class="info"><div class="title">Usuarios</div><div class="sub">Tecnicos cadastradores</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
       <div class="sep"></div>
     </div>
-    <div class="section-header">Vistorias</div>
-    <div class="list-item" onclick="goTo('s-nova-vistoria')"><div class="avatar" style="background:#fef3c7;color:#92400e"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div><div class="info"><div class="title">Nova Vistoria</div><div class="sub">Iniciar vistoria cautelar</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
-    <div class="list-item" onclick="goTo('s-historico')"><div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg></div><div class="info"><div class="title">Minhas Vistorias</div><div class="sub" id="dash-count">Carregando...</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
+    <div id="dash-comunicador-section" style="display:none">
+      <div class="section-header">Captacao</div>
+      <div class="list-item" onclick="goTo('s-novo-imovel')"><div class="avatar" style="background:#fff7ed;color:#c2410c"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg></div><div class="info"><div class="title">Cadastrar Imovel</div><div class="sub">Registrar morador e endereco</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
+      <div class="list-item" onclick="goTo('s-fila')"><div class="avatar" style="background:#fff7ed;color:#c2410c"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg></div><div class="info"><div class="title">Imoveis Cadastrados</div><div class="sub" id="dash-fila-count">Carregando...</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
+    </div>
+    <div id="dash-cadastrador-section">
+      <div class="section-header">Vistorias</div>
+      <div class="list-item" onclick="goTo('s-fila')"><div class="avatar" style="background:#dbeafe;color:#1d4ed8"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg></div><div class="info"><div class="title">Fila de Imoveis</div><div class="sub" id="dash-fila-count2">Aguardando vistoria</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
+      <div class="list-item" onclick="goTo('s-nova-vistoria')"><div class="avatar" style="background:#fef3c7;color:#92400e"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div><div class="info"><div class="title">Nova Vistoria</div><div class="sub">Iniciar sem imovel pre-cadastrado</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
+      <div class="list-item" onclick="goTo('s-historico')"><div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg></div><div class="info"><div class="title">Minhas Vistorias</div><div class="sub" id="dash-count">Carregando...</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="s-novo-imovel" class="screen">
+  <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Cadastrar Imovel</h1></div>
+  <div class="content">
+    <div class="card"><h2>Dados do morador</h2>
+      <div class="field"><label>Nome completo *</label><input type="text" id="ni-nome" placeholder="Nome do morador ou Imovel Vazio"></div>
+      <div class="field" style="display:flex;gap:8px;align-items:flex-end">
+        <div style="flex:1"><label>RG / CPF</label><input type="text" id="ni-doc" placeholder="000.000.000-00" inputmode="numeric" oninput="maskCPF(this)"></div>
+        <button class="btn small" onclick="naoInformadoDoc()" style="margin-bottom:0;white-space:nowrap">Nao informado</button>
+      </div>
+      <div class="field" style="display:flex;gap:8px;align-items:flex-end">
+        <div style="flex:1"><label>Telefone</label><input type="tel" id="ni-tel" placeholder="(00) 9 0000-0000" inputmode="numeric" oninput="maskTel(this)"></div>
+        <button class="btn small" onclick="naoInformadoTel()" style="margin-bottom:0;white-space:nowrap">Nao informado</button>
+      </div>
+    </div>
+    <div class="card"><h2>Endereco</h2>
+      <div class="field"><label>Rua *</label><input type="text" id="ni-rua" placeholder="Nome da rua"></div>
+      <div class="field"><label>Numero *</label><input type="text" id="ni-num" placeholder="123" inputmode="numeric"></div>
+      <div class="field"><label>Complemento</label><input type="text" id="ni-comp" placeholder="Apto, casa, etc"></div>
+    </div>
+    <div class="card"><h2>Cliente / Coletor</h2>
+      <div class="field"><label>Cliente *</label><select id="ni-cliente" onchange="loadColetoresNI()"><option value="">Selecione...</option></select></div>
+      <div class="field"><label>Coletor *</label><select id="ni-coletor"><option value="">Selecione o cliente primeiro</option></select></div>
+    </div>
+    <button class="btn success" onclick="salvarNovoImovel()">Cadastrar Imovel</button>
+  </div>
+</div>
+
+<div id="s-fila" class="screen">
+  <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Fila de Imoveis</h1><button class="btn small primary" onclick="goTo('s-novo-imovel')" style="color:#007aff;border-color:#007aff">+ Novo</button></div>
+  <div class="content">
+    <div id="lista-fila"></div>
   </div>
 </div>
 
@@ -200,9 +242,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
         <div class="info-box">Reaproveitar dados do responsavel anterior?</div>
         <div class="grid2"><button class="btn small" onclick="reaproveitarResponsavel()">Sim</button><button class="btn small" onclick="document.getElementById('nv-reaproveitar-box').style.display='none'">Nao</button></div>
       </div>
-      <div class="field"><label>Nome completo *</label><input type="text" id="nv-nome" placeholder="Nome do responsavel"></div>
-      <div class="field"><label>RG / CPF</label><input type="text" id="nv-doc" placeholder="000.000.000-00" inputmode="numeric" oninput="maskCPF(this)"></div>
-      <div class="field"><label>Telefone</label><input type="tel" id="nv-tel" placeholder="(00) 9 0000-0000" inputmode="numeric" oninput="maskTel(this)"></div>
+      <div class="field"><label>Nome completo *</label><input type="text" id="nv-nome" placeholder="Nome do responsavel ou Imovel Vazio"></div>
+      <div class="field" style="display:flex;gap:8px;align-items:flex-end">
+        <div style="flex:1"><label>RG / CPF</label><input type="text" id="nv-doc" placeholder="000.000.000-00" inputmode="numeric" oninput="maskCPF(this)"></div>
+        <button class="btn small" onclick="document.getElementById('nv-doc').value='Nao informado'" style="margin-bottom:0;white-space:nowrap">Nao inf.</button>
+      </div>
+      <div class="field" style="display:flex;gap:8px;align-items:flex-end">
+        <div style="flex:1"><label>Telefone</label><input type="tel" id="nv-tel" placeholder="(00) 9 0000-0000" inputmode="numeric" oninput="maskTel(this)"></div>
+        <button class="btn small" onclick="document.getElementById('nv-tel').value='Nao informado'" style="margin-bottom:0;white-space:nowrap">Nao inf.</button>
+      </div>
     </div>
     <div class="card"><h2>Endereco</h2>
       <div id="nv-reaproveitar-rua-box" style="display:none;margin-bottom:12px">
@@ -269,6 +317,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   <div class="topbar"><button class="back" onclick="goTo('s-checklist')">&#8249; Checklist</button><h1>Finalizacao</h1></div>
   <div class="content">
     <div class="card"><h2>Estado de conservacao</h2>
+      <div class="field"><label>Status da Vistoria</label><select id="fin-status-vistoria"><option value="concluida">Finalizado</option><option value="parcial">Vistoria Parcial</option><option value="recusa">Recusa</option><option value="ausente">Ausente</option></select></div>
       <div class="field"><label>Estado de Conservacao</label><select id="fin-estado"><option>Bom</option><option selected>Regular</option><option>Ruim</option><option>Péssimo</option></select></div>
       <div class="field"><label>Idade Aparente do Imóvel (anos) *</label><input type="number" id="fin-idade" placeholder="Ex: 30" min="0" max="200" inputmode="numeric" required></div>
     </div>
@@ -386,7 +435,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
     <div class="field"><label>Nome completo *</label><input type="text" id="mu-nome"></div>
     <div class="field"><label>E-mail *</label><input type="email" id="mu-email"></div>
     <div class="field"><label>Senha *</label><div class="pass-wrap"><input type="password" id="mu-pass" placeholder="Minimo 6 caracteres"><button class="pass-toggle" onclick="togglePass('mu-pass',this)" type="button">&#128065;</button></div></div>
-    <div class="field"><label>Nivel de acesso</label><select id="mu-role"><option value="cadastrador">Cadastrador</option><option value="master">Master</option></select></div>
+    <div class="field"><label>Nivel de acesso</label><select id="mu-role"><option value="cadastrador">Cadastrador</option><option value="comunicador">Comunicador</option><option value="master">Master</option></select></div>
     <div class="grid2" style="margin-top:8px"><button class="btn" onclick="closeModal('modal-usuario')">Cancelar</button><button class="btn primary" onclick="salvarUsuario()">Salvar</button></div>
   </div>
 </div>
@@ -423,7 +472,7 @@ const LOGO_CONST="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgc
 
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import{getAuth,signInWithEmailAndPassword,signOut,createUserWithEmailAndPassword,onAuthStateChanged,updatePassword}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import{getFirestore,collection,doc,setDoc,getDoc,getDocs,addDoc,query,where,serverTimestamp,deleteDoc,updateDoc}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import{getFirestore,collection,doc,setDoc,getDoc,getDocs,addDoc,query,where,orderBy,serverTimestamp,deleteDoc,updateDoc}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const FC={apiKey:"AIzaSyAwwO2yLyNVnKMLFfmKKCx64zeh7Tbgrvc",authDomain:"vistoria-cautelar-71f6d.firebaseapp.com",projectId:"vistoria-cautelar-71f6d",storageBucket:"vistoria-cautelar-71f6d.firebasestorage.app",messagingSenderId:"157244396794",appId:"1:157244396794:web:c0b983583939e13e91a543"};
 const fbApp=initializeApp(FC);
@@ -463,7 +512,7 @@ window.addEventListener("deviceorientation",e=>{if(e.beta!==null)deviceOrientati
 window.goTo=(id)=>{
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   document.getElementById(id).classList.add("active");window.scrollTo(0,0);
-  const m={"s-dash":loadDash,"s-prestadores":loadPrestadores,"s-clientes":loadClientes,"s-coletores":loadColetores,"s-usuarios":loadUsuarios,"s-nova-vistoria":loadNovVistoriaForm,"s-historico":loadHistorico,"s-checklist":renderChecklist,"s-finalizacao":renderFinalizacao,"s-perfil":renderPerfil,"s-vistoria":iniciarGPS};
+  const m={"s-dash":loadDash,"s-prestadores":loadPrestadores,"s-clientes":loadClientes,"s-coletores":loadColetores,"s-usuarios":loadUsuarios,"s-nova-vistoria":loadNovVistoriaForm,"s-historico":loadHistorico,"s-checklist":renderChecklist,"s-finalizacao":renderFinalizacao,"s-perfil":renderPerfil,"s-vistoria":iniciarGPS,"s-novo-imovel":loadNovoImovelForm,"s-fila":loadFila};
   if(m[id])m[id]();
 };
 window.showModal=(id)=>{if(id==="modal-coletor")populateClienteSelect("mcol-cliente");document.getElementById(id).style.display="flex";};
@@ -493,8 +542,114 @@ async function loadPrestadorDefault(){try{const q=query(collection(db,"prestador
 window.doLogin=async()=>{const email=document.getElementById("login-email").value.trim();const pass=document.getElementById("login-pass").value;const err=document.getElementById("login-err");if(!email||!pass){err.textContent="Preencha e-mail e senha";err.style.display="block";return;}try{await signInWithEmailAndPassword(auth,email,pass);localStorage.setItem("lastLoginDate",new Date().toDateString());err.style.display="none";}catch(e){err.textContent="E-mail ou senha incorretos";err.style.display="block";}};
 window.doLogout=async()=>await signOut(auth);
 
-function loadDash(){const el=document.getElementById("dash-role");el.textContent=currentRole==="master"?"Master":"Cadastrador";el.className="badge "+(currentRole==="master"?"master":"cad");document.getElementById("dash-master-section").style.display=currentRole==="master"?"block":"none";loadDashCount();}
+function loadDash(){const el=document.getElementById("dash-role");const roleLabel=currentRole==="master"?"Master":currentRole==="comunicador"?"Comunicador":"Cadastrador";const roleCls=currentRole==="master"?"master":currentRole==="comunicador"?"com":"cad";el.textContent=roleLabel;el.className="badge "+roleCls;document.getElementById("dash-master-section").style.display=currentRole==="master"?"block":"none";document.getElementById("dash-comunicador-section").style.display=currentRole==="comunicador"?"block":"none";document.getElementById("dash-cadastrador-section").style.display=(currentRole==="cadastrador"||currentRole==="master")?"block":"none";loadDashCount();loadFilaCount();}
 async function loadDashCount(){try{const q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));const s=await getDocs(q);document.getElementById("dash-count").textContent=s.size+" vistoria(s)";}catch(e){}}
+
+async function loadFilaCount(){try{const q=query(collection(db,"fila_vistorias"),where("status","==","aguardando"));const s=await getDocs(q);const txt=s.size+" aguardando";const el1=document.getElementById("dash-fila-count");const el2=document.getElementById("dash-fila-count2");if(el1)el1.textContent=txt;if(el2)el2.textContent=txt;}catch(e){}}
+
+// ── COMUNICADOR: Cadastrar Imóvel ─────────────────────────────
+async function loadNovoImovelForm(){
+  // Carregar clientes no select
+  const snap=await getDocs(collection(db,"clientes"));
+  const sel=document.getElementById("ni-cliente");
+  sel.innerHTML='<option value="">Selecione...</option>';
+  snap.forEach(d=>sel.innerHTML+=`<option value="${d.id}">${d.data().nome}</option>`);
+  document.getElementById("ni-coletor").innerHTML='<option value="">Selecione o cliente primeiro</option>';
+  ["ni-nome","ni-doc","ni-tel","ni-rua","ni-num","ni-comp"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+}
+
+window.loadColetoresNI=async()=>{
+  const cId=document.getElementById("ni-cliente").value;
+  const sel=document.getElementById("ni-coletor");
+  if(!cId){sel.innerHTML='<option value="">Selecione o cliente primeiro</option>';return;}
+  const snap=await getDocs(query(collection(db,"coletores"),where("clienteId","==",cId)));
+  sel.innerHTML='<option value="">Selecione...</option>';
+  snap.forEach(d=>sel.innerHTML+=`<option value="${d.id}">${d.data().nome}</option>`);
+};
+
+window.naoInformadoDoc=()=>{document.getElementById("ni-doc").value="Nao informado";};
+window.naoInformadoTel=()=>{document.getElementById("ni-tel").value="Nao informado";};
+
+window.salvarNovoImovel=async()=>{
+  const nome=document.getElementById("ni-nome").value.trim();
+  const rua=document.getElementById("ni-rua").value.trim();
+  const num=document.getElementById("ni-num").value.trim();
+  const cId=document.getElementById("ni-cliente").value;
+  const colId=document.getElementById("ni-coletor").value;
+  if(!nome)return alert("Informe o nome do morador ou 'Imovel Vazio'");
+  if(!rua||!num)return alert("Informe o endereco completo");
+  if(!cId||!colId)return alert("Selecione cliente e coletor");
+  const clSnap=await getDocs(collection(db,"clientes"));
+  const colSnap=await getDocs(collection(db,"coletores"));
+  let clNome="",colNome="";
+  clSnap.forEach(d=>{if(d.id===cId)clNome=d.data().nome;});
+  colSnap.forEach(d=>{if(d.id===colId)colNome=d.data().nome;});
+  try{
+    await addDoc(collection(db,"fila_vistorias"),{
+      responsavel:{nome,doc:document.getElementById("ni-doc").value.trim()||"",tel:document.getElementById("ni-tel").value.trim()||""},
+      endereco:{rua,num,comp:document.getElementById("ni-comp").value.trim()},
+      clienteId:cId,clienteNome:clNome,coletorId:colId,coletorNome:colNome,
+      comunicadorId:currentUser.uid,status:"aguardando",criadoEm:serverTimestamp()
+    });
+    showToast("Imovel cadastrado na fila!");
+    goTo("s-fila");
+  }catch(e){alert("Erro: "+e.message);}
+};
+
+// ── FILA DE IMÓVEIS ───────────────────────────────────────────
+async function loadFila(){
+  const el=document.getElementById("lista-fila");
+  el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Carregando...</p>';
+  try{
+    let q;
+    if(currentRole==="comunicador"){
+      q=query(collection(db,"fila_vistorias"),where("comunicadorId","==",currentUser.uid),orderBy("criadoEm","desc"));
+    }else{
+      q=query(collection(db,"fila_vistorias"),where("status","==","aguardando"),orderBy("criadoEm","desc"));
+    }
+    const snap=await getDocs(q);
+    if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhum imovel na fila</p>';return;}
+    el.innerHTML="";
+    snap.forEach(d=>{
+      const v=d.data();const id=d.id;
+      const statusMap={aguardando:"Aguardando",em_andamento:"Em andamento",concluida:"Concluido"};
+      const statusClr={aguardando:"#f59e0b",em_andamento:"#3b82f6",concluida:"#10b981"};
+      const st=v.status||"aguardando";
+      const div=document.createElement("div");
+      div.className="list-item";
+      div.innerHTML=`<div class="avatar" style="background:#fff7ed;color:#c2410c"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg></div><div class="info"><div class="title">${v.responsavel&&v.responsavel.nome||"--"}</div><div class="sub">${(v.endereco&&v.endereco.rua||"")} ${(v.endereco&&v.endereco.num||"")} | ${v.coletorNome||""}</div></div><span style="color:${statusClr[st]};font-size:12px;font-weight:600">${statusMap[st]||st}</span>`;
+      if(currentRole!=="comunicador"&&st==="aguardando"){
+        div.onclick=()=>iniciarVistoriaFromFila(id,v);
+      }
+      el.appendChild(div);
+    });
+    loadFilaCount();
+  }catch(e){el.innerHTML='<p style="text-align:center;color:#e44">Erro ao carregar fila</p>';}
+}
+
+async function iniciarVistoriaFromFila(filaId,v){
+  if(!confirm("Iniciar vistoria para "+( v.responsavel&&v.responsavel.nome||"este imovel")+"?"))return;
+  // Marca como em_andamento
+  await updateDoc(doc(db,"fila_vistorias",filaId),{status:"em_andamento",cadastradorId:currentUser.uid});
+  // Pré-carrega os dados no formulário de nova vistoria
+  await loadNovVistoriaForm();
+  // Preenche os campos automaticamente
+  const setVal=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val||"";};
+  setVal("nv-nome",v.responsavel&&v.responsavel.nome);
+  setVal("nv-doc",v.responsavel&&v.responsavel.doc);
+  setVal("nv-tel",v.responsavel&&v.responsavel.tel);
+  setVal("nv-rua",v.endereco&&v.endereco.rua);
+  setVal("nv-num",v.endereco&&v.endereco.num);
+  setVal("nv-comp",v.endereco&&v.endereco.comp);
+  // Seleciona cliente e coletor
+  const selCl=document.getElementById("nv-cliente");
+  if(selCl){selCl.value=v.clienteId||"";selCl.dispatchEvent(new Event("change"));}
+  setTimeout(()=>{const selCol=document.getElementById("nv-coletor");if(selCol)selCol.value=v.coletorId||"";},500);
+  // Guarda ref do item de fila para atualizar ao finalizar
+  window._filaItemId=filaId;
+  goTo("s-nova-vistoria");
+  showToast("Dados pre-preenchidos da fila!");
+}
 
 function renderPerfil(){
   document.getElementById("perfil-nome").value=currentUserData&&currentUserData.nome||"";
@@ -534,6 +689,12 @@ async function loadUsuarios(){const snap=await getDocs(collection(db,"users"));c
 window.salvarUsuario=async()=>{const n=document.getElementById("mu-nome").value.trim();const em=document.getElementById("mu-email").value.trim();const pw=document.getElementById("mu-pass").value;const role=document.getElementById("mu-role").value;if(!n||!em||!pw)return alert("Preencha todos os campos");if(pw.length<6)return alert("Senha minimo 6 caracteres");try{const uc=await createUserWithEmailAndPassword(auth,em,pw);await setDoc(doc(db,"users",uc.user.uid),{nome:n,email:em,role,criadoEm:serverTimestamp()});closeModal("modal-usuario");["mu-nome","mu-email","mu-pass"].forEach(id=>document.getElementById(id).value="");loadUsuarios();showToast("Usuario criado!");}catch(e){alert("Erro: "+e.message);}};
 
 async function populateClienteSelect(selectId){const snap=await getDocs(collection(db,"clientes"));const sel=document.getElementById(selectId);sel.innerHTML='<option value="">Selecione...</option>';const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));docs.forEach(d=>{const o=document.createElement("option");o.value=d.id;o.textContent=d.nome;sel.appendChild(o);});}
+
+// ===== COMUNICADOR =====
+window.naoInformadoDoc=()=>{document.getElementById("ni-doc").value="Nao informado";};
+window.naoInformadoTel=()=>{document.getElementById("ni-tel").value="Nao informado";};
+
+// ===== FIM COMUNICADOR =====
 
 async function loadNovVistoriaForm(){
   await populateClienteSelect("nv-cliente");
@@ -1143,7 +1304,7 @@ async function loadHistorico(){
     docs.sort((a,b)=>(b.criadoEm&&b.criadoEm.seconds||0)-(a.criadoEm&&a.criadoEm.seconds||0));
     docs.forEach(v=>{
       const div=document.createElement("div");div.className="list-item";div.style.cursor="pointer";
-      div.innerHTML='<div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></div><div class="info"><div class="title">'+(v.responsavel&&v.responsavel.nome||"--")+'</div><div class="sub">'+(v.endereco&&v.endereco.rua||"")+" "+( v.endereco&&v.endereco.num||"")+" | "+(v.totalFotos||0)+" fotos | "+(v.data||"")+'</div></div><span class="badge '+(v.status==="concluida"?"ok":"master")+'">'+(v.status==="concluida"?"Concluida":"Andamento")+"</span>";
+      div.innerHTML='<div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></div><div class="info"><div class="title">'+(v.responsavel&&v.responsavel.nome||"--")+'</div><div class="sub">'+(v.endereco&&v.endereco.rua||"")+" "+( v.endereco&&v.endereco.num||"")+" | "+(v.totalFotos||0)+" fotos | "+(v.data||"")+'</div></div><span class="badge '+({concluida:"ok",parcial:"cad",recusa:"master",ausente:"com"}[v.status]||"ok")+'">'+({"concluida":"Finalizado","parcial":"Parcial","recusa":"Recusa","ausente":"Ausente"}[v.status]||"Finalizado")+"</span>";
       div.onclick=()=>abrirDetalheVistoria(v.id,v);
       el.appendChild(div);
     });
@@ -1301,6 +1462,7 @@ window.finalizarVistoria=async()=>{
   const btn=document.getElementById("btn-finalizar");btn.textContent="Gerando...";btn.disabled=true;
   currentVistoria.estado=document.getElementById("fin-estado").value;
   currentVistoria.idade=document.getElementById("fin-idade").value;
+  currentVistoria.statusVistoria=document.getElementById("fin-status-vistoria").value||"concluida";
   ultimoResponsavel={...currentVistoria.responsavel};
   try{
     const{jsPDF}=window.jspdf;
@@ -1500,8 +1662,10 @@ window.finalizarVistoria=async()=>{
     pdfFooter(pdf,PW,PH,ML,MR,MB,prest);
 
     // Salvar Firebase + download
-    const vDoc={clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,coletorNome:currentVistoria.coletorNome,responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,ocupacao:currentVistoria.ocupacao,tipo:currentVistoria.tipo,estado:currentVistoria.estado,idade:currentVistoria.idade,data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,userId:currentUser.uid,checklist:currentVistoria.checklist,ambientesExtras:ambientesExtras||[],observacoes:currentVistoria.observacoes,totalFotos:Object.keys(fotosPendentes).length,status:"concluida",criadoEm:serverTimestamp()};
+    const vDoc={clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,coletorNome:currentVistoria.coletorNome,responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,ocupacao:currentVistoria.ocupacao,tipo:currentVistoria.tipo,estado:currentVistoria.estado,idade:currentVistoria.idade,data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,userId:currentUser.uid,checklist:currentVistoria.checklist,ambientesExtras:ambientesExtras||[],observacoes:currentVistoria.observacoes,totalFotos:Object.keys(fotosPendentes).length,status:currentVistoria.statusVistoria||"concluida",criadoEm:serverTimestamp()};
     await addDoc(collection(db,"vistorias"),vDoc);
+    // Fechar item da fila se veio de la
+    if(window._filaItemId){try{await updateDoc(doc(db,"fila_vistorias",window._filaItemId),{status:"concluida"});}catch(e){}window._filaItemId=null;}
 
     const dataArq=currentVistoria.data.replace(/\//g,"-");
     const endArq=(currentVistoria.endereco.rua+" "+currentVistoria.endereco.num+(currentVistoria.endereco.comp?" "+currentVistoria.endereco.comp:"")).replace(/[^a-zA-Z0-9\s]/g,"").trim().replace(/\s+/g,"_");
