@@ -395,10 +395,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   <div class="sheet-body">
     <h3>Registrar patologia</h3>
     <p id="pat-modal-info">Ambiente: ---</p>
-    <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px">1. Onde esta a patologia?</p>
-    <div class="part-grid" id="part-grid"></div>
-    <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px">2. Qual patologia?</p>
-    <div class="pat-list" id="pat-list"></div>
+    <div id="pat-combinacoes" style="margin-bottom:12px;display:none">
+      <p style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">Patologias registradas nesta foto:</p>
+      <div id="pat-combo-list" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+    <div style="background:#f8f8f8;border-radius:12px;padding:12px;margin-bottom:12px">
+      <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px">1. Onde esta a patologia?</p>
+      <div class="part-grid" id="part-grid"></div>
+      <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px">2. Qual patologia?</p>
+      <div class="pat-list" id="pat-list"></div>
+      <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px">3. Em qual elemento?</p>
+      <div class="part-grid" id="elem-grid"></div>
+      <button class="btn" style="background:#f0f0f0;color:#333;margin-top:4px" onclick="adicionarCombinacao()">+ Adicionar esta combinacao</button>
+    </div>
     <button class="btn primary" onclick="confirmarPatologias()">Confirmar e salvar foto</button>
   </div>
 </div>
@@ -482,7 +491,8 @@ const db=getFirestore(fbApp);
 const AMBIENTES=["Fachada","Calçada","Garagem","Corredor externo","Área de serviço","Quintal","Sala","Cozinha","Banheiro 01","Banheiro 02","Lavabo","Dorm 01","Dorm 02","Dorm 03","Corredor interno","Varanda","Sacada","Depósito"];
 const PARTES=["Estrutura","Parede e muro","Cobertura a teto","Porta e esquadria","Piso e cal\xe7amento"];
 const COLS=["estrutura","paredes","cobertura","portas","piso"];
-const PATOLOGIAS=["Fissura/Trinca/Rachadura","Umidade/Infiltra\xe7\xe3o","Danificado"];
+const PATOLOGIAS=["Fissura","Trinca","Rachadura","Umidade","Infiltração","Desplacamento","Armadura Exposta","Danificado"];
+const ELEMENTOS=["Estrutura","Parede","Teto","Piso","Calçada","Porta","Esquadria"];
 
 let currentUser=null,currentRole=null,currentUserData=null;
 let currentVistoria=null,fotosPendentes={};
@@ -752,7 +762,6 @@ function renderFotos(){
   const c=document.getElementById("fotos-por-ambiente");c.innerHTML="";
   const g={};Object.values(fotosPendentes).forEach(f=>{if(!g[f.ambiente])g[f.ambiente]=[];g[f.ambiente].push(f);});
   if(!Object.keys(g).length){c.innerHTML='<div class="card" style="text-align:center;color:#aaa;padding:24px">Nenhuma foto ainda</div>';return;}
-  // Manter ordem dos ambientes
   const ordered=[...AMBIENTES,...ambientesExtras].filter(a=>g[a]);
   ordered.forEach(amb=>{
     const fotos=g[amb];const s=document.createElement("div");s.className="card";
@@ -762,14 +771,44 @@ function renderFotos(){
       const pc=document.createElement("div");pc.className="photo-card";
       const img=document.createElement("img");img.src=f.dataUrl;img.loading="lazy";
       const lbl=document.createElement("div");lbl.className="photo-label";
-      const pats=f.patologias&&f.patologias.length?f.patologias.map(p=>p.tipo+" > "+p.pat.split("/")[0]).join(", "):"";
-      lbl.innerHTML='<span style="flex:1;overflow:hidden;text-overflow:ellipsis">'+f.numero+" | "+f.tipo+(pats?" | "+pats:"")+'</span><button class="del-btn" onclick="removerFoto(\''+f.id+'\')">X</button>';
+      const legendaExib=f.legenda||f.tipo;
+      lbl.innerHTML='<span style="flex:1;overflow:hidden;text-overflow:ellipsis;font-size:11px">'+f.numero+' | '+legendaExib+'</span>'
+        +'<button class="del-btn" style="color:#007aff;background:none;border:none;font-size:11px;padding:0 4px" onclick="editarLegendaFoto(\''+f.id+'\')">✎</button>'
+        +'<button class="del-btn" onclick="removerFoto(\''+f.id+'\')">X</button>';
       pc.appendChild(img);pc.appendChild(lbl);gd.appendChild(pc);
     });
     s.appendChild(gd);c.appendChild(s);
   });
 }
 window.removerFoto=id=>{delete fotosPendentes[id];renderFotos();};
+
+function gerarTextoConclusao(){
+  // Agrupa por ambiente → combina legendas únicas
+  const porAmbiente={};
+  Object.values(fotosPendentes).forEach(f=>{
+    if(!f.combinacoes||!f.combinacoes.length)return;
+    if(!porAmbiente[f.ambiente])porAmbiente[f.ambiente]=[];
+    f.combinacoes.forEach(c=>{
+      const legenda=gerarLegendaCombo(c);
+      if(!porAmbiente[f.ambiente].includes(legenda))porAmbiente[f.ambiente].push(legenda);
+    });
+  });
+  const linhas=[];
+  const order=[...AMBIENTES,...ambientesExtras].filter(a=>porAmbiente[a]);
+  order.forEach(amb=>{
+    const itens=porAmbiente[amb];
+    linhas.push(amb+": "+itens.join(", ")+".");
+  });
+  return linhas;
+}
+
+window.editarLegendaFoto=id=>{
+  const f=fotosPendentes[id];if(!f)return;
+  const nova=prompt("Editar legenda da "+f.numero+":",f.legenda||f.tipo);
+  if(nova===null)return;
+  fotosPendentes[id].legenda=nova.trim()||f.tipo;
+  renderFotos();
+};
 
 function iniciarGPS(){
   if(!navigator.geolocation)return;
@@ -1209,9 +1248,12 @@ window.confirmarSetas=()=>{
   abrirModalPatologias();
 };
 
+let _patCombinacoes=[];
+
 function abrirModalPatologias(){
+  _patCombinacoes=[];
   document.getElementById("pat-modal-info").textContent="Ambiente: "+fotoAtualAmbiente;
-  // Grid de partes
+  // Grid de partes (checklist)
   const grid=document.getElementById("part-grid");grid.innerHTML="";
   PARTES.forEach((p,i)=>{
     const btn=document.createElement("button");btn.className="part-btn";btn.textContent=p;
@@ -1219,7 +1261,7 @@ function abrirModalPatologias(){
     btn.onclick=()=>{document.querySelectorAll(".part-btn").forEach(b=>b.classList.remove("selected"));btn.classList.add("selected");};
     grid.appendChild(btn);
   });
-  // Lista patologias
+  // Lista patologias (checkboxes individuais)
   const list=document.getElementById("pat-list");list.innerHTML="";
   PATOLOGIAS.forEach(p=>{
     const item=document.createElement("div");item.className="pat-item";
@@ -1229,24 +1271,79 @@ function abrirModalPatologias(){
     item.onclick=e=>{if(e.target!==cb)cb.checked=!cb.checked;};
     list.appendChild(item);
   });
+  // Grid de elementos construtivos
+  const eg=document.getElementById("elem-grid");eg.innerHTML="";
+  ELEMENTOS.forEach(e=>{
+    const btn=document.createElement("button");btn.className="part-btn";btn.textContent=e;
+    btn.onclick=()=>{document.querySelectorAll("#elem-grid .part-btn").forEach(b=>b.classList.remove("selected"));btn.classList.add("selected");};
+    eg.appendChild(btn);
+  });
+  renderCombinacoes();
   document.getElementById("pat-modal").style.display="flex";
 }
 
-window.confirmarPatologias=()=>{
+window.adicionarCombinacao=()=>{
   const selectedPart=document.querySelector(".part-btn.selected");
   const checkedPats=Array.from(document.querySelectorAll("#pat-list input:checked")).map(cb=>cb.value);
-  document.getElementById("pat-modal").style.display="none";
-  // Montar array de patologias com parte
-  const pats=[];
-  if(selectedPart&&checkedPats.length){
-    checkedPats.forEach(p=>pats.push({col:selectedPart.dataset.col,tipo:selectedPart.textContent,pat:p}));
-  }
-  salvarFotoFinal(fotoAtualBlob,pats);
+  const selectedElem=document.querySelector("#elem-grid .part-btn.selected");
+  if(!checkedPats.length)return alert("Selecione ao menos uma patologia");
+  if(!selectedElem)return alert("Selecione o elemento construtivo");
+  const combo={col:selectedPart?selectedPart.dataset.col:"paredes",parte:selectedPart?selectedPart.textContent:"",pats:checkedPats,elemento:selectedElem.textContent};
+  _patCombinacoes.push(combo);
+  // Limpar seleções para próxima combinação
+  document.querySelectorAll(".part-btn").forEach(b=>b.classList.remove("selected"));
+  document.querySelectorAll("#pat-list input:checked").forEach(cb=>cb.checked=false);
+  document.querySelectorAll("#elem-grid .part-btn").forEach(b=>b.classList.remove("selected"));
+  renderCombinacoes();
 };
 
-function salvarFotoFinal(dataUrl,patologias){
+function renderCombinacoes(){
+  const wrap=document.getElementById("pat-combinacoes");
+  const list=document.getElementById("pat-combo-list");
+  if(!_patCombinacoes.length){wrap.style.display="none";return;}
+  wrap.style.display="block";
+  list.innerHTML="";
+  _patCombinacoes.forEach((c,i)=>{
+    const legenda=gerarLegendaCombo(c);
+    const div=document.createElement("div");
+    div.style.cssText="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:8px 10px;font-size:13px";
+    div.innerHTML='<span style="flex:1">'+legenda+'</span><button onclick="removerCombinacao('+i+')" style="background:none;border:none;color:#e44;font-size:16px;cursor:pointer;padding:0 4px">✕</button>';
+    list.appendChild(div);
+  });
+}
+
+function gerarLegendaCombo(c){
+  const patsStr=c.pats.join(" e ");
+  return patsStr+" em "+c.elemento;
+}
+
+window.removerCombinacao=i=>{_patCombinacoes.splice(i,1);renderCombinacoes();};
+
+window.confirmarPatologias=()=>{
+  // Se ainda há seleção pendente não adicionada, adiciona automaticamente
+  const checkedPats=Array.from(document.querySelectorAll("#pat-list input:checked")).map(cb=>cb.value);
+  const selectedElem=document.querySelector("#elem-grid .part-btn.selected");
+  if(checkedPats.length&&selectedElem){
+    const selectedPart=document.querySelector(".part-btn.selected");
+    _patCombinacoes.push({col:selectedPart?selectedPart.dataset.col:"paredes",parte:selectedPart?selectedPart.textContent:"",pats:checkedPats,elemento:selectedElem.textContent});
+  }
+  document.getElementById("pat-modal").style.display="none";
+  // Montar array de patologias flat para checklist + legenda
+  const pats=[];
+  _patCombinacoes.forEach(c=>{
+    c.pats.forEach(p=>pats.push({col:c.col,tipo:c.parte,pat:p,elemento:c.elemento,combo:c}));
+  });
+  salvarFotoFinal(fotoAtualBlob,pats,_patCombinacoes);
+};
+
+function salvarFotoFinal(dataUrl,patologias,combinacoes){
   const id=Date.now().toString();const num=Object.keys(fotosPendentes).length+1;
-  fotosPendentes[id]={id,dataUrl,ambiente:fotoAtualAmbiente,tipo:fotoAtualTipo,numero:"Foto "+String(num).padStart(2,"0"),patologias:patologias||[],timestamp:new Date().toISOString()};
+  // Gerar legenda descritiva
+  let legenda=fotoAtualTipo;
+  if(combinacoes&&combinacoes.length){
+    legenda=combinacoes.map(c=>gerarLegendaCombo(c)).join(" e ");
+  }
+  fotosPendentes[id]={id,dataUrl,ambiente:fotoAtualAmbiente,tipo:fotoAtualTipo,legenda,numero:"Foto "+String(num).padStart(2,"0"),patologias:patologias||[],combinacoes:combinacoes||[],timestamp:new Date().toISOString()};
   // Preencher checklist automaticamente
   if(patologias&&patologias.length&&currentVistoria){
     if(!currentVistoria.checklist)currentVistoria.checklist={};
@@ -1423,17 +1520,17 @@ async function regeRarPDF(data){
     colsH.forEach((c,i)=>{pdf.text(c,cx+colW[i]/2,yc+4.8,{align:"center"});cx+=colW[i];});yc+=7;
     ambTotal.forEach((amb,ri)=>{
       const vals=COLS.map(k=>{const v=(data.checklist&&data.checklist[amb]&&data.checklist[amb][k])||[];return Array.isArray(v)?v:[];});
-      const rowH=12;
+      const rowH=20;
       if(yc+rowH>PGB-15){pdf.addPage();yc=20;}
       if(ri%2===0){pdf.setFillColor(248,248,248);cx=ML;colW.forEach(w=>{pdf.rect(cx,yc,w,rowH,"F");cx+=w;});}
       pdf.setDrawColor(160,160,160);pdf.setLineWidth(0.15);pdf.rect(ML,yc,CW,rowH,"S");
       cx=ML;pdf.setFont("helvetica","bold");pdf.setFontSize(6.5);pdf.text(amb,cx+1.5,yc+4);cx+=colW[0];
       vals.forEach((arr,ki)=>{
         pdf.setFont("helvetica","normal");pdf.setFontSize(5.2);
-        const allP=["Fissura/Trinca/Rachadura","Umidade/Infiltra\xe7\xe3o","Danificado"];
+        const allP=PATOLOGIAS;
         allP.forEach((pp,pi)=>{
-          const mk=arr.includes(pp);
-          pdf.text((mk?"[X]":"[ ]")+" "+pp,cx+1,yc+2+pi*2.7);
+          const mk=arr.some(a=>a===pp||a.toLowerCase().includes(pp.toLowerCase())||pp.toLowerCase().includes(a.toLowerCase()));
+          pdf.text((mk?"[X]":"[ ]")+" "+pp,cx+1,yc+2+pi*2.2);
         });
         cx+=colW[ki+1];
       });
@@ -1588,7 +1685,7 @@ window.finalizarVistoria=async()=>{
     // Altura dinâmica por linha
     const sigAreaH=52;const footH=14;
     const availH=PH-MB-yc-sigAreaH-footH;
-    const rowH=Math.max(7.5,Math.floor(availH/ambTotal.length*10)/10);
+    const rowH=Math.max(20,Math.floor(availH/ambTotal.length*10)/10);
     ambTotal.forEach((amb,ri)=>{
       const vals=COLS.map(k=>{const v=(currentVistoria.checklist&&currentVistoria.checklist[amb]&&currentVistoria.checklist[amb][k])||[];return Array.isArray(v)?v:[];});
       const hasAny=vals.some(a=>a.length>0);
@@ -1614,9 +1711,9 @@ window.finalizarVistoria=async()=>{
       cx=ML;pdf.setFont("helvetica","bold");pdf.setFontSize(7);
       pdf.text(amb,cx+1.5,yc+rowH*0.62);cx+=colWN[0];
       // Patologias
-      const step=(rowH-2.5)/3;
+      const step=(rowH-2.5)/PATOLOGIAS.length;
       vals.forEach((arr,ki)=>{
-        const allP=["Fissura/Trinca/Rachadura","Umidade/Infiltração","Danificado"];
+        const allP=PATOLOGIAS;
         allP.forEach((pp,pi)=>{
           const mk=arr.includes(pp);
           const ty=yc+1.8+pi*step;
@@ -1642,6 +1739,32 @@ window.finalizarVistoria=async()=>{
       });
       yc+=rowH;
     });
+    // === CONCLUSÃO — MANIFESTAÇÕES PATOLÓGICAS ===
+    const conclusaoLinhas=gerarTextoConclusao();
+    if(conclusaoLinhas.length){
+      yc+=6;
+      // Título
+      pdf.setFillColor(230,230,230);pdf.rect(ML,yc,CW,6,"F");
+      pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.setTextColor(0,0,0);
+      pdf.text("MANIFESTAÇÕES PATOLÓGICAS IDENTIFICADAS",ML+CW/2,yc+4.2,{align:"center"});
+      yc+=6;
+      // Texto introdutório
+      pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);
+      pdf.text("Foram observadas as seguintes manifestações patológicas no imóvel vistoriado:",ML,yc+4.5);
+      yc+=8;
+      // Por ambiente
+      conclusaoLinhas.forEach(linha=>{
+        const wrapped=pdf.splitTextToSize(linha,CW-4);
+        pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
+        const firstLine=wrapped[0];
+        pdf.text(firstLine,ML+2,yc);
+        if(wrapped.length>1){
+          pdf.setFont("helvetica","normal");
+          wrapped.slice(1).forEach(l=>{yc+=5;pdf.text(l,ML+4,yc);});
+        }
+        yc+=6;
+      });
+    }
     // === ASSINATURAS COM DATA CENTRALIZADA ===
     yc+=8;
     pdf.setFontSize(9);pdf.setFont("helvetica","normal");
@@ -1717,7 +1840,9 @@ async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
     pdf.setFont("helvetica","bold");pdf.setFontSize(8);
     pdf.text("Foto "+String(fotoNum).padStart(2,"0"),fx+FPL/2,y+FPH+2.8,{align:"center"});
     pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);
-    pdf.text(f.tipo,fx+FPL/2,y+FPH+6.6,{align:"center"});
+    const leg1=f.legenda||f.tipo;
+    const leg1lines=pdf.splitTextToSize(leg1,FPL-2);
+    pdf.text(leg1lines[0],fx+FPL/2,y+FPH+6.6,{align:"center"});
   } else {
     // Par
     const ws=[FPL,FPR];
@@ -1739,7 +1864,9 @@ async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
       pdf.setFont("helvetica","bold");pdf.setFontSize(8);
       pdf.text("Foto "+String(fotoNum+k).padStart(2,"0"),fx+fw_k/2,y+FPH+2.8,{align:"center"});
       pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);
-      pdf.text(f.tipo,fx+fw_k/2,y+FPH+6.6,{align:"center"});
+      const legTxt=f.legenda||f.tipo;
+      const legLines=pdf.splitTextToSize(legTxt,fw_k-2);
+      pdf.text(legLines[0],fx+fw_k/2,y+FPH+6.6,{align:"center"});
       fx+=fw_k+1; // +1 para linha divisoria
     }
   }
