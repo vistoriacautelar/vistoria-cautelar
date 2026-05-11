@@ -149,10 +149,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div class="section-header">Captacao</div>
       <div class="list-item" onclick="goTo('s-novo-imovel')"><div class="avatar" style="background:#fff7ed;color:#c2410c"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg></div><div class="info"><div class="title">Cadastrar Imovel</div><div class="sub">Registrar morador e endereco</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
       <div class="list-item" onclick="goTo('s-fila')"><div class="avatar" style="background:#fff7ed;color:#c2410c"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg></div><div class="info"><div class="title">Imoveis Cadastrados</div><div class="sub" id="dash-fila-count">Carregando...</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
+      <div class="list-item" onclick="goTo('s-pendentes')"><div class="avatar" style="background:#fef2f2;color:#dc2626"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div><div class="info"><div class="title">Ausentes Pendentes</div><div class="sub" id="dash-pendentes-count">Carregando...</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
     </div>
     <div id="dash-cadastrador-section">
       <div class="section-header">Vistorias</div>
       <div class="list-item" onclick="goTo('s-fila')"><div class="avatar" style="background:#dbeafe;color:#1d4ed8"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg></div><div class="info"><div class="title">Fila de Imoveis</div><div class="sub" id="dash-fila-count2">Aguardando vistoria</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
+      <div class="list-item" onclick="goTo('s-pendentes')"><div class="avatar" style="background:#fef2f2;color:#dc2626"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div><div class="info"><div class="title">Ausentes Pendentes</div><div class="sub" id="dash-pendentes-count2">Carregando...</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
       <div class="list-item" onclick="goTo('s-nova-vistoria')"><div class="avatar" style="background:#fef3c7;color:#92400e"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div><div class="info"><div class="title">Nova Vistoria</div><div class="sub">Iniciar sem imovel pre-cadastrado</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
       <div class="list-item" onclick="goTo('s-historico')"><div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg></div><div class="info"><div class="title">Minhas Vistorias</div><div class="sub" id="dash-count">Carregando...</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
     </div>
@@ -191,6 +193,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   <div class="content">
     <div id="lista-fila"></div>
   </div>
+</div>
+
+<div id="s-pendentes" class="screen">
+  <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Ausentes Pendentes</h1></div>
+  <div class="content">
+    <div id="lista-pendentes"></div>
+  </div>
+</div>
+
+<div id="s-retorno" class="screen">
+  <div class="topbar"><button class="back" onclick="goTo('s-pendentes')">&#8249; Voltar</button><h1 id="retorno-titulo">Retorno</h1></div>
+  <div class="content">
+    <div id="retorno-info" class="card" style="margin-bottom:12px"></div>
+    <div id="s-vistoria-retorno"></div>
+  </div>
+</div>
+
+<div id="s-editor-fotos" class="screen">
+  <div class="topbar"><button class="back" onclick="goTo('s-detalhe-vistoria')">&#8249; Voltar</button><h1>Editar Fotos</h1><button class="btn small" style="color:#10b981;border-color:#10b981" onclick="salvarEdicaoFotos()">Salvar</button></div>
+  <div class="content" id="ef-content"></div>
 </div>
 
 <div id="s-perfil" class="screen">
@@ -317,7 +339,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   <div class="topbar"><button class="back" onclick="goTo('s-checklist')">&#8249; Checklist</button><h1>Finalizacao</h1></div>
   <div class="content">
     <div class="card"><h2>Estado de conservacao</h2>
-      <div class="field"><label>Status da Vistoria</label><select id="fin-status-vistoria"><option value="concluida">Finalizado</option><option value="parcial">Vistoria Parcial</option><option value="recusa">Recusa</option><option value="ausente">Ausente</option></select></div>
+      <div class="field"><label>Status da Vistoria</label><select id="fin-status-vistoria" onchange="togglePendente(this.value)"><option value="concluida">Finalizado</option><option value="parcial">Vistoria Parcial</option><option value="recusa">Recusa</option><option value="ausente">Ausente</option></select></div>
+      <div class="field" id="field-pendente" style="display:none"><label>Pendente de retorno?</label><select id="fin-pendente"><option value="nao">Não — encerrar</option><option value="sim">Sim — retornar</option></select></div>
       <div class="field"><label>Estado de Conservacao</label><select id="fin-estado"><option>Bom</option><option selected>Regular</option><option>Ruim</option><option>Péssimo</option></select></div>
       <div class="field"><label>Idade Aparente do Imóvel (anos) *</label><input type="number" id="fin-idade" placeholder="Ex: 30" min="0" max="200" inputmode="numeric" required></div>
     </div>
@@ -522,7 +545,7 @@ window.addEventListener("deviceorientation",e=>{if(e.beta!==null)deviceOrientati
 window.goTo=(id)=>{
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   document.getElementById(id).classList.add("active");window.scrollTo(0,0);
-  const m={"s-dash":loadDash,"s-prestadores":loadPrestadores,"s-clientes":loadClientes,"s-coletores":loadColetores,"s-usuarios":loadUsuarios,"s-nova-vistoria":loadNovVistoriaForm,"s-historico":loadHistorico,"s-checklist":renderChecklist,"s-finalizacao":renderFinalizacao,"s-perfil":renderPerfil,"s-vistoria":iniciarGPS,"s-novo-imovel":loadNovoImovelForm,"s-fila":loadFila};
+  const m={"s-dash":loadDash,"s-prestadores":loadPrestadores,"s-clientes":loadClientes,"s-coletores":loadColetores,"s-usuarios":loadUsuarios,"s-nova-vistoria":loadNovVistoriaForm,"s-historico":loadHistorico,"s-checklist":renderChecklist,"s-finalizacao":renderFinalizacao,"s-perfil":renderPerfil,"s-vistoria":iniciarGPS,"s-novo-imovel":loadNovoImovelForm,"s-fila":loadFila,"s-pendentes":loadPendentes,"s-editor-fotos":renderEditorFotos};
   if(m[id])m[id]();
 };
 window.showModal=(id)=>{if(id==="modal-coletor")populateClienteSelect("mcol-cliente");document.getElementById(id).style.display="flex";};
@@ -552,7 +575,7 @@ async function loadPrestadorDefault(){try{const q=query(collection(db,"prestador
 window.doLogin=async()=>{const email=document.getElementById("login-email").value.trim();const pass=document.getElementById("login-pass").value;const err=document.getElementById("login-err");if(!email||!pass){err.textContent="Preencha e-mail e senha";err.style.display="block";return;}try{await signInWithEmailAndPassword(auth,email,pass);localStorage.setItem("lastLoginDate",new Date().toDateString());err.style.display="none";}catch(e){err.textContent="E-mail ou senha incorretos";err.style.display="block";}};
 window.doLogout=async()=>await signOut(auth);
 
-function loadDash(){const el=document.getElementById("dash-role");const roleLabel=currentRole==="master"?"Master":currentRole==="comunicador"?"Comunicador":"Cadastrador";const roleCls=currentRole==="master"?"master":currentRole==="comunicador"?"com":"cad";el.textContent=roleLabel;el.className="badge "+roleCls;document.getElementById("dash-master-section").style.display=currentRole==="master"?"block":"none";document.getElementById("dash-comunicador-section").style.display=currentRole==="comunicador"?"block":"none";document.getElementById("dash-cadastrador-section").style.display=(currentRole==="cadastrador"||currentRole==="master")?"block":"none";loadDashCount();loadFilaCount();}
+function loadDash(){const el=document.getElementById("dash-role");const roleLabel=currentRole==="master"?"Master":currentRole==="comunicador"?"Comunicador":"Cadastrador";const roleCls=currentRole==="master"?"master":currentRole==="comunicador"?"com":"cad";el.textContent=roleLabel;el.className="badge "+roleCls;document.getElementById("dash-master-section").style.display=currentRole==="master"?"block":"none";document.getElementById("dash-comunicador-section").style.display=currentRole==="comunicador"?"block":"none";document.getElementById("dash-cadastrador-section").style.display=(currentRole==="cadastrador"||currentRole==="master")?"block":"none";loadDashCount();loadFilaCount();loadPendentesCount();}
 async function loadDashCount(){try{const q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));const s=await getDocs(q);document.getElementById("dash-count").textContent=s.size+" vistoria(s)";}catch(e){}}
 
 async function loadFilaCount(){try{const q=query(collection(db,"fila_vistorias"),where("status","==","aguardando"));const s=await getDocs(q);const txt=s.size+" aguardando";const el1=document.getElementById("dash-fila-count");const el2=document.getElementById("dash-fila-count2");if(el1)el1.textContent=txt;if(el2)el2.textContent=txt;}catch(e){}}
@@ -704,7 +727,293 @@ async function populateClienteSelect(selectId){const snap=await getDocs(collecti
 window.naoInformadoDoc=()=>{document.getElementById("ni-doc").value="Nao informado";};
 window.naoInformadoTel=()=>{document.getElementById("ni-tel").value="Nao informado";};
 
-// ===== FIM COMUNICADOR =====
+// ===== EDITOR DE FOTOS DE VISTORIA SALVA =====
+let _efId=null,_efData=null,_efFotos=[];
+let _efFotoEditando=null,_efFotoIdx=null;
+let _efCameraMode=null; // 'adicionar' | 'substituir'
+let _efAmbienteAlvo=null,_efSubstIdx=null;
+
+window.abrirEditorFotos=(id,data)=>{
+  _efId=id;_efData=data;
+  _efFotos=(data.fotosBase64||[]).map((f,i)=>({...f,_idx:i}));
+  goTo("s-editor-fotos");
+};
+
+function renderEditorFotos(){
+  const c=document.getElementById("ef-content");c.innerHTML="";
+  if(!_efFotos.length){c.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhuma foto</p>';return;}
+  // Agrupar por ambiente
+  const grupos={};
+  _efFotos.forEach((f,i)=>{
+    const amb=f.ambiente||"Geral";
+    if(!grupos[amb])grupos[amb]=[];
+    grupos[amb].push({...f,_globalIdx:i});
+  });
+  const order=[...AMBIENTES,...((_efData.ambientesExtras)||[])].filter(a=>grupos[a]);
+  // Ambientes não mapeados no final
+  Object.keys(grupos).forEach(a=>{if(!order.includes(a))order.push(a);});
+  order.forEach(amb=>{
+    const fotos=grupos[amb];
+    const sec=document.createElement("div");sec.className="card";
+    sec.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">'+amb+'</h2><button class="btn small" style="color:#007aff;border-color:#007aff" onclick="efAdicionarFoto(\''+amb+'\')">+ Foto</button></div>';
+    const grid=document.createElement("div");grid.className="photo-grid";
+    fotos.forEach((f)=>{
+      const gi=f._globalIdx;
+      const pc=document.createElement("div");pc.className="photo-card";
+      const img=document.createElement("img");img.src=f.dataUrl;img.loading="lazy";
+      const lbl=document.createElement("div");lbl.className="photo-label";
+      lbl.style.cssText="display:flex;align-items:center;gap:4px;padding:2px 4px;flex-wrap:wrap";
+      lbl.innerHTML='<span style="flex:1;font-size:10px;overflow:hidden;text-overflow:ellipsis">'+(f.legenda||f.tipo||"Vista")+'</span>'
+        +'<button onclick="efEditarSeta('+gi+')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:1px" title="Editar seta">✏️</button>'
+        +'<button onclick="efSubstituir('+gi+',\''+amb+'\')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:1px" title="Substituir">🔄</button>'
+        +'<button onclick="efExcluir('+gi+')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:1px;color:#e44" title="Excluir">✕</button>';
+      pc.appendChild(img);pc.appendChild(lbl);grid.appendChild(pc);
+    });
+    sec.appendChild(grid);c.appendChild(sec);
+  });
+}
+
+window.efExcluir=gi=>{
+  if(!confirm("Excluir esta foto?"))return;
+  _efFotos.splice(gi,1);
+  _efRenumerar();
+  renderEditorFotos();
+};
+
+window.efAdicionarFoto=amb=>{
+  _efCameraMode="adicionar";_efAmbienteAlvo=amb;_efSubstIdx=null;
+  fotoAtualAmbiente=amb;fotoAtualTipo="Detalhe";
+  abrirCamera(amb);
+};
+
+window.efSubstituir=(gi,amb)=>{
+  _efCameraMode="substituir";_efAmbienteAlvo=amb;_efSubstIdx=gi;
+  fotoAtualAmbiente=amb;fotoAtualTipo=_efFotos[gi]&&_efFotos[gi].tipo||"Detalhe";
+  abrirCamera(amb);
+};
+
+// Intercepta salvarFotoFinal quando estamos em modo editor
+const _origSalvarFotoFinal=window.salvarFotoFinal||null;
+function salvarFotoFinalEditor(dataUrl,patologias,combinacoes){
+  if(_efCameraMode==="adicionar"){
+    const legenda=combinacoes&&combinacoes.length?combinacoes.map(c=>gerarLegendaCombo(c)).join(" e "):"Vista";
+    _efFotos.push({dataUrl,ambiente:_efAmbienteAlvo,tipo:combinacoes&&combinacoes.length?"Detalhe":"Vista",legenda,combinacoes:combinacoes||[]});
+  } else if(_efCameraMode==="substituir"&&_efSubstIdx!==null){
+    const legenda=combinacoes&&combinacoes.length?combinacoes.map(c=>gerarLegendaCombo(c)).join(" e "):(_efFotos[_efSubstIdx]&&_efFotos[_efSubstIdx].legenda||"Vista");
+    _efFotos[_efSubstIdx]={..._efFotos[_efSubstIdx],dataUrl,legenda,combinacoes:combinacoes||[]};
+  }
+  _efCameraMode=null;_efAmbienteAlvo=null;_efSubstIdx=null;
+  _efRenumerar();
+  renderEditorFotos();
+  goTo("s-editor-fotos");
+}
+
+function _efRenumerar(){
+  // Renumera globalmente respeitando ordem dos ambientes
+  const grupos={};
+  _efFotos.forEach((f,i)=>{const amb=f.ambiente||"Geral";if(!grupos[amb])grupos[amb]=[];grupos[amb].push(i);});
+  const order=[...AMBIENTES,...((_efData.ambientesExtras)||[])].filter(a=>grupos[a]);
+  Object.keys(grupos).forEach(a=>{if(!order.includes(a))order.push(a);});
+  let counter=1;
+  const nova=[];
+  order.forEach(amb=>{
+    (grupos[amb]||[]).forEach(i=>{
+      nova.push({..._efFotos[i],numero:"Foto "+String(counter).padStart(2,"0")});
+      counter++;
+    });
+  });
+  _efFotos=nova;
+}
+
+// Editor de setas para foto já salva
+window.efEditarSeta=gi=>{
+  _efFotoEditando=gi;_efFotoIdx=gi;
+  const f=_efFotos[gi];
+  // Abre o editor de setas existente reutilizando o overlay
+  const overlay=document.getElementById("preview-overlay");
+  const canvas=document.getElementById("preview-canvas");
+  overlay.style.display="flex";
+  const img=new Image();
+  img.onload=()=>{
+    canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
+    const ctx=canvas.getContext("2d");ctx.drawImage(img,0,0);
+    setasDesenhadas=[];atualizarCanvasPreview();
+  };
+  img.src=f.dataUrl;
+  // Sobrescrever confirmarSetas para salvar de volta
+  window._efModoSeta=true;
+};
+
+// Patch em confirmarSetas para suportar modo editor
+const _origConfirmarSetas=window.confirmarSetas;
+window.confirmarSetas=function(){
+  if(window._efModoSeta){
+    window._efModoSeta=false;
+    // Captura o canvas de saída
+    const outCanvas=document.getElementById("output-canvas")||document.createElement("canvas");
+    const previewCanvas=document.getElementById("preview-canvas");
+    outCanvas.width=previewCanvas.width;outCanvas.height=previewCanvas.height;
+    const ctx=outCanvas.getContext("2d");
+    ctx.drawImage(previewCanvas,0,0);
+    _efFotos[_efFotoEditando].dataUrl=outCanvas.toDataURL("image/jpeg",1.0);
+    document.getElementById("preview-overlay").style.display="none";
+    renderEditorFotos();
+    goTo("s-editor-fotos");
+    return;
+  }
+  if(_origConfirmarSetas)_origConfirmarSetas();
+};
+
+window.salvarEdicaoFotos=async()=>{
+  if(!_efId||!_efFotos.length)return;
+  const btn=document.querySelector("#s-editor-fotos .btn.small");
+  if(btn){btn.textContent="Salvando...";btn.disabled=true;}
+  try{
+    _efRenumerar();
+    // Salvar no Firestore
+    await updateDoc(doc(db,"vistorias",_efId),{
+      fotosBase64:_efFotos,
+      totalFotos:_efFotos.length
+    });
+    // Gerar ZIP com fotos atualizadas
+    if(window.JSZip){
+      const zip=new window.JSZip();
+      const nomeBase=(_efData.coletorNome||"vistoria").replace(/[^a-zA-Z0-9]/g,"_");
+      const folder=zip.folder("fotos_"+nomeBase);
+      _efFotos.forEach(f=>{
+        const b64=f.dataUrl.split(",")[1];
+        const nome=(f.numero||"Foto").replace(" ","_")+"_"+(f.ambiente||"").replace(/\s+/g,"_")+"_"+(f.tipo||"Vista")+".jpg";
+        folder.file(nome,b64,{base64:true});
+      });
+      const zBlob=await zip.generateAsync({type:"blob"});
+      const nomeZip=nomeBase+"_fotos_editadas.zip";
+      await shareOrDownload(zBlob,nomeZip,"application/zip");
+    }
+    // Atualizar dados locais para regerar PDF
+    _efData={..._efData,fotosBase64:_efFotos,totalFotos:_efFotos.length};
+    vistoriaDetalheData=_efData;
+    showToast("Fotos salvas! Use 'Regerar PDF' para atualizar o relatório.");
+    goTo("s-detalhe-vistoria");
+  }catch(e){alert("Erro ao salvar: "+e.message);}
+  finally{if(btn){btn.textContent="Salvar";btn.disabled=false;}}
+};
+
+// Intercepção de salvarFotoFinal: redireciona para editor quando ativo
+const _salvarFotoFinalOriginal=salvarFotoFinal;
+window.salvarFotoFinalDispatch=function(dataUrl,pats,combos){
+  if(_efCameraMode){salvarFotoFinalEditor(dataUrl,pats,combos);}
+  else{_salvarFotoFinalOriginal(dataUrl,pats,combos);}
+};
+// ===== FIM EDITOR DE FOTOS =====
+
+
+// ── PENDENTE / RETORNO ────────────────────────────────────────
+window.togglePendente=v=>{
+  document.getElementById("field-pendente").style.display=v==="ausente"?"block":"none";
+};
+
+async function loadPendentesCount(){
+  try{
+    const q=query(collection(db,"vistorias"),where("pendente_retorno","==",true));
+    const s=await getDocs(q);
+    const txt=s.size+" pendente(s)";
+    ["dash-pendentes-count","dash-pendentes-count2"].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=txt;});
+  }catch(e){}
+}
+
+async function loadPendentes(){
+  const el=document.getElementById("lista-pendentes");
+  el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Carregando...</p>';
+  try{
+    const q=query(collection(db,"vistorias"),where("pendente_retorno","==",true),orderBy("criadoEm","desc"));
+    const snap=await getDocs(q);
+    if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhum ausente pendente</p>';return;}
+    el.innerHTML="";
+    snap.forEach(d=>{
+      const v=d.data();const id=d.id;
+      const visitas=v.visitas||1;
+      const maxVisitas=3;
+      const div=document.createElement("div");div.className="list-item";div.style.cursor="pointer";
+      div.innerHTML='<div class="avatar" style="background:#fef2f2;color:#dc2626"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div>'
+        +'<div class="info"><div class="title">'+(v.responsavel&&v.responsavel.nome||"--")+'</div>'
+        +'<div class="sub">'+(v.endereco&&v.endereco.rua||"")+" "+(v.endereco&&v.endereco.num||"")+" | "+(v.coletorNome||"")+" | Visita "+visitas+"/"+maxVisitas+'</div></div>'
+        +'<span style="color:#dc2626;font-size:12px;font-weight:600">'+visitas+"/"+maxVisitas+'</span>';
+      div.onclick=()=>abrirRetorno(id,v);
+      el.appendChild(div);
+    });
+  }catch(e){el.innerHTML='<p style="text-align:center;color:#dc2626;padding:24px">Erro: '+e.message+"</p>";}
+}
+
+let _retornoId=null,_retornoData=null;
+
+window.abrirRetorno=async(id,v)=>{
+  _retornoId=id;_retornoData=v;
+  const visitas=v.visitas||1;
+  document.getElementById("retorno-titulo").textContent=(visitas+1)+"ª Visita — Retorno";
+  const info=document.getElementById("retorno-info");
+  info.innerHTML='<h2>'+(v.responsavel&&v.responsavel.nome||"--")+'</h2>'
+    +'<p style="color:#555;font-size:13px">'+(v.endereco&&v.endereco.rua||"")+" "+(v.endereco&&v.endereco.num||"")+'</p>'
+    +'<p style="color:#555;font-size:13px">Coletor: '+(v.coletorNome||"")+" | Visita "+(visitas+1)+"/3</p>"
+    +'<div class="field" style="margin-top:12px"><label>Novo status</label><select id="retorno-status" onchange="togglePendenteRetorno(this.value)">'
+    +'<option value="ausente">Ausente</option>'
+    +'<option value="concluida">Finalizado</option>'
+    +'<option value="parcial">Vistoria Parcial</option>'
+    +'<option value="recusa">Recusa</option>'
+    +'</select></div>'
+    +(visitas+1<3?'<div class="field" id="field-pendente-retorno"><label>Pendente de retorno?</label><select id="retorno-pendente"><option value="nao">Não — encerrar</option><option value="sim">Sim — retornar</option></select></div>':
+    '<p style="color:#dc2626;font-size:12px;margin-top:4px">⚠️ Última tentativa permitida — será encerrado.</p>')
+    +'<button class="btn success" style="margin-top:12px" onclick="confirmarRetorno()">Confirmar e Gerar PDF</button>';
+  // Pré-carregar dados para nova sessão de fotos
+  currentVistoria={...v,id};
+  fotosPendentes={};
+  ambientesExtras=v.ambientesExtras||[];
+  goTo("s-retorno");
+};
+
+window.togglePendenteRetorno=v=>{
+  const el=document.getElementById("field-pendente-retorno");
+  if(el)el.style.display=v==="ausente"?"block":"none";
+};
+
+window.confirmarRetorno=async()=>{
+  const novoStatus=document.getElementById("retorno-status").value;
+  const elPend=document.getElementById("retorno-pendente");
+  const pendente=elPend?elPend.value==="sim":false;
+  const visitas=(_retornoData.visitas||1)+1;
+  const novasPendente=novoStatus==="ausente"&&pendente&&visitas<3;
+  // Merge fotos antigas + novas
+  const fotosAntigas=_retornoData.fotosBase64||[];
+  const fotosNovas=Object.values(fotosPendentes).map(f=>({dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,legenda:f.legenda||f.tipo,numero:f.numero,combinacoes:f.combinacoes||[]}));
+  const todasFotos=[...fotosAntigas,...fotosNovas];
+  try{
+    await updateDoc(doc(db,"vistorias",_retornoId),{
+      status:novoStatus,
+      pendente_retorno:novasPendente,
+      visitas,
+      fotosBase64:todasFotos,
+      totalFotos:todasFotos.length,
+      ultimaVisita:serverTimestamp()
+    });
+    // Gerar PDF com todas as fotos
+    const vAtual={..._retornoData,status:novoStatus,fotosBase64:todasFotos,visitas};
+    await gerarPDFRetorno(vAtual);
+    showToast(novasPendente?"Retorno salvo! Imóvel permanece pendente.":"Vistoria encerrada!");
+    goTo("s-pendentes");
+  }catch(e){alert("Erro: "+e.message);}
+};
+
+async function gerarPDFRetorno(v){
+  // Reconstrói fotosPendentes a partir do array salvo para usar o gerador de PDF existente
+  const saved=fotosPendentes;
+  fotosPendentes={};
+  (v.fotosBase64||[]).forEach((f,i)=>{
+    const id="r"+i;
+    fotosPendentes[id]={id,dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,legenda:f.legenda||f.tipo,numero:f.numero||("Foto "+String(i+1).padStart(2,"0")),combinacoes:f.combinacoes||[]};
+  });
+  currentVistoria={...v};
+  try{await window.gerarPDFCompleto(v);}catch(e){console.error(e);}
+  fotosPendentes=saved;
+}
 
 async function loadNovVistoriaForm(){
   await populateClienteSelect("nv-cliente");
@@ -1337,6 +1646,8 @@ window.confirmarPatologias=()=>{
 };
 
 function salvarFotoFinal(dataUrl,patologias,combinacoes){
+  // Redireciona para editor se câmera foi aberta pelo editor de fotos
+  if(_efCameraMode){salvarFotoFinalEditor(dataUrl,patologias,combinacoes);return;}
   const id=Date.now().toString();const num=Object.keys(fotosPendentes).length+1;
   // Gerar legenda descritiva
   let legenda=fotoAtualTipo;
@@ -1428,6 +1739,10 @@ function abrirDetalheVistoria(id,data){
   }
   // Observacoes
   if(data.observacoes){const card3=document.createElement("div");card3.className="card";card3.innerHTML='<h2>Observacoes</h2><p style="font-size:13px;color:#555">'+data.observacoes+"</p>";c.appendChild(card3);}
+  // Botao editar fotos
+  if(data.fotosBase64&&data.fotosBase64.length){
+    const btnEdit=document.createElement("button");btnEdit.className="btn";btnEdit.style.cssText="background:#fff7ed;color:#c2410c;border:1px solid #c2410c;margin-bottom:8px";btnEdit.textContent="Editar Fotos";btnEdit.onclick=()=>abrirEditorFotos(id,data);c.appendChild(btnEdit);
+  }
   // Botao regenerar PDF
   const btnPDF=document.createElement("button");btnPDF.className="btn primary";btnPDF.textContent="Regerar PDF";btnPDF.onclick=()=>regeRarPDF(data);c.appendChild(btnPDF);
   goTo("s-detalhe-vistoria");
@@ -1560,6 +1875,8 @@ window.finalizarVistoria=async()=>{
   currentVistoria.estado=document.getElementById("fin-estado").value;
   currentVistoria.idade=document.getElementById("fin-idade").value;
   currentVistoria.statusVistoria=document.getElementById("fin-status-vistoria").value||"concluida";
+  const isPendente=currentVistoria.statusVistoria==="ausente"&&document.getElementById("fin-pendente")&&document.getElementById("fin-pendente").value==="sim";
+  currentVistoria.pendente_retorno=isPendente;
   ultimoResponsavel={...currentVistoria.responsavel};
   try{
     const{jsPDF}=window.jspdf;
@@ -1785,7 +2102,8 @@ window.finalizarVistoria=async()=>{
     pdfFooter(pdf,PW,PH,ML,MR,MB,prest);
 
     // Salvar Firebase + download
-    const vDoc={clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,coletorNome:currentVistoria.coletorNome,responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,ocupacao:currentVistoria.ocupacao,tipo:currentVistoria.tipo,estado:currentVistoria.estado,idade:currentVistoria.idade,data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,userId:currentUser.uid,checklist:currentVistoria.checklist,ambientesExtras:ambientesExtras||[],observacoes:currentVistoria.observacoes,totalFotos:Object.keys(fotosPendentes).length,status:currentVistoria.statusVistoria||"concluida",criadoEm:serverTimestamp()};
+    const fotosBase64=Object.values(fotosPendentes).map(f=>({dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,legenda:f.legenda||f.tipo,numero:f.numero,combinacoes:f.combinacoes||[]}));
+    const vDoc={clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,coletorNome:currentVistoria.coletorNome,responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,ocupacao:currentVistoria.ocupacao,tipo:currentVistoria.tipo,estado:currentVistoria.estado,idade:currentVistoria.idade,data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,userId:currentUser.uid,checklist:currentVistoria.checklist,ambientesExtras:ambientesExtras||[],observacoes:currentVistoria.observacoes,totalFotos:fotosBase64.length,status:currentVistoria.statusVistoria||"concluida",pendente_retorno:currentVistoria.pendente_retorno||false,visitas:1,fotosBase64,criadoEm:serverTimestamp()};
     await addDoc(collection(db,"vistorias"),vDoc);
     // Fechar item da fila se veio de la
     if(window._filaItemId){try{await updateDoc(doc(db,"fila_vistorias",window._filaItemId),{status:"concluida"});}catch(e){}window._filaItemId=null;}
