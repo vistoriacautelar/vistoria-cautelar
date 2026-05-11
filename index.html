@@ -76,7 +76,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   .canvas-controls{flex-direction:column;width:80px;flex-shrink:0;padding:10px 8px;justify-content:center}
 }
 .bottom-sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1002;display:flex;align-items:flex-end;justify-content:center}
-.sheet-body{background:#fff;border-radius:20px 20px 0 0;padding:24px 24px 16px;width:100%;max-width:600px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.sheet-body{background:#fff;border-radius:20px 20px 0 0;padding:20px 24px 16px;width:100%;max-width:600px;max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .sheet-body h3{font-size:17px;font-weight:600;margin-bottom:6px}
 .sheet-body p{font-size:13px;color:#888;margin-bottom:16px}
 .part-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
@@ -176,6 +176,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       </div>
     </div>
     <div class="card"><h2>Endereco</h2>
+      <div id="ni-reaproveitar-end-box" style="display:none;background:#f0fdf4;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:#15803d">
+        Reaproveitar endereço anterior? <button class="btn small" onclick="reaproveitarEnderecoNI()" style="margin-left:8px;color:#15803d;border-color:#15803d">Sim</button>
+      </div>
       <div class="field"><label>Rua *</label><input type="text" id="ni-rua" placeholder="Nome da rua"></div>
       <div class="field"><label>Numero *</label><input type="text" id="ni-num" placeholder="123" inputmode="numeric"></div>
       <div class="field"><label>Complemento</label><input type="text" id="ni-comp" placeholder="Apto, casa, etc"></div>
@@ -422,7 +425,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <p style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">Patologias registradas nesta foto:</p>
       <div id="pat-combo-list" style="display:flex;flex-direction:column;gap:6px"></div>
     </div>
-    <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:#f8f8f8;border-radius:12px;padding:12px;margin-bottom:12px">
+    <div style="background:#f8f8f8;border-radius:12px;padding:12px;margin-bottom:12px">
       <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px">1. Onde esta a patologia?</p>
       <div class="part-grid" id="part-grid"></div>
       <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px;margin-top:12px">2. Qual patologia?</p>
@@ -598,22 +601,49 @@ async function loadFilaCount(){try{const q=query(collection(db,"fila_vistorias")
 
 // ── COMUNICADOR: Cadastrar Imóvel ─────────────────────────────
 async function loadNovoImovelForm(){
-  // Carregar clientes no select
-  const snap=await getDocs(collection(db,"clientes"));
-  const sel=document.getElementById("ni-cliente");
-  sel.innerHTML='<option value="">Selecione...</option>';
-  snap.forEach(d=>sel.innerHTML+=`<option value="${d.id}">${d.data().nome}</option>`);
-  document.getElementById("ni-coletor").innerHTML='<option value="">Selecione o cliente primeiro</option>';
+  await populateClienteSelect("ni-cliente");
+  // Restaurar último cliente/coletor
+  const lastCl=localStorage.getItem("niLastClienteId")||"";
+  const lastCol=localStorage.getItem("niLastColetorId")||"";
+  const lastRua=localStorage.getItem("niLastRua")||"";
+  const lastNum=localStorage.getItem("niLastNum")||"";
+  const lastComp=localStorage.getItem("niLastComp")||"";
+  if(lastCl){
+    const sel=document.getElementById("ni-cliente");
+    sel.value=lastCl;
+    if(sel.value===lastCl)await loadColetoresNI();
+    if(lastCol){const cs=document.getElementById("ni-coletor");if(cs)cs.value=lastCol;}
+  } else {
+    document.getElementById("ni-coletor").innerHTML='<option value="">Selecione o cliente primeiro</option>';
+  }
   ["ni-nome","ni-doc","ni-tel","ni-rua","ni-num","ni-comp"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+  // Botão reaproveitar endereço
+  const box=document.getElementById("ni-reaproveitar-end-box");
+  if(box)box.style.display=(lastRua)?"block":"none";
+  if(lastRua)box.dataset.rua=lastRua,box.dataset.num=lastNum,box.dataset.comp=lastComp;
 }
+
+window.reaproveitarEnderecoNI=()=>{
+  const box=document.getElementById("ni-reaproveitar-end-box");
+  document.getElementById("ni-rua").value=box.dataset.rua||"";
+  document.getElementById("ni-num").value=box.dataset.num||"";
+  document.getElementById("ni-comp").value=box.dataset.comp||"";
+  box.style.display="none";
+};
 
 window.loadColetoresNI=async()=>{
   const cId=document.getElementById("ni-cliente").value;
   const sel=document.getElementById("ni-coletor");
   if(!cId){sel.innerHTML='<option value="">Selecione o cliente primeiro</option>';return;}
-  const snap=await getDocs(query(collection(db,"coletores"),where("clienteId","==",cId)));
+  if(!_cacheColetores[cId]){
+    sel.innerHTML='<option value="">Carregando...</option>';
+    const snap=await getDocs(query(collection(db,"coletores"),where("clienteId","==",cId)));
+    _cacheColetores[cId]=[];
+    snap.forEach(d=>_cacheColetores[cId].push({id:d.id,...d.data()}));
+    _cacheColetores[cId].sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
+  }
   sel.innerHTML='<option value="">Selecione...</option>';
-  snap.forEach(d=>sel.innerHTML+=`<option value="${d.id}">${d.data().nome}</option>`);
+  _cacheColetores[cId].forEach(d=>{const o=document.createElement("option");o.value=d.id;o.textContent=d.nome;sel.appendChild(o);});
 };
 
 window.naoInformadoDoc=()=>{document.getElementById("ni-doc").value="Nao informado";};
@@ -623,23 +653,29 @@ window.salvarNovoImovel=async()=>{
   const nome=document.getElementById("ni-nome").value.trim();
   const rua=document.getElementById("ni-rua").value.trim();
   const num=document.getElementById("ni-num").value.trim();
+  const comp=document.getElementById("ni-comp").value.trim();
   const cId=document.getElementById("ni-cliente").value;
   const colId=document.getElementById("ni-coletor").value;
   if(!nome)return alert("Informe o nome do morador ou 'Imovel Vazio'");
   if(!rua||!num)return alert("Informe o endereco completo");
   if(!cId||!colId)return alert("Selecione cliente e coletor");
-  const clSnap=await getDocs(collection(db,"clientes"));
-  const colSnap=await getDocs(collection(db,"coletores"));
-  let clNome="",colNome="";
-  clSnap.forEach(d=>{if(d.id===cId)clNome=d.data().nome;});
-  colSnap.forEach(d=>{if(d.id===colId)colNome=d.data().nome;});
+  // Usa cache de clientes/coletores
+  const clNome=(_cacheClientes&&_cacheClientes.find(c=>c.id===cId))||{nome:""};
+  const colArr=_cacheColetores[cId]||[];
+  const colNome=(colArr.find(c=>c.id===colId))||{nome:""};
   try{
     await addDoc(collection(db,"fila_vistorias"),{
       responsavel:{nome,doc:document.getElementById("ni-doc").value.trim()||"",tel:document.getElementById("ni-tel").value.trim()||""},
-      endereco:{rua,num,comp:document.getElementById("ni-comp").value.trim()},
-      clienteId:cId,clienteNome:clNome,coletorId:colId,coletorNome:colNome,
+      endereco:{rua,num,comp},
+      clienteId:cId,clienteNome:clNome.nome||"",coletorId:colId,coletorNome:colNome.nome||"",
       comunicadorId:currentUser.uid,status:"aguardando",criadoEm:serverTimestamp()
     });
+    // Salvar para reaproveitamento
+    localStorage.setItem("niLastClienteId",cId);
+    localStorage.setItem("niLastColetorId",colId);
+    localStorage.setItem("niLastRua",rua);
+    localStorage.setItem("niLastNum",num);
+    localStorage.setItem("niLastComp",comp);
     showToast("Imovel cadastrado na fila!");
     goTo("s-fila");
   }catch(e){alert("Erro: "+e.message);}
@@ -677,12 +713,15 @@ async function loadFila(){
 }
 
 async function iniciarVistoriaFromFila(filaId,v){
-  if(!confirm("Iniciar vistoria para "+( v.responsavel&&v.responsavel.nome||"este imovel")+"?"))return;
-  // Marca como em_andamento
+  if(!confirm("Iniciar vistoria para "+(v.responsavel&&v.responsavel.nome||"este imovel")+"?"))return;
   await updateDoc(doc(db,"fila_vistorias",filaId),{status:"em_andamento",cadastradorId:currentUser.uid});
-  // Pré-carrega os dados no formulário de nova vistoria
-  await loadNovVistoriaForm();
-  // Preenche os campos automaticamente
+  window._filaItemId=filaId;
+  window._filaPreenchimento=v; // dados a preencher após o form carregar
+  goTo("s-nova-vistoria"); // loadNovVistoriaForm roda via goTo, depois preenche
+}
+
+async function preencherDadosFila(v){
+  if(!v)return;
   const setVal=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val||"";};
   setVal("nv-nome",v.responsavel&&v.responsavel.nome);
   setVal("nv-doc",v.responsavel&&v.responsavel.doc);
@@ -690,13 +729,14 @@ async function iniciarVistoriaFromFila(filaId,v){
   setVal("nv-rua",v.endereco&&v.endereco.rua);
   setVal("nv-num",v.endereco&&v.endereco.num);
   setVal("nv-comp",v.endereco&&v.endereco.comp);
-  // Seleciona cliente e coletor
   const selCl=document.getElementById("nv-cliente");
-  if(selCl){selCl.value=v.clienteId||"";selCl.dispatchEvent(new Event("change"));}
-  setTimeout(()=>{const selCol=document.getElementById("nv-coletor");if(selCol)selCol.value=v.coletorId||"";},500);
-  // Guarda ref do item de fila para atualizar ao finalizar
-  window._filaItemId=filaId;
-  goTo("s-nova-vistoria");
+  if(selCl&&v.clienteId){
+    selCl.value=v.clienteId;
+    await loadColetoresByCliente();
+    const selCol=document.getElementById("nv-coletor");
+    if(selCol)selCol.value=v.coletorId||"";
+  }
+  window._filaPreenchimento=null;
   showToast("Dados pre-preenchidos da fila!");
 }
 
@@ -1072,6 +1112,10 @@ async function loadNovVistoriaForm(){
     document.getElementById("nv-reaproveitar-rua-box").style.display="none";
   }
   document.getElementById("nv-reaproveitar-box").style.display=ultimoResponsavel?"block":"none";
+  // Se veio da fila, sobrescreve com os dados da fila
+  if(window._filaPreenchimento){
+    await preencherDadosFila(window._filaPreenchimento);
+  }
 }
 window.reaproveitarResponsavel=()=>{if(!ultimoResponsavel)return;document.getElementById("nv-nome").value=ultimoResponsavel.nome||"";document.getElementById("nv-doc").value=ultimoResponsavel.doc||"";document.getElementById("nv-tel").value=ultimoResponsavel.tel||"";document.getElementById("nv-reaproveitar-box").style.display="none";};
 window.loadColetoresByCliente=async()=>{
