@@ -507,7 +507,7 @@ const LOGO_CONST="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgc
 
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import{getAuth,signInWithEmailAndPassword,signOut,createUserWithEmailAndPassword,onAuthStateChanged,updatePassword}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import{getFirestore,collection,doc,setDoc,getDoc,getDocs,addDoc,query,where,orderBy,serverTimestamp,deleteDoc,updateDoc}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import{getFirestore,collection,doc,setDoc,getDoc,getDocs,addDoc,query,where,orderBy,serverTimestamp,deleteDoc,updateDoc,runTransaction}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const FC={apiKey:"AIzaSyAwwO2yLyNVnKMLFfmKKCx64zeh7Tbgrvc",authDomain:"vistoria-cautelar-71f6d.firebaseapp.com",projectId:"vistoria-cautelar-71f6d",storageBucket:"vistoria-cautelar-71f6d.firebasestorage.app",messagingSenderId:"157244396794",appId:"1:157244396794:web:c0b983583939e13e91a543"};
 const fbApp=initializeApp(FC);
@@ -714,10 +714,24 @@ async function loadFila(){
 
 async function iniciarVistoriaFromFila(filaId,v){
   if(!confirm("Iniciar vistoria para "+(v.responsavel&&v.responsavel.nome||"este imovel")+"?"))return;
-  await updateDoc(doc(db,"fila_vistorias",filaId),{status:"em_andamento",cadastradorId:currentUser.uid});
+  try{
+    // Transação atômica: só marca em_andamento se ainda estiver aguardando
+    await runTransaction(db,async t=>{
+      const ref=doc(db,"fila_vistorias",filaId);
+      const snap=await t.get(ref);
+      if(!snap.exists()||snap.data().status!=="aguardando"){
+        throw new Error("Este imóvel já foi iniciado por outro cadastrador.");
+      }
+      t.update(ref,{status:"em_andamento",cadastradorId:currentUser.uid});
+    });
+  }catch(e){
+    alert(e.message||"Erro ao iniciar vistoria.");
+    loadFila(); // recarrega para remover o item da lista
+    return;
+  }
   window._filaItemId=filaId;
-  window._filaPreenchimento=v; // dados a preencher após o form carregar
-  goTo("s-nova-vistoria"); // loadNovVistoriaForm roda via goTo, depois preenche
+  window._filaPreenchimento=v;
+  goTo("s-nova-vistoria");
 }
 
 async function preencherDadosFila(v){
@@ -1924,17 +1938,19 @@ window.excluirVistoriaAtual=()=>{
 
 window.confirmarExclusao=async()=>{
   closeModal("modal-confirmar-excluir");
-  if(!vistoriaDetalheId)return;
-  const btn=document.querySelector("#s-detalhe-vistoria .btn.danger");
-  if(btn){btn.textContent="Excluindo...";btn.disabled=true;}
+  const idParaExcluir=vistoriaDetalheId;
+  if(!idParaExcluir)return;
+  // Busca o botão pelo id guardado, não pelo querySelector que pode falhar
+  const btns=document.querySelectorAll("#s-detalhe-vistoria .btn.danger");
+  btns.forEach(b=>{b.textContent="Excluindo...";b.disabled=true;});
   try{
-    await deleteDoc(doc(db,"vistorias",vistoriaDetalheId));
+    await deleteDoc(doc(db,"vistorias",idParaExcluir));
     showToast("Vistoria excluida com sucesso!",3000);
     vistoriaDetalheId=null;vistoriaDetalheData=null;
     goTo("s-historico");
   }catch(e){
     alert("Erro ao excluir: "+e.message);
-    if(btn){btn.textContent="Excluir";btn.disabled=false;}
+    btns.forEach(b=>{b.textContent="Excluir";b.disabled=false;});
   }
 };
 
