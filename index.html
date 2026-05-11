@@ -1645,23 +1645,39 @@ window.confirmarPatologias=()=>{
   salvarFotoFinal(fotoAtualBlob,pats,_patCombinacoes);
 };
 
+// Comprime foto para JPEG 0.75 — reduz ~4MB para ~600KB sem perda visual
+function comprimirFoto(dataUrl){
+  return new Promise(res=>{
+    const img=new Image();
+    img.onload=()=>{
+      const c=document.createElement("canvas");
+      c.width=img.naturalWidth;c.height=img.naturalHeight;
+      c.getContext("2d").drawImage(img,0,0);
+      res(c.toDataURL("image/jpeg",0.75));
+    };
+    img.onerror=()=>res(dataUrl);
+    img.src=dataUrl;
+  });
+}
+
 function salvarFotoFinal(dataUrl,patologias,combinacoes){
   // Redireciona para editor se câmera foi aberta pelo editor de fotos
   if(_efCameraMode){salvarFotoFinalEditor(dataUrl,patologias,combinacoes);return;}
   const id=Date.now().toString();const num=Object.keys(fotosPendentes).length+1;
-  // Gerar legenda descritiva
   let legenda=fotoAtualTipo;
   if(combinacoes&&combinacoes.length){
     legenda=combinacoes.map(c=>gerarLegendaCombo(c)).join(" e ");
   }
-  fotosPendentes[id]={id,dataUrl,ambiente:fotoAtualAmbiente,tipo:fotoAtualTipo,legenda,numero:"Foto "+String(num).padStart(2,"0"),patologias:patologias||[],combinacoes:combinacoes||[],timestamp:new Date().toISOString()};
-  // Preencher checklist automaticamente
-  if(patologias&&patologias.length&&currentVistoria){
-    if(!currentVistoria.checklist)currentVistoria.checklist={};
-    if(!currentVistoria.checklist[fotoAtualAmbiente])currentVistoria.checklist[fotoAtualAmbiente]={};
-    patologias.forEach(p=>{const arr=currentVistoria.checklist[fotoAtualAmbiente][p.col]||[];if(!arr.includes(p.pat))arr.push(p.pat);currentVistoria.checklist[fotoAtualAmbiente][p.col]=arr;});
-  }
-  renderFotos();showToast("Foto "+String(num).padStart(2,"0")+" salva!");
+  // Comprimir antes de guardar em memória
+  comprimirFoto(dataUrl).then(dataUrlComp=>{
+    fotosPendentes[id]={id,dataUrl:dataUrlComp,ambiente:fotoAtualAmbiente,tipo:fotoAtualTipo,legenda,numero:"Foto "+String(num).padStart(2,"0"),patologias:patologias||[],combinacoes:combinacoes||[],timestamp:new Date().toISOString()};
+    if(patologias&&patologias.length&&currentVistoria){
+      if(!currentVistoria.checklist)currentVistoria.checklist={};
+      if(!currentVistoria.checklist[fotoAtualAmbiente])currentVistoria.checklist[fotoAtualAmbiente]={};
+      patologias.forEach(p=>{const arr=currentVistoria.checklist[fotoAtualAmbiente][p.col]||[];if(!arr.includes(p.pat))arr.push(p.pat);currentVistoria.checklist[fotoAtualAmbiente][p.col]=arr;});
+    }
+    renderFotos();showToast("Foto "+String(num).padStart(2,"0")+" salva!");
+  });
 }
 
 window.addAmbienteExtra=()=>{const nome=prompt("Nome do ambiente:");if(!nome||!nome.trim())return;ambientesExtras.push(nome.trim());renderChecklist();const sel=document.getElementById("v-ambiente");const o=document.createElement("option");o.value=nome.trim();o.textContent=nome.trim();sel.appendChild(o);};
@@ -1871,7 +1887,9 @@ window.finalizarVistoria=async()=>{
   if(!idadeVal||isNaN(parseInt(idadeVal)))return alert("Informe a Idade Aparente do Imóvel (obrigatório)");
   if(!assinaturaData)return alert("Confirme a assinatura do responsavel");
   if(!assinaturaTecnico)return alert("Cadastre sua assinatura em Perfil");
-  const btn=document.getElementById("btn-finalizar");btn.textContent="Gerando...";btn.disabled=true;
+  const btn=document.getElementById("btn-finalizar");
+  const setStatus=t=>{if(btn)btn.textContent=t;};
+  setStatus("Preparando...");btn.disabled=true;
   currentVistoria.estado=document.getElementById("fin-estado").value;
   currentVistoria.idade=document.getElementById("fin-idade").value;
   currentVistoria.statusVistoria=document.getElementById("fin-status-vistoria").value||"concluida";
@@ -2112,13 +2130,17 @@ window.finalizarVistoria=async()=>{
     const endArq=(currentVistoria.endereco.rua+" "+currentVistoria.endereco.num+(currentVistoria.endereco.comp?" "+currentVistoria.endereco.comp:"")).replace(/[^a-zA-Z0-9\s]/g,"").trim().replace(/\s+/g,"_");
     const colArq=currentVistoria.coletorNome.replace(/[^a-zA-Z0-9\s]/g,"").trim().replace(/\s+/g,"_");
     const nomeBase=colArq+"-"+endArq+"-"+dataArq;
+    setStatus("Gerando PDF...");
+    await yieldThread();
     await shareOrDownload(pdf.output("blob"),nomeBase+".pdf","application/pdf");
 
     if(window.JSZip){
       try{
+        setStatus("Gerando ZIP...");
+        await yieldThread();
         const zip=new window.JSZip();const folder=zip.folder("fotos_"+nomeBase);
         Object.values(fotosPendentes).forEach(f=>{const b64=f.dataUrl.split(",")[1];folder.file(f.numero.replace(" ","_")+"_"+f.ambiente.replace(/\s+/g,"_")+"_"+f.tipo+".jpg",b64,{base64:true});});
-        const zBlob=await zip.generateAsync({type:"blob"});
+        const zBlob=await zip.generateAsync({type:"blob",compression:"DEFLATE",compressionOptions:{level:6}});
         await shareOrDownload(zBlob,nomeBase+"_fotos.zip","application/zip");
         showToast("Fotos salvas com sucesso!",3000);
       }catch(e){console.error("ZIP:",e);}
@@ -2240,8 +2262,21 @@ async function prepLogoForPDF(logoSrc, maxW, maxH){
   });
 }
 
-function getImgDims(dataUrl){return new Promise(res=>{const img=new Image();img.onload=()=>res({w:img.naturalWidth||1,h:img.naturalHeight||1});img.onerror=()=>res({w:4,h:3});img.src=dataUrl;});}
-function addImgPDF(pdf,dataUrl,x,y,w,h){return new Promise(res=>{try{pdf.addImage(dataUrl,"JPEG",x,y,w,h,"","NONE");}catch(e){}res();});}
+const _dimCache={};
+function getImgDims(dataUrl){
+  const key=dataUrl.substring(0,64);
+  if(_dimCache[key])return Promise.resolve(_dimCache[key]);
+  return new Promise(res=>{
+    const img=new Image();
+    img.onload=()=>{const d={w:img.naturalWidth||4,h:img.naturalHeight||3};_dimCache[key]=d;res(d);};
+    img.onerror=()=>res({w:4,h:3});
+    img.src=dataUrl;
+  });
+}
+// yield para liberar thread entre fotos pesadas
+function yieldThread(){return new Promise(res=>setTimeout(res,0));}
+
+function addImgPDF(pdf,dataUrl,x,y,w,h){return new Promise(async res=>{await yieldThread();try{pdf.addImage(dataUrl,"JPEG",x,y,w,h,"","FAST");}catch(e){}res();});}
 async function shareOrDownload(blob,nome,mime){if(navigator.share&&navigator.canShare){try{const f=new File([blob],nome,{type:mime});if(navigator.canShare({files:[f]})){await navigator.share({files:[f],title:nome});return;}}catch(e){if(e.name==="AbortError")return;}}const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=nome;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),2000);}
 
 function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
