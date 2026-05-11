@@ -514,7 +514,7 @@ const fbApp=initializeApp(FC);
 const auth=getAuth(fbApp);
 const db=getFirestore(fbApp);
 
-const AMBIENTES=["Fachada","Calçada","Garagem","Corredor externo","Área de serviço","Quintal","Sala","Cozinha","Banheiro 01","Banheiro 02","Lavabo","Dorm 01","Dorm 02","Dorm 03","Corredor interno","Varanda","Sacada","Depósito"];
+const AMBIENTES=["Fachada","Calçada","Garagem","Corredor externo","Área de serviço","Quintal","Sala","Cozinha","Banheiro 01","Banheiro 02","Lavabo","Dormitório 01","Dormitório 02","Dormitório 03","Corredor interno","Varanda","Sacada","Depósito"];
 const PARTES=["Estrutura","Parede e muro","Cobertura a teto","Porta e esquadria","Piso e cal\xe7amento"];
 const COLS=["estrutura","paredes","cobertura","portas","piso"];
 const PATOLOGIAS=["Fissura","Trinca","Rachadura","Umidade","Infiltração","Desplacamento","Armadura Exposta","Danificado"];
@@ -2085,26 +2085,22 @@ window.finalizarVistoria=async()=>{
     const ML=12.7,MT=12.7,MR=12.7,MB=12.7; // 0.5 inch todos os lados
     const CW=PW-ML-MR; // 184.6mm largura util
 
-    // Cabecalho proporcional (modelo: 49.1mm em pagina com margem 5mm)
-    // Adaptado: 47mm para caber 2 pares + foto01 na pg1
     const HDR=47;
-    const F01H=64;   // foto 01 altura
-    const FPH=50;    // foto par altura
-    const FPL=(CW-1)/2; // foto par esquerda (metade do CW menos linha divisoria)
-    const FPR=(CW-1)/2; // foto par direita (igual - modelo divide meio a meio)
-    const LEGH=7.6;  // altura das 2 linhas de legenda (3.8+3.8)
-    const Y0=MT+HDR; // y inicial apos cabecalho
-    const PGB=PH-MB; // limite inferior
+    const LEGH=8;    // altura legenda
+    const FPL=(CW-1)/2;
+    const FPR=(CW-1)/2;
+    const Y0=MT+HDR;
+    const PGB=PH-MB-14; // limite útil (reserva rodapé)
 
     const fotos=Object.values(fotosPendentes);
     const prest=prestadorDefault||{nome:"CNRP ARQUITETURA E CONSTRUÇÕES LTDA.",cnpj:"22.121.094/0001-90",endereco:"Av. Marechal Eurico Gaspar Dutra, nº 1292 | Santana | São Paulo – SP | CEP 02239-010",email:"ronaldopinto@rbarquitetura.com"};
-    // logoSrc ANTES de logoPrep (fix Cannot access before initialization)
     const logoSrc=prest.logo||LOGO_CONST;
     const logoPrep=await prepLogoForPDF(logoSrc,45,15);
 
     // === MONTAGEM DAS PAGINAS ===
-    // Pg1: foto01 (grande) + 2 pares (fotos 02-05)  = 5 fotos
-    // Pg2+: 3 pares por pagina = 6 fotos
+    // Pg1: fachada (faixa 1, largura total) + 2 faixas de par = 5 fotos
+    // Pg2+: 3 faixas de par = 6 fotos
+    // Alturas calculadas para preencher exatamente o espaço disponível sem sobra
     const pagFotos=[];
     if(fotos.length>0){
       pagFotos.push({fotos:fotos.slice(0,5),isPrimeira:true});
@@ -2123,46 +2119,55 @@ window.finalizarVistoria=async()=>{
       let y=Y0;
 
       if(isP&&pF.length>0){
-        // FOTO 01: largura total, legenda "Fachada"
+        // Pg1: faixa 1 = fachada (largura total), faixas 2-3 = pares
+        // Calcular alturas para preencher PGB exatamente
+        // 3 faixas: F01H + LEGH + 2*(FPH + LEGH) = PGB - Y0
+        // F01H = (PGB-Y0 - 3*LEGH) * 0.4  FPH = (PGB-Y0 - 3*LEGH) * 0.3
+        const totalH=PGB-Y0;
+        const totalImgH=totalH-3*LEGH;
+        const F01H=Math.floor(totalImgH*0.40);
+        const FPH=Math.floor(totalImgH*0.30);
+
+        // Faixa 1: Fachada largura total
         const f0=pF[0];
         const dims=await getImgDims(f0.dataUrl);
-        const sc=Math.min(CW/dims.w,F01H/dims.h);
+        const sc=Math.min((CW-3)/dims.w,(F01H-3)/dims.h);
         const fw=Math.round(dims.w*sc),fh=Math.round(dims.h*sc);
         const xo=Math.round((CW-fw)/2),yo=Math.round((F01H-fh)/2);
-        pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(ML,y,CW,F01H,"S");
+        pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(ML,y,CW,F01H,"S");
         try{await addImgPDF(pdf,f0.dataUrl,ML+xo,y+yo,fw,fh);}catch(e){}
-        // Legenda foto 01: linha separadora + caixa única (sem linha entre número e descrição)
-        pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
-        pdf.line(ML,y+F01H,ML+CW,y+F01H);      // linha separadora foto/legenda
-        pdf.line(ML,y+F01H+LEGH,ML+CW,y+F01H+LEGH); // linha inferior da legenda
-        pdf.line(ML,y+F01H,ML,y+F01H+LEGH);         // borda esquerda
-        pdf.line(ML+CW,y+F01H,ML+CW,y+F01H+LEGH);  // borda direita
+        // Legenda sem linha central
+        pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);
+        pdf.line(ML,y+F01H,ML+CW,y+F01H);
+        pdf.line(ML,y+F01H+LEGH,ML+CW,y+F01H+LEGH);
+        pdf.line(ML,y+F01H,ML,y+F01H+LEGH);
+        pdf.line(ML+CW,y+F01H,ML+CW,y+F01H+LEGH);
         pdf.setFont("helvetica","bold");pdf.setFontSize(9);
         pdf.text("Foto 01",ML+CW/2,y+F01H+3,{align:"center"});
         pdf.setFont("helvetica","normal");pdf.setFontSize(8.5);
         pdf.text("Fachada",ML+CW/2,y+F01H+6.8,{align:"center"});
         fotoNum++;
         y+=F01H+LEGH;
-        // Pares seguintes (fotos 02-05)
+
+        // Faixas 2 e 3: pares
         const resto=pF.slice(1);
         for(let i=0;i<resto.length;i+=2){
-          if(y+FPH+LEGH>PGB){break;} // safety
           const count=Math.min(2,resto.length-i);
           const isLastSolo=(count===1&&i+1>=resto.length);
-          await pdfPar(pdf,resto,i,count,ML,y,CW,isLastSolo?CW:FPL,isLastSolo?CW:FPR,isLastSolo?F01H:FPH,fotoNum);
+          await pdfPar(pdf,resto,i,count,ML,y,CW,isLastSolo?CW:FPL,isLastSolo?CW:FPR,FPH,fotoNum);
           fotoNum+=count;
-          y+=(isLastSolo?F01H:FPH)+LEGH;
+          y+=FPH+LEGH;
         }
       } else {
-        // Paginas 2+: 3 pares
+        // Pg2+: 3 faixas de par, altura igual dividindo o espaço disponível
+        const totalH=PGB-Y0;
+        const FPH=Math.floor((totalH-3*LEGH)/3);
         for(let i=0;i<pF.length;i+=2){
-          if(y+FPH+LEGH>PGB){break;}
           const count=Math.min(2,pF.length-i);
-          // Última foto sozinha: usa largura total como Foto 01
-          const isLast=(count===1&&i+1>=pF.length);
-          await pdfPar(pdf,pF,i,count,ML,y,CW,isLast?CW:FPL,isLast?CW:FPR,isLast?F01H:FPH,fotoNum);
+          const isLastSolo=(count===1&&i+1>=pF.length);
+          await pdfPar(pdf,pF,i,count,ML,y,CW,isLastSolo?CW:FPL,isLastSolo?CW:FPR,FPH,fotoNum);
           fotoNum+=count;
-          y+=(isLast?F01H:FPH)+LEGH;
+          y+=FPH+LEGH;
         }
       }
       pdfFooter(pdf,PW,PH,ML,MR,MB,prest);
@@ -2172,7 +2177,7 @@ window.finalizarVistoria=async()=>{
     pdf.addPage();
     const CKH=297,CKML=12.7,CKMR=12.7,CKMB=12.7;
     const CKCW=210-CKML-CKMR;
-    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.5);
+    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);
     pdf.rect(CKML,CKML,CKCW,CKH-CKML-CKMB,"S");
     let yc=CKML+4;
     pdf.setFillColor(220,220,220);pdf.rect(CKML,yc,CKCW,8,"F");
@@ -2220,19 +2225,27 @@ window.finalizarVistoria=async()=>{
       // Quebra de página quando necessário
       if(yc+rowH>(CKH-CKMB)-1){
         pdf.addPage();
-        pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.5);pdf.rect(CKML,CKML,CKCW,CKH-CKML-CKMB,"S");
+        pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(CKML,CKML,CKCW,CKH-CKML-CKMB,"S");
         yc=CKML+4;
         yc=renderCKHeader(yc);
       }
       const vals=COLS.map(k=>{const v=(currentVistoria.checklist&&currentVistoria.checklist[amb]&&currentVistoria.checklist[amb][k])||[];return Array.isArray(v)?v:[];});
       const hasAny=vals.some(a=>a.length>0);
+      const isLastRow=(ri===ambTotal.length-1);
       if(hasAny){pdf.setFillColor(255,248,210);}
       else if(ri%2===0){pdf.setFillColor(248,248,248);}
       else{pdf.setFillColor(255,255,255);}
+      // Fundo
       cx=CKML;colWN.forEach(w=>{pdf.rect(cx,yc,w,rowH,"F");cx+=w;});
-      pdf.setDrawColor(0,0,0);pdf.setLineWidth(hasAny?0.35:0.15);pdf.rect(CKML,yc,CKCW,rowH,"S");
+      // Bordas: apenas linha superior (evita dupla linha entre rows)
+      pdf.setDrawColor(0,0,0);pdf.setLineWidth(hasAny?0.3:0.15);
+      pdf.line(CKML,yc,CKML+CKCW,yc); // linha superior
+      if(isLastRow)pdf.line(CKML,yc+rowH,CKML+CKCW,yc+rowH); // linha inferior só na última
+      pdf.line(CKML,yc,CKML,yc+rowH); // borda esquerda
+      pdf.line(CKML+CKCW,yc,CKML+CKCW,yc+rowH); // borda direita
+      // Divisores verticais
       cx=CKML;colWN.forEach((w,i)=>{
-        if(i>0){pdf.setDrawColor(120,120,120);pdf.setLineWidth(0.2);pdf.line(cx,yc,cx,yc+rowH);}
+        if(i>0){pdf.setDrawColor(120,120,120);pdf.setLineWidth(0.15);pdf.line(cx,yc,cx,yc+rowH);}
         cx+=w;
       });
       pdf.setDrawColor(0,0,0);
@@ -2266,7 +2279,7 @@ window.finalizarVistoria=async()=>{
     pdf.addPage();
     const FLPW=210,FLPH=297,FLML=12.7,FLMT=12.7,FLMR=12.7,FLMB=12.7;
     const FLCW=FLPW-FLML-FLMR;
-    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.5);
+    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);
     pdf.rect(FLML,FLML,FLCW,FLPH-FLML-FLMB,"S");
     let yf=FLMT+8;
     // Conclusão
@@ -2352,65 +2365,59 @@ window.finalizarVistoria=async()=>{
 };
 
 async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
-  const LEGH=8;  // altura total da legenda (2 linhas de 4mm)
-  const LH1=4,LH2=4; // linha 1: "Foto XX", linha 2: descrição
-  const PAD=1.5; // margem interna foto/borda
+  const LEGH=8;
+  const PAD=2;
+  const LW=0.2; // espessura linha fina uniforme
 
   if(count===1){
-    // Foto solitária: centralizada horizontalmente no espaço de um par
+    // Foto solitária centralizada
     const f=fotos[startIdx];
     const fx=ML+(CW-FPL)/2;
     const dims=await getImgDims(f.dataUrl);
     const sc=Math.min((FPL-PAD*2)/dims.w,(FPH-PAD*2)/dims.h);
     const fw=Math.round(dims.w*sc),fh=Math.round(dims.h*sc);
     const xo=Math.round((FPL-fw)/2),yo=Math.round((FPH-fh)/2);
-    // Borda da foto
-    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(fx,y,FPL,FPH,"S");
+    pdf.setDrawColor(0,0,0);pdf.setLineWidth(LW);
+    // Borda da foto (4 lados)
+    pdf.rect(fx,y,FPL,FPH,"S");
     try{await addImgPDF(pdf,f.dataUrl,fx+xo,y+yo,fw,fh);}catch(e){}
-    // Linha separadora foto → legenda
-    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
-    pdf.line(fx,y+FPH,fx+FPL,y+FPH);
-    // Linha inferior da legenda
+    // Legenda: linha superior (= base da foto), bordas lat, linha inferior
     pdf.line(fx,y+FPH+LEGH,fx+FPL,y+FPH+LEGH);
-    // Texto: "Foto XX" e descrição na mesma caixa, sem linha entre eles
+    pdf.line(fx,y+FPH,fx,y+FPH+LEGH);
+    pdf.line(fx+FPL,y+FPH,fx+FPL,y+FPH+LEGH);
     pdf.setFont("helvetica","bold");pdf.setFontSize(8);
-    pdf.text("Foto "+String(fotoNum).padStart(2,"0"),fx+FPL/2,y+FPH+LH1-0.8,{align:"center"});
+    pdf.text("Foto "+String(fotoNum).padStart(2,"0"),fx+FPL/2,y+FPH+3.2,{align:"center"});
     pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);
     const leg1=pdf.splitTextToSize(f.legenda||f.tipo||"Vista",FPL-2);
-    pdf.text(leg1[0],fx+FPL/2,y+FPH+LH1+LH2-0.8,{align:"center"});
+    pdf.text(leg1[0],fx+FPL/2,y+FPH+6.8,{align:"center"});
 
   } else {
-    // Par de fotos
-    const ws=[FPL,FPR];
-    let fx=ML;
+    // Par: desenhar borda externa completa da área foto+legenda
+    pdf.setDrawColor(0,0,0);pdf.setLineWidth(LW);
+    const totalH=FPH+LEGH;
+    // Borda externa do bloco inteiro
+    pdf.rect(ML,y,CW,totalH,"S");
+    // Linha divisória central vertical (do topo ao fim da legenda)
+    pdf.line(ML+FPL,y,ML+FPL,y+totalH);
+    // Linha separadora foto/legenda (horizontal, largura total)
+    pdf.line(ML,y+FPH,ML+CW,y+FPH);
+
+    // Fotos
     for(let k=0;k<2&&startIdx+k<fotos.length;k++){
-      const f=fotos[startIdx+k];const fw_k=ws[k];
+      const f=fotos[startIdx+k];
+      const fw_k=k===0?FPL:FPR;
+      const fx=k===0?ML:ML+FPL+1;
       const dims=await getImgDims(f.dataUrl);
       const sc=Math.min((fw_k-PAD*2)/dims.w,(FPH-PAD*2)/dims.h);
       const fwR=Math.round(dims.w*sc),fhR=Math.round(dims.h*sc);
       const xo=Math.round((fw_k-fwR)/2),yo=Math.round((FPH-fhR)/2);
-      // Borda da caixa da foto (retângulo completo)
-      pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(fx,y,fw_k,FPH,"S");
       try{await addImgPDF(pdf,f.dataUrl,fx+xo,y+yo,fwR,fhR);}catch(e){}
-      // Linha separadora foto → legenda
-      pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
-      pdf.line(fx,y+FPH,fx+fw_k,y+FPH);
-      // Linha inferior da legenda
-      pdf.line(fx,y+FPH+LEGH,fx+fw_k,y+FPH+LEGH);
-      // Texto: "Foto XX" e descrição sem linha separatória entre eles
       pdf.setFont("helvetica","bold");pdf.setFontSize(8);
-      pdf.text("Foto "+String(fotoNum+k).padStart(2,"0"),fx+fw_k/2,y+FPH+LH1-0.8,{align:"center"});
+      pdf.text("Foto "+String(fotoNum+k).padStart(2,"0"),fx+fw_k/2,y+FPH+3.2,{align:"center"});
       pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);
       const legTxt=pdf.splitTextToSize(f.legenda||f.tipo||"Vista",fw_k-2);
-      pdf.text(legTxt[0],fx+fw_k/2,y+FPH+LH1+LH2-0.8,{align:"center"});
-      fx+=fw_k+(k===0?1:0);
+      pdf.text(legTxt[0],fx+fw_k/2,y+FPH+6.8,{align:"center"});
     }
-    // Linha central vertical cobrindo foto + legenda
-    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
-    pdf.line(ML+FPL,y,ML+FPL,y+FPH+LEGH);
-    // Bordas externas da legenda (esquerda e direita do par)
-    pdf.line(ML,y+FPH,ML,y+FPH+LEGH);
-    pdf.line(ML+FPL+FPR+1,y+FPH,ML+FPL+FPR+1,y+FPH+LEGH);
   }
 }
 
@@ -2566,19 +2573,19 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
   pdf.line(ML,lY6,ML+CW,lY6);
 
   // === R8: Coletor | Estado de Conservação | Idade Aparente ===
-  const colL="Coletor: ";
+  const colL="Coletor:  ";
   pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
   pdf.text(colL,ML+1.5,cy(lY6,h8));
   pdf.setFont("helvetica","normal");pdf.text(v.coletorNome||"",ML+1.5+pdf.getTextWidth(colL),cy(lY6,h8));
   if(v.estado){
-    const estL="Estado de Conservação: ";
+    const estL="Estado de Conservação:  ";
     pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
     pdf.text(estL,ML+CW*(3.5/12)+1.5,cy(lY6,h8));
     pdf.setFont("helvetica","normal");
     pdf.text(" "+v.estado,ML+CW*(3.5/12)+1.5+pdf.getTextWidth(estL),cy(lY6,h8));
     pdf.setLineWidth(0.2);pdf.line(ML+CW*(3.5/12),lY6,ML+CW*(3.5/12),lY7);
     if(v.idade){
-      const idL="Idade Aparente: ";
+      const idL="Idade Aparente:  ";
       pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
       pdf.text(idL,ML+CW*(8.5/12)+1.5,cy(lY6,h8));
       pdf.setFont("helvetica","normal");
@@ -2599,7 +2606,7 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
 
 function pdfFooter(pdf,PW,PH,ML,MR,MB,p){
   // Borda externa da página
-  pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.5);
+  pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);
   pdf.rect(ML,ML,PW-ML-MR,PH-ML-MB,"S");
   // Linha separadora do rodapé
   const footTop=PH-MB-12;
