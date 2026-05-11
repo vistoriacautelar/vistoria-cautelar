@@ -422,13 +422,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <p style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">Patologias registradas nesta foto:</p>
       <div id="pat-combo-list" style="display:flex;flex-direction:column;gap:6px"></div>
     </div>
-    <div style="background:#f8f8f8;border-radius:12px;padding:12px;margin-bottom:12px;overflow-y:auto;max-height:55vh;-webkit-overflow-scrolling:touch">
-      <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px;position:sticky;top:0;background:#f8f8f8;z-index:1;padding-top:4px">1. Onde esta a patologia?</p>
-      <div class="part-grid" id="part-grid" style="touch-action:pan-x"></div>
-      <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px;margin-top:12px;position:sticky;top:28px;background:#f8f8f8;z-index:1;padding-top:4px">2. Qual patologia?</p>
-      <div class="pat-list" id="pat-list" style="touch-action:pan-x"></div>
-      <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px;margin-top:12px;position:sticky;top:56px;background:#f8f8f8;z-index:1;padding-top:4px">3. Em qual elemento?</p>
-      <div class="part-grid" id="elem-grid" style="touch-action:pan-x"></div>
+    <div style="background:#f8f8f8;border-radius:12px;padding:12px;margin-bottom:12px;overflow-y:scroll;max-height:52vh;-webkit-overflow-scrolling:touch;overscroll-behavior:contain">
+      <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px">1. Onde esta a patologia?</p>
+      <div class="part-grid" id="part-grid"></div>
+      <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px;margin-top:12px">2. Qual patologia?</p>
+      <div class="pat-list" id="pat-list"></div>
+      <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px;margin-top:12px">3. Em qual elemento?</p>
+      <div class="part-grid" id="elem-grid"></div>
       <button class="btn" style="background:#f0f0f0;color:#333;margin-top:4px" onclick="adicionarCombinacao()">+ Adicionar esta combinacao</button>
     </div>
     <button class="btn primary" onclick="confirmarPatologias()">Confirmar e salvar foto</button>
@@ -1685,18 +1685,68 @@ window.confirmarPatologias=()=>{
   salvarFotoFinal(fotoAtualBlob,pats,_patCombinacoes);
 };
 
+// Lê a orientação EXIF de um dataUrl JPEG
+function lerOrientacaoEXIF(dataUrl){
+  return new Promise(res=>{
+    try{
+      const bin=atob(dataUrl.split(",")[1]);
+      const arr=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+      const dv=new DataView(arr.buffer);
+      if(dv.getUint16(0)!==0xFFD8){return res(1);}
+      let off=2;
+      while(off<dv.byteLength){
+        if(dv.getUint8(off)!==0xFF){break;}
+        const marker=dv.getUint8(off+1);
+        const len=dv.getUint16(off+2);
+        if(marker===0xE1){// APP1 = EXIF
+          if(dv.getUint32(off+4)===0x45786966){// "Exif"
+            const tiff=off+10;
+            const le=dv.getUint16(tiff)===0x4949;
+            const ifd=tiff+(le?dv.getUint32(tiff+4,le):dv.getUint32(tiff+4));
+            const count=le?dv.getUint16(ifd,le):dv.getUint16(ifd);
+            for(let i=0;i<count;i++){
+              const tag=ifd+2+i*12;
+              const tagId=le?dv.getUint16(tag,le):dv.getUint16(tag);
+              if(tagId===0x0112){return res(le?dv.getUint16(tag+8,le):dv.getUint16(tag+8));}
+            }
+          }
+        }
+        off+=2+len;
+      }
+      res(1);
+    }catch(e){res(1);}
+  });
+}
+
 // Corrige orientação EXIF de fotos tiradas no iOS
 function corrigirOrientacaoFoto(dataUrl){
   return new Promise(res=>{
-    const img=new Image();
-    img.onload=()=>{
-      const c=document.createElement("canvas");
-      c.width=img.naturalWidth;c.height=img.naturalHeight;
-      c.getContext("2d").drawImage(img,0,0);
-      res(c.toDataURL("image/jpeg",1.0));
-    };
-    img.onerror=()=>res(dataUrl);
-    img.src=dataUrl;
+    lerOrientacaoEXIF(dataUrl).then(orient=>{
+      const img=new Image();
+      img.onload=()=>{
+        const w=img.naturalWidth,h=img.naturalHeight;
+        const c=document.createElement("canvas");
+        const ctx=c.getContext("2d");
+        // Orientações 5-8 trocam largura e altura
+        if(orient>=5&&orient<=8){c.width=h;c.height=w;}
+        else{c.width=w;c.height=h;}
+        switch(orient){
+          case 2:ctx.transform(-1,0,0,1,w,0);break;
+          case 3:ctx.transform(-1,0,0,-1,w,h);break;
+          case 4:ctx.transform(1,0,0,-1,0,h);break;
+          case 5:ctx.transform(0,1,1,0,0,0);break;
+          case 6:ctx.transform(0,1,-1,0,h,0);break;
+          case 7:ctx.transform(0,-1,-1,0,h,w);break;
+          case 8:ctx.transform(0,-1,1,0,0,w);break;
+          default:break;
+        }
+        ctx.drawImage(img,0,0);
+        res(c.toDataURL("image/jpeg",1.0));
+      };
+      img.onerror=()=>res(dataUrl);
+      img.src=dataUrl;
+    });
   });
 }
 
@@ -2021,18 +2071,21 @@ window.finalizarVistoria=async()=>{
         for(let i=0;i<resto.length;i+=2){
           if(y+FPH+LEGH>PGB){break;} // safety
           const count=Math.min(2,resto.length-i);
-          await pdfPar(pdf,resto,i,count,ML,y,CW,FPL,FPR,FPH,fotoNum);
+          const isLastSolo=(count===1&&i+1>=resto.length);
+          await pdfPar(pdf,resto,i,count,ML,y,CW,isLastSolo?CW:FPL,isLastSolo?CW:FPR,isLastSolo?F01H:FPH,fotoNum);
           fotoNum+=count;
-          y+=FPH+LEGH;
+          y+=(isLastSolo?F01H:FPH)+LEGH;
         }
       } else {
         // Paginas 2+: 3 pares
         for(let i=0;i<pF.length;i+=2){
           if(y+FPH+LEGH>PGB){break;}
           const count=Math.min(2,pF.length-i);
-          await pdfPar(pdf,pF,i,count,ML,y,CW,FPL,FPR,FPH,fotoNum);
+          // Última foto sozinha: usa largura total como Foto 01
+          const isLast=(count===1&&i+1>=pF.length);
+          await pdfPar(pdf,pF,i,count,ML,y,CW,isLast?CW:FPL,isLast?CW:FPR,isLast?F01H:FPH,fotoNum);
           fotoNum+=count;
-          y+=FPH+LEGH;
+          y+=(isLast?F01H:FPH)+LEGH;
         }
       }
       pdfFooter(pdf,PW,PH,ML,MR,MB,prest);
@@ -2065,25 +2118,20 @@ window.finalizarVistoria=async()=>{
     const cwSum=colWRaw.reduce((a,b)=>a+b,0);
     const colWN=colWRaw.map(w=>w*(CW/cwSum));
     // Cabeçalho tabela
+    const hdrH=7;
     pdf.setFillColor(200,200,200);
-    let cx=ML;colWN.forEach(w=>{pdf.rect(cx,yc,w,7,"F");cx+=w;});
-    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(ML,yc,CW,7,"S");
-    cx=ML;colWN.forEach((w,i)=>{if(i>0){pdf.setDrawColor(80,80,80);pdf.setLineWidth(0.3);pdf.line(cx,yc,cx,yc+7);}cx+=w;});
+    let cx=ML;colWN.forEach(w=>{pdf.rect(cx,yc,w,hdrH,"F");cx+=w;});
+    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(ML,yc,CW,hdrH,"S");
+    cx=ML;colWN.forEach((w,i)=>{if(i>0){pdf.setDrawColor(80,80,80);pdf.setLineWidth(0.3);pdf.line(cx,yc,cx,yc+hdrH);}cx+=w;});
     pdf.setDrawColor(0,0,0);
     cx=ML;pdf.setFontSize(7);pdf.setFont("helvetica","bold");
-    colsH.forEach((c,i)=>{pdf.text(c,cx+colWN[i]/2,yc+4.8,{align:"center"});cx+=colWN[i];});yc+=7;
-    // Altura dinâmica por linha
-    const sigAreaH=52;const footH=14;
-    const availH=PH-MB-yc-sigAreaH-footH;
-    const rowH=Math.max(20,Math.floor(availH/ambTotal.length*10)/10);
+    colsH.forEach((c,i)=>{pdf.text(c,cx+colWN[i]/2,yc+4.8,{align:"center"});cx+=colWN[i];});yc+=hdrH;
+    // Altura dinâmica: distribuir toda a altura disponível entre as linhas (sem quebra de página)
+    const availForRows=PH-MB-yc-2; // 2mm de margem inferior
+    const rowH=Math.floor((availForRows/ambTotal.length)*10)/10;
     ambTotal.forEach((amb,ri)=>{
       const vals=COLS.map(k=>{const v=(currentVistoria.checklist&&currentVistoria.checklist[amb]&&currentVistoria.checklist[amb][k])||[];return Array.isArray(v)?v:[];});
       const hasAny=vals.some(a=>a.length>0);
-      if(yc+rowH>PH-MB-sigAreaH-footH){
-        pdf.addPage();
-        pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.5);pdf.rect(ML,ML,PW-ML-MR,PH-ML-MB,"S");
-        yc=ML+4;
-      }
       // Fundo
       if(hasAny){pdf.setFillColor(255,248,210);}
       else if(ri%2===0){pdf.setFillColor(248,248,248);}
@@ -2109,14 +2157,12 @@ window.finalizarVistoria=async()=>{
           const ty=yc+1.8+pi*step;
           const bx=cx+1;const by=ty-0.3;const bs=3.2;
           if(mk){
-            // Marcado: caixa escura com X branco, texto negrito
             pdf.setFillColor(30,30,30);pdf.rect(bx,by,bs,bs,"F");
             pdf.setTextColor(255,255,255);pdf.setFontSize(5.5);pdf.setFont("helvetica","bold");
             pdf.text("X",bx+bs/2,by+bs*0.75,{align:"center"});
             pdf.setTextColor(0,0,0);pdf.setFont("helvetica","bold");pdf.setFontSize(6.2);
             pdf.text(pp,cx+bs+2,ty+2.2);
           }else{
-            // Vazio: só borda
             pdf.setDrawColor(150,150,150);pdf.setLineWidth(0.2);pdf.rect(bx,by,bs,bs,"S");
             pdf.setDrawColor(0,0,0);
             pdf.setFont("helvetica","normal");pdf.setFontSize(5.8);
@@ -2441,10 +2487,10 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
   if(v.estado){
     const estL="Estado de Conservação:  ";
     pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
-    pdf.text(estL,ML+CW*(4.5/12)+1.5,cy(lY6,h8));
+    pdf.text(estL,ML+CW*(3.5/12)+1.5,cy(lY6,h8));
     pdf.setFont("helvetica","normal");
-    pdf.text(v.estado,ML+CW*(4.5/12)+1.5+pdf.getTextWidth(estL),cy(lY6,h8));
-    pdf.setLineWidth(0.2);pdf.line(ML+CW*(4.5/12),lY6,ML+CW*(4.5/12),lY7);
+    pdf.text(v.estado,ML+CW*(3.5/12)+1.5+pdf.getTextWidth(estL),cy(lY6,h8));
+    pdf.setLineWidth(0.2);pdf.line(ML+CW*(3.5/12),lY6,ML+CW*(3.5/12),lY7);
     if(v.idade){
       const idL="Idade Aparente:  ";
       pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
