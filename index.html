@@ -76,7 +76,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   .canvas-controls{flex-direction:column;width:80px;flex-shrink:0;padding:10px 8px;justify-content:center}
 }
 .bottom-sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1002;display:flex;align-items:flex-end;justify-content:center}
-.sheet-body{background:#fff;border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:600px;max-height:85vh;overflow-y:auto}
+.sheet-body{background:#fff;border-radius:20px 20px 0 0;padding:24px 24px 16px;width:100%;max-width:600px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
 .sheet-body h3{font-size:17px;font-weight:600;margin-bottom:6px}
 .sheet-body p{font-size:13px;color:#888;margin-bottom:16px}
 .part-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
@@ -422,7 +422,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <p style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">Patologias registradas nesta foto:</p>
       <div id="pat-combo-list" style="display:flex;flex-direction:column;gap:6px"></div>
     </div>
-    <div style="background:#f8f8f8;border-radius:12px;padding:12px;margin-bottom:12px;overflow-y:scroll;max-height:52vh;-webkit-overflow-scrolling:touch;overscroll-behavior:contain">
+    <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:#f8f8f8;border-radius:12px;padding:12px;margin-bottom:12px">
       <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px">1. Onde esta a patologia?</p>
       <div class="part-grid" id="part-grid"></div>
       <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px;margin-top:12px">2. Qual patologia?</p>
@@ -2091,68 +2091,59 @@ window.finalizarVistoria=async()=>{
       pdfFooter(pdf,PW,PH,ML,MR,MB,prest);
     }
 
-    // === PAGINA CHECKLIST SEM CABEÇALHO ===
+    // === PAGINA CHECKLIST — página própria com constantes locais ===
     pdf.addPage();
-    // Borda da página
+    const CKH=297,CKML=12.7,CKMR=12.7,CKMB=12.7;
+    const CKCW=210-CKML-CKMR;
     pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.5);
-    pdf.rect(ML,ML,PW-ML-MR,PH-ML-MB,"S");
-    let yc=ML+4;
-    // Título com fundo cinza
-    pdf.setFillColor(220,220,220);pdf.rect(ML,yc,CW,8,"F");
-    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(ML,yc,CW,8,"S");
+    pdf.rect(CKML,CKML,CKCW,CKH-CKML-CKMB,"S");
+    let yc=CKML+4;
+    pdf.setFillColor(220,220,220);pdf.rect(CKML,yc,CKCW,8,"F");
+    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(CKML,yc,CKCW,8,"S");
     pdf.setFontSize(10);pdf.setFont("helvetica","bold");
-    pdf.text("IDENTIFICAÇÃO DE PATOLOGIAS",ML+CW/2,yc+5.5,{align:"center"});yc+=10;
-    // Mini cabeçalho com nome e endereço
+    pdf.text("IDENTIFICAÇÃO DE PATOLOGIAS",CKML+CKCW/2,yc+5.5,{align:"center"});yc+=10;
     pdf.setFontSize(7.5);
-    const nomLc="Nome:  ";pdf.setFont("helvetica","bold");pdf.text(nomLc,ML+1.5,yc+4.5);
-    pdf.setFont("helvetica","normal");pdf.text(currentVistoria.responsavel&&currentVistoria.responsavel.nome||"",ML+1.5+pdf.getTextWidth(nomLc),yc+4.5);
-    const endLc="Endereço:  ";pdf.setFont("helvetica","bold");pdf.text(endLc,ML+CW/2+1.5,yc+4.5);
+    const nomLc="Nome:  ";pdf.setFont("helvetica","bold");pdf.text(nomLc,CKML+1.5,yc+4.5);
+    pdf.setFont("helvetica","normal");pdf.text(currentVistoria.responsavel&&currentVistoria.responsavel.nome||"",CKML+1.5+pdf.getTextWidth(nomLc),yc+4.5);
+    const endLc="Endereço:  ";pdf.setFont("helvetica","bold");pdf.text(endLc,CKML+CKCW/2+1.5,yc+4.5);
     pdf.setFont("helvetica","normal");const endVc=(currentVistoria.endereco&&currentVistoria.endereco.rua||"")+" "+(currentVistoria.endereco&&currentVistoria.endereco.num||"");
-    pdf.text(endVc,ML+CW/2+1.5+pdf.getTextWidth(endLc),yc+4.5);
-    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(ML,yc,CW,7,"S");yc+=9;
+    pdf.text(endVc,CKML+CKCW/2+1.5+pdf.getTextWidth(endLc),yc+4.5);
+    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(CKML,yc,CKCW,7,"S");yc+=9;
 
     const ambTotal=[...AMBIENTES,...ambientesExtras];
-    // Colunas com nomes completos
     const colsH=["Local","Estrutura","Parede e muro","Cobertura a teto","Porta e esquadria","Piso e calçamento"];
     const colWRaw=[28,31,32,33,32,29];
     const cwSum=colWRaw.reduce((a,b)=>a+b,0);
-    const colWN=colWRaw.map(w=>w*(CW/cwSum));
-    // Cabeçalho tabela
+    const colWN=colWRaw.map(w=>w*(CKCW/cwSum));
     const hdrH=7;
     pdf.setFillColor(200,200,200);
-    let cx=ML;colWN.forEach(w=>{pdf.rect(cx,yc,w,hdrH,"F");cx+=w;});
-    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(ML,yc,CW,hdrH,"S");
-    cx=ML;colWN.forEach((w,i)=>{if(i>0){pdf.setDrawColor(80,80,80);pdf.setLineWidth(0.3);pdf.line(cx,yc,cx,yc+hdrH);}cx+=w;});
+    let cx=CKML;colWN.forEach(w=>{pdf.rect(cx,yc,w,hdrH,"F");cx+=w;});
+    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(CKML,yc,CKCW,hdrH,"S");
+    cx=CKML;colWN.forEach((w,i)=>{if(i>0){pdf.setDrawColor(80,80,80);pdf.setLineWidth(0.3);pdf.line(cx,yc,cx,yc+hdrH);}cx+=w;});
     pdf.setDrawColor(0,0,0);
-    cx=ML;pdf.setFontSize(7);pdf.setFont("helvetica","bold");
+    cx=CKML;pdf.setFontSize(7);pdf.setFont("helvetica","bold");
     colsH.forEach((c,i)=>{pdf.text(c,cx+colWN[i]/2,yc+4.8,{align:"center"});cx+=colWN[i];});yc+=hdrH;
-    // Altura dinâmica: distribuir toda a altura disponível entre as linhas (sem quebra de página)
-    const availForRows=PH-MB-yc-2; // 2mm de margem inferior
+    // rowH calculado com constantes locais corretas
+    const availForRows=(CKH-CKMB)-yc-1;
     const rowH=Math.floor((availForRows/ambTotal.length)*10)/10;
     ambTotal.forEach((amb,ri)=>{
       const vals=COLS.map(k=>{const v=(currentVistoria.checklist&&currentVistoria.checklist[amb]&&currentVistoria.checklist[amb][k])||[];return Array.isArray(v)?v:[];});
       const hasAny=vals.some(a=>a.length>0);
-      // Fundo
       if(hasAny){pdf.setFillColor(255,248,210);}
       else if(ri%2===0){pdf.setFillColor(248,248,248);}
       else{pdf.setFillColor(255,255,255);}
-      cx=ML;colWN.forEach(w=>{pdf.rect(cx,yc,w,rowH,"F");cx+=w;});
-      // Borda linha
-      pdf.setDrawColor(0,0,0);pdf.setLineWidth(hasAny?0.35:0.15);pdf.rect(ML,yc,CW,rowH,"S");
-      // Divisores verticais
-      cx=ML;colWN.forEach((w,i)=>{
+      cx=CKML;colWN.forEach(w=>{pdf.rect(cx,yc,w,rowH,"F");cx+=w;});
+      pdf.setDrawColor(0,0,0);pdf.setLineWidth(hasAny?0.35:0.15);pdf.rect(CKML,yc,CKCW,rowH,"S");
+      cx=CKML;colWN.forEach((w,i)=>{
         if(i>0){pdf.setDrawColor(120,120,120);pdf.setLineWidth(0.2);pdf.line(cx,yc,cx,yc+rowH);}
         cx+=w;
       });
       pdf.setDrawColor(0,0,0);
-      // Local
-      cx=ML;pdf.setFont("helvetica","bold");pdf.setFontSize(7);
+      cx=CKML;pdf.setFont("helvetica","bold");pdf.setFontSize(7);
       pdf.text(amb,cx+1.5,yc+rowH*0.62);cx+=colWN[0];
-      // Patologias
       const step=(rowH-2.5)/PATOLOGIAS.length;
       vals.forEach((arr,ki)=>{
-        const allP=PATOLOGIAS;
-        allP.forEach((pp,pi)=>{
+        PATOLOGIAS.forEach((pp,pi)=>{
           const mk=arr.includes(pp);
           const ty=yc+1.8+pi*step;
           const bx=cx+1;const by=ty-0.3;const bs=3.2;
@@ -2164,10 +2155,8 @@ window.finalizarVistoria=async()=>{
             pdf.text(pp,cx+bs+2,ty+2.2);
           }else{
             pdf.setDrawColor(150,150,150);pdf.setLineWidth(0.2);pdf.rect(bx,by,bs,bs,"S");
-            pdf.setDrawColor(0,0,0);
-            pdf.setFont("helvetica","normal");pdf.setFontSize(5.8);
-            pdf.setTextColor(130,130,130);
-            pdf.text(pp,cx+bs+2,ty+2.2);
+            pdf.setDrawColor(0,0,0);pdf.setFont("helvetica","normal");pdf.setFontSize(5.8);
+            pdf.setTextColor(130,130,130);pdf.text(pp,cx+bs+2,ty+2.2);
             pdf.setTextColor(0,0,0);
           }
         });
@@ -2175,57 +2164,54 @@ window.finalizarVistoria=async()=>{
       });
       yc+=rowH;
     });
-    // === CONCLUSÃO — MANIFESTAÇÕES PATOLÓGICAS ===
-    const sigImgH_pre=20; // reserva para cálculo de espaço das assinaturas
+    // === PÁGINA FINAL: CONCLUSÃO + ASSINATURA ===
+    pdf.addPage();
+    const FLPW=210,FLPH=297,FLML=12.7,FLMT=12.7,FLMR=12.7,FLMB=12.7;
+    const FLCW=FLPW-FLML-FLMR;
+    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.5);
+    pdf.rect(FLML,FLML,FLCW,FLPH-FLML-FLMB,"S");
+    let yf=FLMT+8;
+    // Conclusão
     const conclusaoLinhas=gerarTextoConclusao();
     if(conclusaoLinhas.length){
-      yc+=6;
-      // Título
-      pdf.setFillColor(230,230,230);pdf.rect(ML,yc,CW,6,"F");
-      pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.setTextColor(0,0,0);
-      pdf.text("MANIFESTAÇÕES PATOLÓGICAS IDENTIFICADAS",ML+CW/2,yc+4.2,{align:"center"});
-      yc+=6;
-      // Texto introdutório
-      pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);
-      pdf.text("Foram observadas as seguintes manifestações patológicas no imóvel vistoriado:",ML,yc+4.5);
-      yc+=8;
-      // Por ambiente
+      pdf.setFillColor(230,230,230);pdf.rect(FLML,yf,FLCW,7,"F");
+      pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(FLML,yf,FLCW,7,"S");
+      pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.setTextColor(0,0,0);
+      pdf.text("MANIFESTAÇÕES PATOLÓGICAS IDENTIFICADAS",FLML+FLCW/2,yf+5,{align:"center"});
+      yf+=10;
+      pdf.setFont("helvetica","normal");pdf.setFontSize(8);
+      pdf.text("Foram observadas as seguintes manifestações patológicas no imóvel vistoriado:",FLML+2,yf+5);
+      yf+=10;
       conclusaoLinhas.forEach(linha=>{
-        const wrapped=pdf.splitTextToSize(linha,CW-4);
-        pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
-        const firstLine=wrapped[0];
-        pdf.text(firstLine,ML+2,yc);
+        const wrapped=pdf.splitTextToSize(linha,FLCW-6);
+        pdf.setFont("helvetica","bold");pdf.setFontSize(8);
+        pdf.text(wrapped[0],FLML+4,yf);
         if(wrapped.length>1){
           pdf.setFont("helvetica","normal");
-          wrapped.slice(1).forEach(l=>{yc+=5;pdf.text(l,ML+4,yc);});
+          wrapped.slice(1).forEach(l=>{yf+=5;pdf.text(l,FLML+6,yf);});
         }
-        yc+=6;
+        yf+=7;
       });
     }
-    // === ASSINATURAS COM DATA CENTRALIZADA ===
-    // Garantir que assinaturas não colidam com o rodapé (footTop = PH-MB-12)
-    const footTop=PH-MB-12;
-    const sigAreaNeeded=8+sigImgH_pre+2+12; // data + img + linha + nomes
+    // Assinaturas
     const sigImgH=20;
-    const sigXL=ML+CW*0.05;const sigXR=ML+CW*0.55;
-    const sigW=CW*0.38;
-    // Se não couber na página atual, adiciona nova página
-    if(yc+sigAreaNeeded>footTop-4){pdf.addPage();pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.5);pdf.rect(ML,ML,PW-ML-MR,PH-ML-MB,"S");yc=MT+10;}
-    yc+=8;
-    pdf.setFontSize(9);pdf.setFont("helvetica","normal");
-    pdf.text("São Paulo, "+currentVistoria.dataCompleta,ML+CW/2,yc,{align:"center"});yc+=14;
-    if(assinaturaData){try{pdf.addImage(assinaturaData,"PNG",sigXL,yc,sigW,sigImgH);}catch(e){}}
-    if(assinaturaTecnico){try{pdf.addImage(assinaturaTecnico,"PNG",sigXR,yc,sigW,sigImgH);}catch(e){}}
-    yc+=sigImgH+2;
+    const sigXL=FLML+FLCW*0.05;const sigXR=FLML+FLCW*0.55;
+    const sigW=FLCW*0.38;
+    yf+=10;
+    pdf.setFontSize(10);pdf.setFont("helvetica","normal");
+    pdf.text("São Paulo, "+currentVistoria.dataCompleta,FLML+FLCW/2,yf,{align:"center"});yf+=16;
+    if(assinaturaData){try{pdf.addImage(assinaturaData,"PNG",sigXL,yf,sigW,sigImgH);}catch(e){}}
+    if(assinaturaTecnico){try{pdf.addImage(assinaturaTecnico,"PNG",sigXR,yf,sigW,sigImgH);}catch(e){}}
+    yf+=sigImgH+3;
     pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
-    pdf.line(sigXL,yc,sigXL+sigW,yc);
-    pdf.line(sigXR,yc,sigXR+sigW,yc);
-    pdf.setFontSize(8.5);pdf.setFont("helvetica","normal");
-    pdf.text(currentVistoria.responsavel.nome,sigXL+sigW/2,yc+4.5,{align:"center"});
-    pdf.text("Responsável pelo Imóvel",sigXL+sigW/2,yc+8.5,{align:"center"});
-    pdf.text(currentUserData&&currentUserData.nome||"Responsavel Tecnico",sigXR+sigW/2,yc+4.5,{align:"center"});
-    pdf.text("Responsável Técnico",sigXR+sigW/2,yc+8.5,{align:"center"});
-    pdfFooter(pdf,PW,PH,ML,MR,MB,prest);
+    pdf.line(sigXL,yf,sigXL+sigW,yf);
+    pdf.line(sigXR,yf,sigXR+sigW,yf);
+    pdf.setFontSize(9);pdf.setFont("helvetica","normal");
+    pdf.text(currentVistoria.responsavel.nome,sigXL+sigW/2,yf+5,{align:"center"});
+    pdf.text("Responsável pelo Imóvel",sigXL+sigW/2,yf+9.5,{align:"center"});
+    pdf.text(currentUserData&&currentUserData.nome||"Responsavel Tecnico",sigXR+sigW/2,yf+5,{align:"center"});
+    pdf.text("Responsável Técnico",sigXR+sigW/2,yf+9.5,{align:"center"});
+    pdfFooter(pdf,FLPW,FLPH,FLML,FLMR,FLMB,prest);
 
     // Salvar Firebase + download
     const fotosBase64=isPendente?Object.values(fotosPendentes).map(f=>({dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,legenda:f.legenda||f.tipo,numero:f.numero,combinacoes:f.combinacoes||[]})):[];
@@ -2267,33 +2253,35 @@ window.finalizarVistoria=async()=>{
 };
 
 async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
-  // Par de fotos lado a lado, com linha divisoria vertical central
-  const LEGH=8;
-  const PAD=1.5; // margem interna para a foto não tocar a borda
+  const LEGH=8;  // altura total da legenda (2 linhas de 4mm)
+  const LH1=4,LH2=4; // linha 1: "Foto XX", linha 2: descrição
+  const PAD=1.5; // margem interna foto/borda
+
   if(count===1){
-    // Foto impar: centralizada
+    // Foto solitária: centralizada horizontalmente no espaço de um par
     const f=fotos[startIdx];
     const fx=ML+(CW-FPL)/2;
     const dims=await getImgDims(f.dataUrl);
     const sc=Math.min((FPL-PAD*2)/dims.w,(FPH-PAD*2)/dims.h);
     const fw=Math.round(dims.w*sc),fh=Math.round(dims.h*sc);
     const xo=Math.round((FPL-fw)/2),yo=Math.round((FPH-fh)/2);
+    // Borda da foto
     pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(fx,y,FPL,FPH,"S");
     try{await addImgPDF(pdf,f.dataUrl,fx+xo,y+yo,fw,fh);}catch(e){}
-    // Linha separadora + legendas
+    // Linha separadora foto → legenda
     pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
-    pdf.line(fx,y+FPH,fx+FPL,y+FPH); // linha separadora foto/legenda
-    pdf.rect(fx,y+FPH,FPL,3.8,"S");
-    pdf.rect(fx,y+FPH+3.8,FPL,3.8,"S");
+    pdf.line(fx,y+FPH,fx+FPL,y+FPH);
+    // Linha inferior da legenda
+    pdf.line(fx,y+FPH+LEGH,fx+FPL,y+FPH+LEGH);
+    // Texto: "Foto XX" e descrição na mesma caixa, sem linha entre eles
     pdf.setFont("helvetica","bold");pdf.setFontSize(8);
-    pdf.text("Foto "+String(fotoNum).padStart(2,"0"),fx+FPL/2,y+FPH+2.8,{align:"center"});
+    pdf.text("Foto "+String(fotoNum).padStart(2,"0"),fx+FPL/2,y+FPH+LH1-0.8,{align:"center"});
     pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);
-    const leg1=f.legenda||f.tipo;
-    const leg1lines=pdf.splitTextToSize(leg1,FPL-2);
-    pdf.text(leg1lines[0],fx+FPL/2,y+FPH+6.6,{align:"center"});
+    const leg1=pdf.splitTextToSize(f.legenda||f.tipo||"Vista",FPL-2);
+    pdf.text(leg1[0],fx+FPL/2,y+FPH+LH1+LH2-0.8,{align:"center"});
+
   } else {
-    // Par: borda externa esquerda, linha central, borda externa direita
-    // Mas nas legendas, sem bordas laterais externas — apenas linha central
+    // Par de fotos
     const ws=[FPL,FPR];
     let fx=ML;
     for(let k=0;k<2&&startIdx+k<fotos.length;k++){
@@ -2302,29 +2290,28 @@ async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
       const sc=Math.min((fw_k-PAD*2)/dims.w,(FPH-PAD*2)/dims.h);
       const fwR=Math.round(dims.w*sc),fhR=Math.round(dims.h*sc);
       const xo=Math.round((fw_k-fwR)/2),yo=Math.round((FPH-fhR)/2);
-      // Borda da caixa da foto
+      // Borda da caixa da foto (retângulo completo)
       pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(fx,y,fw_k,FPH,"S");
       try{await addImgPDF(pdf,f.dataUrl,fx+xo,y+yo,fwR,fhR);}catch(e){}
-      // Linha separadora foto/legenda
+      // Linha separadora foto → legenda
       pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
       pdf.line(fx,y+FPH,fx+fw_k,y+FPH);
-      // Caixas de legenda: sem bordas laterais externas (só topo e fundo)
-      // Linha superior da legenda (já é a linha da foto)
-      // Linha divisória horizontal entre "Foto XX" e tipo
-      pdf.line(fx,y+FPH+3.8,fx+fw_k,y+FPH+3.8);
       // Linha inferior da legenda
-      pdf.line(fx,y+FPH+7.6,fx+fw_k,y+FPH+7.6);
+      pdf.line(fx,y+FPH+LEGH,fx+fw_k,y+FPH+LEGH);
+      // Texto: "Foto XX" e descrição sem linha separatória entre eles
       pdf.setFont("helvetica","bold");pdf.setFontSize(8);
-      pdf.text("Foto "+String(fotoNum+k).padStart(2,"0"),fx+fw_k/2,y+FPH+2.8,{align:"center"});
+      pdf.text("Foto "+String(fotoNum+k).padStart(2,"0"),fx+fw_k/2,y+FPH+LH1-0.8,{align:"center"});
       pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);
-      const legTxt=f.legenda||f.tipo;
-      const legLines=pdf.splitTextToSize(legTxt,fw_k-2);
-      pdf.text(legLines[0],fx+fw_k/2,y+FPH+6.6,{align:"center"});
-      fx+=fw_k+(k===0?1:0); // linha central entre os dois
+      const legTxt=pdf.splitTextToSize(f.legenda||f.tipo||"Vista",fw_k-2);
+      pdf.text(legTxt[0],fx+fw_k/2,y+FPH+LH1+LH2-0.8,{align:"center"});
+      fx+=fw_k+(k===0?1:0);
     }
-    // Linha divisória vertical central apenas na área de fotos
+    // Linha central vertical cobrindo foto + legenda
     pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
     pdf.line(ML+FPL,y,ML+FPL,y+FPH+LEGH);
+    // Bordas externas da legenda (esquerda e direita do par)
+    pdf.line(ML,y+FPH,ML,y+FPH+LEGH);
+    pdf.line(ML+FPL+FPR+1,y+FPH,ML+FPL+FPR+1,y+FPH+LEGH);
   }
 }
 
