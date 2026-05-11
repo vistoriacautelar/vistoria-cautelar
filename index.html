@@ -342,7 +342,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   <div class="topbar"><button class="back" onclick="goTo('s-checklist')">&#8249; Checklist</button><h1>Finalizacao</h1></div>
   <div class="content">
     <div class="card"><h2>Estado de conservacao</h2>
-      <div class="field"><label>Status da Vistoria</label><select id="fin-status-vistoria" onchange="togglePendente(this.value)"><option value="concluida">Finalizado</option><option value="parcial">Vistoria Parcial</option><option value="recusa">Recusa</option><option value="ausente">Ausente</option></select></div>
+      <div class="field"><label>Status da Vistoria <span style="color:#dc2626">*</span></label><select id="fin-status-vistoria" onchange="togglePendente(this.value)"><option value="">Selecione o status...</option><option value="concluida">Finalizado</option><option value="parcial">Vistoria Parcial</option><option value="recusa">Recusa</option><option value="ausente">Ausente</option></select></div>
       <div class="field" id="field-pendente" style="display:none"><label>Pendente de retorno?</label><select id="fin-pendente"><option value="nao">Não — encerrar</option><option value="sim">Sim — retornar</option></select></div>
       <div class="field"><label>Estado de Conservacao</label><select id="fin-estado"><option>Bom</option><option selected>Regular</option><option>Ruim</option><option>Péssimo</option></select></div>
       <div class="field"><label>Idade Aparente do Imóvel (anos) *</label><input type="number" id="fin-idade" placeholder="Ex: 30" min="0" max="200" inputmode="numeric" required></div>
@@ -518,6 +518,9 @@ const AMBIENTES=["Fachada","Calçada","Garagem","Corredor externo","Área de ser
 const PARTES=["Estrutura","Parede e muro","Cobertura a teto","Porta e esquadria","Piso e cal\xe7amento"];
 const COLS=["estrutura","paredes","cobertura","portas","piso"];
 const PATOLOGIAS=["Fissura","Trinca","Rachadura","Umidade","Infiltração","Desplacamento","Armadura Exposta","Danificado"];
+// Grupos do checklist PDF (agrupado para economizar espaço)
+const PATOLOGIAS_CK=["Fissura/Trinca/Rachadura","Umidade/Infiltração","Desplacamento","Armadura Exposta","Danificado"];
+const PATOLOGIAS_CK_MAP={"Fissura/Trinca/Rachadura":["Fissura","Trinca","Rachadura"],"Umidade/Infiltração":["Umidade","Infiltração"],"Desplacamento":["Desplacamento"],"Armadura Exposta":["Armadura Exposta"],"Danificado":["Danificado"]};
 const ELEMENTOS=["Estrutura","Parede","Teto","Piso","Calçada","Porta","Esquadria"];
 
 let currentUser=null,currentRole=null,currentUserData=null;
@@ -1204,7 +1207,8 @@ function gerarTextoConclusao(){
   const order=[...AMBIENTES,...ambientesExtras].filter(a=>porAmbiente[a]);
   order.forEach(amb=>{
     const itens=porAmbiente[amb];
-    linhas.push(amb+": "+itens.join(", ")+".");
+    // Formato: "Fachada:\nElemento: Patologia; Elemento: Patologia."
+    linhas.push({amb,texto:itens.join("; ")+"."});
   });
   return linhas;
 }
@@ -1902,6 +1906,16 @@ function abrirDetalheVistoria(id,data){
   vistoriaDetalheId=id;vistoriaDetalheData=data;
   document.getElementById("dv-titulo").textContent=data.responsavel&&data.responsavel.nome||"Vistoria";
   const c=document.getElementById("dv-content");c.innerHTML="";
+  // Badge de status no topo
+  const statusLabel={"concluida":"Finalizado","parcial":"Vistoria Parcial","recusa":"Recusa","ausente":"Ausente"};
+  const statusColor={"concluida":"#10b981","parcial":"#3b82f6","recusa":"#dc2626","ausente":"#f59e0b"};
+  const st=data.status||"concluida";
+  const badgeDiv=document.createElement("div");
+  badgeDiv.style.cssText="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px 14px;border-radius:10px;background:#f9f9f9;font-size:14px;font-weight:500";
+  badgeDiv.innerHTML='<span style="width:10px;height:10px;border-radius:50%;background:'+statusColor[st]+';flex-shrink:0;display:inline-block"></span>'
+    +'<span>Status: <b style="color:'+statusColor[st]+'">'+( statusLabel[st]||"Finalizado")+'</b></span>'
+    +(data.visitas>1?'<span style="margin-left:auto;font-size:12px;color:#888">'+data.visitas+'ª visita</span>':'');
+  c.appendChild(badgeDiv);
   // Card dados
   const card1=document.createElement("div");card1.className="card";
     {const nome2=(data.responsavel&&data.responsavel.nome)||"--";const doc2=(data.responsavel&&data.responsavel.doc)||"";const tel2=(data.responsavel&&data.responsavel.tel)||"";const rua2=(data.endereco&&data.endereco.rua)||"";const num2=(data.endereco&&data.endereco.num)||"";const comp2=(data.endereco&&data.endereco.comp)||"";const est2=data.estado|"";const id2=data.idade||"";let h2="<h2>Dados do responsavel</h2><div style='font-size:14px;line-height:2'><b>"+nome2+"</b><br>";if(doc2)h2+="CPF/RG:  "+doc2+"<br>";if(tel2)h2+="Tel: "+tel2+"<br>";h2+=rua2+(num2?", "+num2:"")+(comp2?" - "+comp2:"")+"<br>";h2+="Coletor:  "+(data.coletorNome||"--");if(data.estado)h2+="<br>Estado: "+data.estado+(data.idade?" | Idade Aparente: "+data.idade+" anos":"");h2+="</div>";card1.innerHTML=h2;}
@@ -2050,6 +2064,8 @@ async function regeRarPDF(data){
 window.finalizarVistoria=async()=>{
   const idadeVal=document.getElementById("fin-idade").value;
   if(!idadeVal||isNaN(parseInt(idadeVal)))return alert("Informe a Idade Aparente do Imóvel (obrigatório)");
+  const statusVal=document.getElementById("fin-status-vistoria").value;
+  if(!statusVal)return alert("Selecione o Status da Vistoria (obrigatório)");
   if(!assinaturaData)return alert("Confirme a assinatura do responsavel");
   if(!assinaturaTecnico)return alert("Cadastre sua assinatura em Perfil");
   const btn=document.getElementById("btn-finalizar");
@@ -2115,15 +2131,16 @@ window.finalizarVistoria=async()=>{
         const xo=Math.round((CW-fw)/2),yo=Math.round((F01H-fh)/2);
         pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(ML,y,CW,F01H,"S");
         try{await addImgPDF(pdf,f0.dataUrl,ML+xo,y+yo,fw,fh);}catch(e){}
-        // Legenda foto 01 com linha separadora
+        // Legenda foto 01: linha separadora + caixa única (sem linha entre número e descrição)
         pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
-        pdf.line(ML,y+F01H,ML+CW,y+F01H); // linha separadora
-        pdf.rect(ML,y+F01H,CW,3.8,"S");
-        pdf.rect(ML,y+F01H+3.8,CW,3.8,"S");
+        pdf.line(ML,y+F01H,ML+CW,y+F01H);      // linha separadora foto/legenda
+        pdf.line(ML,y+F01H+LEGH,ML+CW,y+F01H+LEGH); // linha inferior da legenda
+        pdf.line(ML,y+F01H,ML,y+F01H+LEGH);         // borda esquerda
+        pdf.line(ML+CW,y+F01H,ML+CW,y+F01H+LEGH);  // borda direita
         pdf.setFont("helvetica","bold");pdf.setFontSize(9);
-        pdf.text("Foto 01",ML+CW/2,y+F01H+2.8,{align:"center"});
+        pdf.text("Foto 01",ML+CW/2,y+F01H+3,{align:"center"});
         pdf.setFont("helvetica","normal");pdf.setFontSize(8.5);
-        pdf.text("Fachada",ML+CW/2,y+F01H+6.6,{align:"center"});
+        pdf.text("Fachada",ML+CW/2,y+F01H+6.8,{align:"center"});
         fotoNum++;
         y+=F01H+LEGH;
         // Pares seguintes (fotos 02-05)
@@ -2183,10 +2200,30 @@ window.finalizarVistoria=async()=>{
     pdf.setDrawColor(0,0,0);
     cx=CKML;pdf.setFontSize(7);pdf.setFont("helvetica","bold");
     colsH.forEach((c,i)=>{pdf.text(c,cx+colWN[i]/2,yc+4.8,{align:"center"});cx+=colWN[i];});yc+=hdrH;
-    // rowH calculado com constantes locais corretas
+    // rowH: mínimo 14mm para 8 patologias não encavalarem (step>=1.4mm)
+    // Se não couberem todos numa página, quebra naturalmente
+    const ROW_MIN=10; // mm mínimo por linha com 5 grupos
     const availForRows=(CKH-CKMB)-yc-1;
-    const rowH=Math.floor((availForRows/ambTotal.length)*10)/10;
+    const rowHCalc=Math.floor((availForRows/ambTotal.length)*10)/10;
+    const rowH=Math.max(ROW_MIN,rowHCalc);
+    // Função auxiliar para renderizar o cabeçalho da tabela numa página de checklist
+    const renderCKHeader=(ycLocal)=>{
+      pdf.setFillColor(200,200,200);
+      let cxH=CKML;colWN.forEach(w=>{pdf.rect(cxH,ycLocal,w,hdrH,"F");cxH+=w;});
+      pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(CKML,ycLocal,CKCW,hdrH,"S");
+      cxH=CKML;colWN.forEach((w,i)=>{if(i>0){pdf.setDrawColor(80,80,80);pdf.setLineWidth(0.3);pdf.line(cxH,ycLocal,cxH,ycLocal+hdrH);}cxH+=w;});
+      pdf.setDrawColor(0,0,0);cxH=CKML;pdf.setFontSize(7);pdf.setFont("helvetica","bold");
+      colsH.forEach((c,i)=>{pdf.text(c,cxH+colWN[i]/2,ycLocal+4.8,{align:"center"});cxH+=colWN[i];});
+      return ycLocal+hdrH;
+    };
     ambTotal.forEach((amb,ri)=>{
+      // Quebra de página quando necessário
+      if(yc+rowH>(CKH-CKMB)-1){
+        pdf.addPage();
+        pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.5);pdf.rect(CKML,CKML,CKCW,CKH-CKML-CKMB,"S");
+        yc=CKML+4;
+        yc=renderCKHeader(yc);
+      }
       const vals=COLS.map(k=>{const v=(currentVistoria.checklist&&currentVistoria.checklist[amb]&&currentVistoria.checklist[amb][k])||[];return Array.isArray(v)?v:[];});
       const hasAny=vals.some(a=>a.length>0);
       if(hasAny){pdf.setFillColor(255,248,210);}
@@ -2201,22 +2238,23 @@ window.finalizarVistoria=async()=>{
       pdf.setDrawColor(0,0,0);
       cx=CKML;pdf.setFont("helvetica","bold");pdf.setFontSize(7);
       pdf.text(amb,cx+1.5,yc+rowH*0.62);cx+=colWN[0];
-      const step=(rowH-2.5)/PATOLOGIAS.length;
+      const step=(rowH-2)/PATOLOGIAS_CK.length;
       vals.forEach((arr,ki)=>{
-        PATOLOGIAS.forEach((pp,pi)=>{
-          const mk=arr.includes(pp);
-          const ty=yc+1.8+pi*step;
-          const bx=cx+1;const by=ty-0.3;const bs=3.2;
+        PATOLOGIAS_CK.forEach((grp,pi)=>{
+          // Marca se qualquer patologia do grupo estiver selecionada
+          const mk=PATOLOGIAS_CK_MAP[grp].some(p=>arr.includes(p));
+          const ty=yc+1.5+pi*step;
+          const bx=cx+1;const by=ty-0.3;const bs=3;
           if(mk){
             pdf.setFillColor(30,30,30);pdf.rect(bx,by,bs,bs,"F");
-            pdf.setTextColor(255,255,255);pdf.setFontSize(5.5);pdf.setFont("helvetica","bold");
+            pdf.setTextColor(255,255,255);pdf.setFontSize(5);pdf.setFont("helvetica","bold");
             pdf.text("X",bx+bs/2,by+bs*0.75,{align:"center"});
-            pdf.setTextColor(0,0,0);pdf.setFont("helvetica","bold");pdf.setFontSize(6.2);
-            pdf.text(pp,cx+bs+2,ty+2.2);
+            pdf.setTextColor(0,0,0);pdf.setFont("helvetica","bold");pdf.setFontSize(6);
+            pdf.text(grp,cx+bs+1.5,ty+2);
           }else{
             pdf.setDrawColor(150,150,150);pdf.setLineWidth(0.2);pdf.rect(bx,by,bs,bs,"S");
             pdf.setDrawColor(0,0,0);pdf.setFont("helvetica","normal");pdf.setFontSize(5.8);
-            pdf.setTextColor(130,130,130);pdf.text(pp,cx+bs+2,ty+2.2);
+            pdf.setTextColor(130,130,130);pdf.text(grp,cx+bs+1.5,ty+2);
             pdf.setTextColor(0,0,0);
           }
         });
@@ -2242,15 +2280,16 @@ window.finalizarVistoria=async()=>{
       pdf.setFont("helvetica","normal");pdf.setFontSize(8);
       pdf.text("Foram observadas as seguintes manifestações patológicas no imóvel vistoriado:",FLML+2,yf+5);
       yf+=10;
-      conclusaoLinhas.forEach(linha=>{
-        const wrapped=pdf.splitTextToSize(linha,FLCW-6);
-        pdf.setFont("helvetica","bold");pdf.setFontSize(8);
-        pdf.text(wrapped[0],FLML+4,yf);
-        if(wrapped.length>1){
-          pdf.setFont("helvetica","normal");
-          wrapped.slice(1).forEach(l=>{yf+=5;pdf.text(l,FLML+6,yf);});
-        }
-        yf+=7;
+      conclusaoLinhas.forEach(item=>{
+        // Linha do ambiente em negrito
+        pdf.setFont("helvetica","bold");pdf.setFontSize(8.5);
+        pdf.text(item.amb+":",FLML+4,yf);
+        yf+=5.5;
+        // Patologias em normal com wrap
+        pdf.setFont("helvetica","normal");pdf.setFontSize(8);
+        const wrapped=pdf.splitTextToSize(item.texto,FLCW-10);
+        wrapped.forEach(l=>{pdf.text(l,FLML+6,yf);yf+=5;});
+        yf+=2;
       });
     }
     // Assinaturas
@@ -2527,23 +2566,23 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
   pdf.line(ML,lY6,ML+CW,lY6);
 
   // === R8: Coletor | Estado de Conservação | Idade Aparente ===
-  const colL="Coletor:  ";
+  const colL="Coletor: ";
   pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
   pdf.text(colL,ML+1.5,cy(lY6,h8));
   pdf.setFont("helvetica","normal");pdf.text(v.coletorNome||"",ML+1.5+pdf.getTextWidth(colL),cy(lY6,h8));
   if(v.estado){
-    const estL="Estado de Conservação:  ";
+    const estL="Estado de Conservação: ";
     pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
     pdf.text(estL,ML+CW*(3.5/12)+1.5,cy(lY6,h8));
     pdf.setFont("helvetica","normal");
-    pdf.text(v.estado,ML+CW*(3.5/12)+1.5+pdf.getTextWidth(estL),cy(lY6,h8));
+    pdf.text(" "+v.estado,ML+CW*(3.5/12)+1.5+pdf.getTextWidth(estL),cy(lY6,h8));
     pdf.setLineWidth(0.2);pdf.line(ML+CW*(3.5/12),lY6,ML+CW*(3.5/12),lY7);
     if(v.idade){
-      const idL="Idade Aparente:  ";
+      const idL="Idade Aparente: ";
       pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
       pdf.text(idL,ML+CW*(8.5/12)+1.5,cy(lY6,h8));
       pdf.setFont("helvetica","normal");
-      pdf.text(v.idade+" anos",ML+CW*(8.5/12)+1.5+pdf.getTextWidth(idL),cy(lY6,h8));
+      pdf.text(" "+v.idade+" anos",ML+CW*(8.5/12)+1.5+pdf.getTextWidth(idL),cy(lY6,h8));
       pdf.setLineWidth(0.2);pdf.line(ML+CW*(8.5/12),lY6,ML+CW*(8.5/12),lY7);
     }
   }
