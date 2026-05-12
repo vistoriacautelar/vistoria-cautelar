@@ -1275,7 +1275,9 @@ window.criarVistoria=async()=>{
   const activeCard=document.querySelector("#s-nova-vistoria .laudo-tipo-card.active");
   const tipoLaudo=(activeCard&&activeCard.dataset.tipo)||window._tipoLaudoAtual||localStorage.getItem("lastTipoLaudo")||"simplificado";
   localStorage.setItem("lastTipoLaudo",tipoLaudo);
-  currentVistoria={clienteId:cId,coletorId:colId,clienteNome:clD.nome,clienteRRT:clD.rrt,coletorNome:colD.nome,responsavel:{nome,doc:docR,tel},endereco:{rua,num,comp},ocupacao:document.getElementById("nv-ocupacao").value,tipo:document.getElementById("nv-tipo").value,tipoLaudo,data:now.toLocaleDateString("pt-BR"),dataCompleta:now.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}),userId:currentUser.uid,checklist:{},observacoes:"",estado:"",idade:"",status:"em_andamento"};
+  currentVistoria={clienteId:cId,coletorId:colId,clienteNome:clD.nome,clienteRRT:clD.rrt,coletorNome:colD.nome,responsavel:{nome,doc:docR,tel},endereco:{rua,num,comp},ocupacao:document.getElementById("nv-ocupacao").value,tipo:document.getElementById("nv-tipo").value,tipoLaudo,data:now.toLocaleDateString("pt-BR"),dataCompleta:now.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}),userId:currentUser.uid,checklist:{},observacoes:"",estado:"",idade:"",status:"em_andamento",_filaItemId:window._filaItemId||null};
+  // Limpar referência da fila — já está copiada para currentVistoria
+  window._filaItemId=null;
   fotosPendentes={};assinaturaData=null;ambientesExtras=[];
   document.getElementById("v-titulo").textContent=nome.split(" ")[0];
   const badgeTipo=tipoLaudo==="completo"?'<span class="badge laudo" style="display:inline-block;margin-bottom:4px">Laudo Completo</span><br>':'';
@@ -1742,11 +1744,16 @@ function desenharCodigoCNRP(ctx,tipX,tipY,codigo,canvasW){
   const padY=Math.round(fontSize*0.30);
   const boxW=Math.round(metrics.width)+padX*2;
   const boxH=Math.round(fontSize)+padY*2;
-  // Posiciona a caixa à esquerda-acima da seta (não cobre o defeito)
+  // Posiciona a caixa onde fica o RABO da seta (a seta sai da caixa, como no CNRP).
+  // Rabo da seta: angle = 0.75π → fica acima-esquerda da ponta.
   const sz=Math.max(40,Math.round(canvasW*0.08));
-  const offset=sz*1.3;
-  let bx=tipX-offset-boxW;
-  let by=tipY-offset-boxH/2;
+  const angle=Math.PI*0.75;
+  const bodyLen=sz*1.2;
+  const tailX=tipX-bodyLen*Math.cos(angle);
+  const tailY=tipY-bodyLen*Math.sin(angle);
+  // Centraliza a caixa sobre o rabo
+  let bx=Math.round(tailX-boxW/2);
+  let by=Math.round(tailY-boxH/2);
   // Garantir que fique dentro do canvas
   bx=Math.max(4,Math.min(bx,ctx.canvas.width-boxW-4));
   by=Math.max(4,Math.min(by,ctx.canvas.height-boxH-4));
@@ -2621,14 +2628,21 @@ window.finalizarVistoria=async()=>{
       }catch(e){console.error("ZIP:",e);}
     }
     // Salvar defaults ANTES de limpar
+    let destinoFinal="s-nova-vistoria";
     if(currentVistoria){
       localStorage.setItem("lastClienteId",currentVistoria.clienteId||"");
       localStorage.setItem("lastColetorId",currentVistoria.coletorId||"");
       localStorage.setItem("lastRua",(currentVistoria.endereco&&currentVistoria.endereco.rua)||"");
+      // Se a vistoria veio da fila, marca item como concluído e volta para a fila
+      if(currentVistoria._filaItemId){
+        try{
+          await updateDoc(doc(db,"fila_vistorias",currentVistoria._filaItemId),{status:"concluida"});
+        }catch(e){console.error("Erro ao atualizar fila:",e);}
+        destinoFinal="s-fila";
+      }
     }
     currentVistoria=null;fotosPendentes={};assinaturaData=null;ambientesExtras=[];
-    // Voltar direto para Nova Vistoria com defaults
-    goTo("s-nova-vistoria");
+    goTo(destinoFinal);
   }catch(e){console.error(e);alert("Erro: "+e.message);}
   finally{btn.textContent="Gerar PDF + ZIP e finalizar";btn.disabled=false;btn.style.opacity="1";}
 };
