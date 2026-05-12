@@ -456,12 +456,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div id="pat-combo-list" style="display:flex;flex-direction:column;gap:6px"></div>
     </div>
     <div style="background:#f8f8f8;border-radius:12px;padding:12px;margin-bottom:12px">
-      <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px">1. Onde esta a patologia?</p>
+      <p id="pat-label-1" style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px">1. Onde esta a patologia?</p>
       <div class="part-grid" id="part-grid"></div>
-      <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px;margin-top:12px">2. Qual patologia?</p>
+      <p id="pat-label-2" style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px;margin-top:12px">2. Qual patologia?</p>
       <div class="pat-list" id="pat-list"></div>
-      <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px;margin-top:12px">3. Em qual elemento?</p>
-      <div class="part-grid" id="elem-grid"></div>
+      <div id="pat-elem-wrap">
+        <p style="font-size:13px;font-weight:600;color:#111;margin-bottom:8px;margin-top:12px">3. Em qual elemento?</p>
+        <div class="part-grid" id="elem-grid"></div>
+      </div>
       <button class="btn" style="background:#f0f0f0;color:#333;margin-top:4px" onclick="adicionarCombinacao()">+ Adicionar esta combinacao</button>
     </div>
     <button class="btn primary" onclick="confirmarPatologias()">Confirmar e salvar foto</button>
@@ -552,6 +554,52 @@ const PATOLOGIAS=["Fissura","Trinca","Rachadura","Umidade","Infiltração","Desp
 const PATOLOGIAS_CK=["Fissura/Trinca/Rachadura","Umidade/Infiltração","Desplacamento","Armadura Exposta","Danificado"];
 const PATOLOGIAS_CK_MAP={"Fissura/Trinca/Rachadura":["Fissura","Trinca","Rachadura"],"Umidade/Infiltração":["Umidade","Infiltração"],"Desplacamento":["Desplacamento"],"Armadura Exposta":["Armadura Exposta"],"Danificado":["Danificado"]};
 const ELEMENTOS=["Estrutura","Parede","Teto","Piso","Calçada","Porta","Esquadria"];
+
+// ===== LAUDO COMPLETO: 12 categorias A-L com subitens =====
+const PATOLOGIAS_AL=[
+  {cod:"A",nome:"Estruturas",subs:[
+    {n:1,t:"Trincas / Fissuras"},{n:2,t:"Rachaduras"},{n:3,t:"Umidade / Mofo"},{n:4,t:"Danificado"},
+    {n:5,t:"Armadura Exposta"},{n:6,t:"Segregação / Ninhos"},{n:7,t:"Reparos / Remendos"},{n:8,t:"Infiltração / Umidade"}
+  ]},
+  {cod:"B",nome:"Alvenaria",subs:[
+    {n:1,t:"Trincas / Fissuras"},{n:2,t:"Rachaduras"},{n:3,t:"Umidade / Mofo"},{n:4,t:"Danificada"}
+  ]},
+  {cod:"C",nome:"Teto / Forro",subs:[
+    {n:1,t:"Trincas / Fissuras"},{n:2,t:"Rachaduras"},{n:3,t:"Umidade / Mofo"},{n:4,t:"Danificado"},{n:5,t:"Eflorescência"}
+  ]},
+  {cod:"D",nome:"Reboco / Revestimento",subs:[
+    {n:1,t:"Trincas / Fissuras"},{n:2,t:"Rachaduras"},{n:3,t:"Umidade / Mofo"},{n:4,t:"Danificado"},
+    {n:5,t:"Eflorescência"},{n:6,t:"Desplacamento"}
+  ]},
+  {cod:"E",nome:"Estr. Metálicas",subs:[
+    {n:1,t:"Trincas / Fissuras"},{n:2,t:"Rachaduras"},{n:3,t:"Oxidação"},{n:4,t:"Danificado"},{n:5,t:"Deformação"}
+  ]},
+  {cod:"F",nome:"Vidros",subs:[
+    {n:1,t:"Trincado"},{n:2,t:"Quebrado"},{n:3,t:"Faltando"}
+  ]},
+  {cod:"G",nome:"Pintura",subs:[
+    {n:1,t:"Trincas / Fissuras"},{n:2,t:"Rachaduras"},{n:3,t:"Umidade / Mofo"},{n:4,t:"Danificado"},
+    {n:5,t:"Eflorescência"},{n:6,t:"Desplacamento"}
+  ]},
+  {cod:"H",nome:"Piso / Pavimento",subs:[
+    {n:1,t:"Trincas / Fissuras"},{n:2,t:"Rachaduras"},{n:3,t:"Umidade / Mofo"},{n:4,t:"Danificado"},
+    {n:5,t:"Recalque"},{n:6,t:"Solapamento"}
+  ]},
+  {cod:"I",nome:"Portas / Caixilhos",subs:[
+    {n:1,t:"Umidade / Mofo"},{n:2,t:"Danificado"}
+  ]},
+  {cod:"J",nome:"Telhados",subs:[
+    {n:1,t:"Danificado / Deformado"},{n:2,t:"Telhas Quebradas"},{n:3,t:"Telhas Faltando"},{n:4,t:"Madeir. Danificado"}
+  ]},
+  {cod:"K",nome:"Inst. Hidráulicas",subs:[
+    {n:1,t:"Vazamento"},{n:2,t:"Danificada"}
+  ]},
+  {cod:"L",nome:"Outros",subs:[
+    {n:1,t:"Outros"}
+  ]}
+];
+// Lookup rápido por código
+const PATOLOGIAS_AL_MAP=Object.fromEntries(PATOLOGIAS_AL.map(c=>[c.cod,c]));
 
 let currentUser=null,currentRole=null,currentUserData=null;
 let currentVistoria=null,fotosPendentes={};
@@ -916,12 +964,20 @@ window.efSubstituir=(gi,amb)=>{
 // Intercepta salvarFotoFinal quando estamos em modo editor
 const _origSalvarFotoFinal=window.salvarFotoFinal||null;
 function salvarFotoFinalEditor(dataUrl,patologias,combinacoes){
+  const tipoLaudo=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";
+  const temPat=combinacoes&&combinacoes.length;
+  const tipo=temPat?"Detalhe":"Vista";
+  let legendaCalc;
+  if(tipoLaudo==="completo"){
+    legendaCalc=tipo; // sempre Vista/Detalhe; código vai sobre a imagem
+  } else {
+    legendaCalc=temPat?combinacoes.map(c=>gerarLegendaCombo(c)).join(" e "):"Vista";
+  }
   if(_efCameraMode==="adicionar"){
-    const legenda=combinacoes&&combinacoes.length?combinacoes.map(c=>gerarLegendaCombo(c)).join(" e "):"Vista";
-    _efFotos.push({dataUrl,ambiente:_efAmbienteAlvo,tipo:combinacoes&&combinacoes.length?"Detalhe":"Vista",legenda,combinacoes:combinacoes||[]});
+    _efFotos.push({dataUrl,ambiente:_efAmbienteAlvo,tipo,legenda:legendaCalc,combinacoes:combinacoes||[]});
   } else if(_efCameraMode==="substituir"&&_efSubstIdx!==null){
-    const legenda=combinacoes&&combinacoes.length?combinacoes.map(c=>gerarLegendaCombo(c)).join(" e "):(_efFotos[_efSubstIdx]&&_efFotos[_efSubstIdx].legenda||"Vista");
-    _efFotos[_efSubstIdx]={..._efFotos[_efSubstIdx],dataUrl,legenda,combinacoes:combinacoes||[]};
+    const legendaSubst=tipoLaudo==="completo"?legendaCalc:(temPat?legendaCalc:(_efFotos[_efSubstIdx]&&_efFotos[_efSubstIdx].legenda||"Vista"));
+    _efFotos[_efSubstIdx]={..._efFotos[_efSubstIdx],dataUrl,legenda:legendaSubst,combinacoes:combinacoes||[]};
   }
   _efCameraMode=null;_efAmbienteAlvo=null;_efSubstIdx=null;
   _efRenumerar();
@@ -1667,6 +1723,39 @@ function desenharSeta(ctx,tipX,tipY,canvasW){
   desenharSetaEmCanvas(ctx,tipX,tipY,canvasW);
 }
 
+// ===== LAUDO COMPLETO: tag vermelha com código (estilo CNRP) =====
+// Posiciona uma caixa vermelha "B1", "H1;4" próxima à seta, com texto branco.
+function desenharCodigoCNRP(ctx,tipX,tipY,codigo,canvasW){
+  const fontSize=Math.max(18,Math.round(canvasW*0.035));
+  ctx.save();
+  ctx.font="bold "+fontSize+"px Arial, sans-serif";
+  const metrics=ctx.measureText(codigo);
+  const padX=Math.round(fontSize*0.45);
+  const padY=Math.round(fontSize*0.30);
+  const boxW=Math.round(metrics.width)+padX*2;
+  const boxH=Math.round(fontSize)+padY*2;
+  // Posiciona a caixa à esquerda-acima da seta (não cobre o defeito)
+  const sz=Math.max(40,Math.round(canvasW*0.08));
+  const offset=sz*1.3;
+  let bx=tipX-offset-boxW;
+  let by=tipY-offset-boxH/2;
+  // Garantir que fique dentro do canvas
+  bx=Math.max(4,Math.min(bx,ctx.canvas.width-boxW-4));
+  by=Math.max(4,Math.min(by,ctx.canvas.height-boxH-4));
+  // Caixa
+  ctx.fillStyle="#E11D1D";
+  ctx.strokeStyle="#7A0F0F";
+  ctx.lineWidth=Math.max(2,Math.round(fontSize*0.12));
+  ctx.fillRect(bx,by,boxW,boxH);
+  ctx.strokeRect(bx,by,boxW,boxH);
+  // Texto branco
+  ctx.fillStyle="#FFFFFF";
+  ctx.textBaseline="middle";
+  ctx.textAlign="center";
+  ctx.fillText(codigo,bx+boxW/2,by+boxH/2+1);
+  ctx.restore();
+}
+
 // (old desenharSeta removed)
 
 function desenharSetas(){
@@ -1714,16 +1803,34 @@ window.confirmarSetas=()=>{
 };
 
 let _patCombinacoes=[];
+// Estado do modo completo
+let _patCatSelecionada=null; // codigo da categoria atual (A..L)
 
 function abrirModalPatologias(){
   _patCombinacoes=[];
+  _patCatSelecionada=null;
   document.getElementById("pat-modal-info").textContent="Ambiente: "+fotoAtualAmbiente;
+  const tipoLaudo=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";
+  if(tipoLaudo==="completo"){
+    abrirModalPatologiasCompleto();
+  } else {
+    abrirModalPatologiasSimplificado();
+  }
+  renderCombinacoes();
+  document.getElementById("pat-modal").style.display="flex";
+}
+
+function abrirModalPatologiasSimplificado(){
+  // Restaurar labels e elemento (caso o usuário tenha trocado de tipo de vistoria na mesma sessão)
+  document.getElementById("pat-label-1").textContent="1. Onde esta a patologia?";
+  document.getElementById("pat-label-2").textContent="2. Qual patologia?";
+  document.getElementById("pat-elem-wrap").style.display="block";
   // Grid de partes (checklist)
   const grid=document.getElementById("part-grid");grid.innerHTML="";
   PARTES.forEach((p,i)=>{
     const btn=document.createElement("button");btn.className="part-btn";btn.textContent=p;
     btn.dataset.col=COLS[i];
-    btn.onclick=()=>{document.querySelectorAll(".part-btn").forEach(b=>b.classList.remove("selected"));btn.classList.add("selected");};
+    btn.onclick=()=>{document.querySelectorAll("#part-grid .part-btn").forEach(b=>b.classList.remove("selected"));btn.classList.add("selected");};
     grid.appendChild(btn);
   });
   // Lista patologias (checkboxes individuais)
@@ -1743,12 +1850,63 @@ function abrirModalPatologias(){
     btn.onclick=()=>{document.querySelectorAll("#elem-grid .part-btn").forEach(b=>b.classList.remove("selected"));btn.classList.add("selected");};
     eg.appendChild(btn);
   });
-  renderCombinacoes();
-  document.getElementById("pat-modal").style.display="flex";
+}
+
+function abrirModalPatologiasCompleto(){
+  document.getElementById("pat-label-1").textContent="1. Categoria";
+  document.getElementById("pat-label-2").textContent="2. Subitens";
+  document.getElementById("pat-elem-wrap").style.display="none";
+  // Grid de categorias A–L
+  const grid=document.getElementById("part-grid");grid.innerHTML="";
+  PATOLOGIAS_AL.forEach(cat=>{
+    const btn=document.createElement("button");btn.className="part-btn";
+    btn.innerHTML='<b>'+cat.cod+'</b> '+cat.nome;
+    btn.dataset.cod=cat.cod;
+    btn.onclick=()=>{
+      document.querySelectorAll("#part-grid .part-btn").forEach(b=>b.classList.remove("selected"));
+      btn.classList.add("selected");
+      _patCatSelecionada=cat.cod;
+      renderSubitensCompleto(cat.cod);
+    };
+    grid.appendChild(btn);
+  });
+  // Subitens vazios até categoria ser selecionada
+  document.getElementById("pat-list").innerHTML='<div style="font-size:12px;color:#888;padding:8px">Selecione uma categoria para ver os subitens.</div>';
+}
+
+function renderSubitensCompleto(cod){
+  const cat=PATOLOGIAS_AL_MAP[cod];
+  const list=document.getElementById("pat-list");list.innerHTML="";
+  cat.subs.forEach(s=>{
+    const item=document.createElement("div");item.className="pat-item";
+    const cb=document.createElement("input");cb.type="checkbox";cb.id="pat-cb-"+cod+s.n;cb.value=s.n;
+    const lbl=document.createElement("label");lbl.htmlFor="pat-cb-"+cod+s.n;
+    lbl.innerHTML='<b>'+cod+s.n+'</b> '+s.t;
+    item.appendChild(cb);item.appendChild(lbl);
+    item.onclick=e=>{if(e.target!==cb)cb.checked=!cb.checked;};
+    list.appendChild(item);
+  });
 }
 
 window.adicionarCombinacao=()=>{
-  const selectedPart=document.querySelector(".part-btn.selected");
+  const tipoLaudo=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";
+  if(tipoLaudo==="completo"){
+    if(!_patCatSelecionada)return alert("Selecione uma categoria (A–L)");
+    const checkedSubs=Array.from(document.querySelectorAll("#pat-list input:checked")).map(cb=>parseInt(cb.value)).sort((a,b)=>a-b);
+    if(!checkedSubs.length)return alert("Selecione ao menos um subitem");
+    const cat=PATOLOGIAS_AL_MAP[_patCatSelecionada];
+    const codigo=_patCatSelecionada+checkedSubs.join(";");
+    const combo={modo:"completo",categoria:_patCatSelecionada,categoriaNome:cat.nome,subs:checkedSubs,codigo};
+    _patCombinacoes.push(combo);
+    // Limpar para próxima
+    document.querySelectorAll("#part-grid .part-btn").forEach(b=>b.classList.remove("selected"));
+    document.getElementById("pat-list").innerHTML='<div style="font-size:12px;color:#888;padding:8px">Selecione uma categoria para ver os subitens.</div>';
+    _patCatSelecionada=null;
+    renderCombinacoes();
+    return;
+  }
+  // Simplificado (fluxo original)
+  const selectedPart=document.querySelector("#part-grid .part-btn.selected");
   const checkedPats=Array.from(document.querySelectorAll("#pat-list input:checked")).map(cb=>cb.value);
   const selectedElem=document.querySelector("#elem-grid .part-btn.selected");
   if(!checkedPats.length)return alert("Selecione ao menos uma patologia");
@@ -1756,7 +1914,7 @@ window.adicionarCombinacao=()=>{
   const combo={col:selectedPart?selectedPart.dataset.col:"paredes",parte:selectedPart?selectedPart.textContent:"",pats:checkedPats,elemento:selectedElem.textContent};
   _patCombinacoes.push(combo);
   // Limpar seleções para próxima combinação
-  document.querySelectorAll(".part-btn").forEach(b=>b.classList.remove("selected"));
+  document.querySelectorAll("#part-grid .part-btn").forEach(b=>b.classList.remove("selected"));
   document.querySelectorAll("#pat-list input:checked").forEach(cb=>cb.checked=false);
   document.querySelectorAll("#elem-grid .part-btn").forEach(b=>b.classList.remove("selected"));
   renderCombinacoes();
@@ -1778,6 +1936,11 @@ function renderCombinacoes(){
 }
 
 function gerarLegendaCombo(c){
+  if(c.modo==="completo"){
+    const cat=PATOLOGIAS_AL_MAP[c.categoria];
+    const subStr=c.subs.map(n=>{const s=cat.subs.find(x=>x.n===n);return s?s.t:"?";}).join(" e ");
+    return c.codigo+" — "+subStr;
+  }
   const patsStr=c.pats.join(" e ");
   return c.elemento+": "+patsStr;
 }
@@ -1785,21 +1948,56 @@ function gerarLegendaCombo(c){
 window.removerCombinacao=i=>{_patCombinacoes.splice(i,1);renderCombinacoes();};
 
 window.confirmarPatologias=()=>{
+  const tipoLaudo=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";
   // Se ainda há seleção pendente não adicionada, adiciona automaticamente
-  const checkedPats=Array.from(document.querySelectorAll("#pat-list input:checked")).map(cb=>cb.value);
-  const selectedElem=document.querySelector("#elem-grid .part-btn.selected");
-  if(checkedPats.length&&selectedElem){
-    const selectedPart=document.querySelector(".part-btn.selected");
-    _patCombinacoes.push({col:selectedPart?selectedPart.dataset.col:"paredes",parte:selectedPart?selectedPart.textContent:"",pats:checkedPats,elemento:selectedElem.textContent});
+  if(tipoLaudo==="completo"){
+    const checkedSubs=Array.from(document.querySelectorAll("#pat-list input:checked")).map(cb=>parseInt(cb.value)).sort((a,b)=>a-b);
+    if(_patCatSelecionada&&checkedSubs.length){
+      const cat=PATOLOGIAS_AL_MAP[_patCatSelecionada];
+      _patCombinacoes.push({modo:"completo",categoria:_patCatSelecionada,categoriaNome:cat.nome,subs:checkedSubs,codigo:_patCatSelecionada+checkedSubs.join(";")});
+    }
+  } else {
+    const checkedPats=Array.from(document.querySelectorAll("#pat-list input:checked")).map(cb=>cb.value);
+    const selectedElem=document.querySelector("#elem-grid .part-btn.selected");
+    if(checkedPats.length&&selectedElem){
+      const selectedPart=document.querySelector("#part-grid .part-btn.selected");
+      _patCombinacoes.push({col:selectedPart?selectedPart.dataset.col:"paredes",parte:selectedPart?selectedPart.textContent:"",pats:checkedPats,elemento:selectedElem.textContent});
+    }
   }
   document.getElementById("pat-modal").style.display="none";
-  // Montar array de patologias flat para checklist + legenda
+  // No modo completo: re-renderiza a foto com tags de código (B1, H1;4, ...) sobre as setas
+  if(tipoLaudo==="completo"&&_patCombinacoes.length&&arrowImage&&arrowPoints.length){
+    fotoAtualBlob=renderizarFotoComCodigosCNRP();
+  }
+  // Montar array de patologias flat para checklist + legenda (apenas no simplificado)
   const pats=[];
-  _patCombinacoes.forEach(c=>{
-    c.pats.forEach(p=>pats.push({col:c.col,tipo:c.parte,pat:p,elemento:c.elemento,combo:c}));
-  });
+  if(tipoLaudo!=="completo"){
+    _patCombinacoes.forEach(c=>{
+      c.pats.forEach(p=>pats.push({col:c.col,tipo:c.parte,pat:p,elemento:c.elemento,combo:c}));
+    });
+  }
   salvarFotoFinal(fotoAtualBlob,pats,_patCombinacoes);
 };
+
+// Renderiza a foto na resolução original com setas + caixas de código (modo completo).
+// Cada combinação é associada a uma seta na ordem de criação; setas extras ficam sem tag.
+function renderizarFotoComCodigosCNRP(){
+  const origW=arrowImage.naturalWidth,origH=arrowImage.naturalHeight;
+  const outCanvas=document.createElement("canvas");
+  outCanvas.width=origW;outCanvas.height=origH;
+  const ctx=outCanvas.getContext("2d");
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
+  ctx.drawImage(arrowImage,0,0,origW,origH);
+  arrowPoints.forEach((p,i)=>{
+    const tipX=p.x*origW,tipY=p.y*origH;
+    desenharSetaEmCanvas(ctx,tipX,tipY,origW);
+    const combo=_patCombinacoes[i];
+    if(combo&&combo.modo==="completo"){
+      desenharCodigoCNRP(ctx,tipX,tipY,combo.codigo,origW);
+    }
+  });
+  return outCanvas.toDataURL("image/jpeg",1.0);
+}
 
 // Lê a orientação EXIF de um dataUrl JPEG
 function lerOrientacaoEXIF(dataUrl){
@@ -1885,10 +2083,13 @@ function salvarFotoFinal(dataUrl,patologias,combinacoes){
   // Redireciona para editor se câmera foi aberta pelo editor de fotos
   if(_efCameraMode){salvarFotoFinalEditor(dataUrl,patologias,combinacoes);return;}
   const id=Date.now().toString();const num=Object.keys(fotosPendentes).length+1;
+  const tipoLaudo=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";
   let legenda=fotoAtualTipo;
-  if(combinacoes&&combinacoes.length){
+  if(combinacoes&&combinacoes.length&&tipoLaudo!=="completo"){
+    // No simplificado: legenda detalhada por combinação
     legenda=combinacoes.map(c=>gerarLegendaCombo(c)).join(" e ");
   }
+  // No modo completo: legenda da foto = "Vista" (sem patologia) ou "Detalhe" (com); código já está marcado na imagem.
   // Corrigir orientação EXIF (iOS) e depois comprimir
   corrigirOrientacaoFoto(dataUrl).then(dataUrlFixed=>comprimirFoto(dataUrlFixed)).then(dataUrlComp=>{
     fotosPendentes[id]={id,dataUrl:dataUrlComp,ambiente:fotoAtualAmbiente,tipo:fotoAtualTipo,legenda,numero:"Foto "+String(num).padStart(2,"0"),patologias:patologias||[],combinacoes:combinacoes||[],timestamp:new Date().toISOString()};
