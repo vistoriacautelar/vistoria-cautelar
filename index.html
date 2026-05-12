@@ -747,7 +747,8 @@ window.salvarNovoImovel=async()=>{
   const colArr=_cacheColetores[cId]||[];
   const colNome=(colArr.find(c=>c.id===colId))||{nome:""};
   try{
-    const tipoLaudoNI=window._tipoLaudoNI||localStorage.getItem("niLastTipoLaudo")||"simplificado";
+    const activeCardNI=document.querySelector("#s-novo-imovel .laudo-tipo-card.active");
+    const tipoLaudoNI=(activeCardNI&&activeCardNI.dataset.tipo)||window._tipoLaudoNI||localStorage.getItem("niLastTipoLaudo")||"simplificado";
     localStorage.setItem("niLastTipoLaudo",tipoLaudoNI);
     await addDoc(collection(db,"fila_vistorias"),{
       responsavel:{nome,doc:document.getElementById("ni-doc").value.trim()||"",tel:document.getElementById("ni-tel").value.trim()||""},
@@ -1223,11 +1224,15 @@ async function loadNovVistoriaForm(){
     document.getElementById("nv-reaproveitar-rua-box").style.display="none";
   }
   document.getElementById("nv-reaproveitar-box").style.display=ultimoResponsavel?"block":"none";
-  // Tipo de laudo: restaurar último (default simplificado)
-  setTipoLaudo(localStorage.getItem("lastTipoLaudo")||"simplificado");
-  // Se veio da fila, sobrescreve com os dados da fila
+  // Tipo de laudo: se veio da fila, usa o da fila; senão, restaura último (default simplificado)
+  // ATENÇÃO: aplicar PRIMEIRO o da fila (sync) antes de tocar em qualquer outro setTipoLaudo
   if(window._filaPreenchimento){
+    const tipoFila=window._filaPreenchimento.tipoLaudo||"simplificado";
+    setTipoLaudo(tipoFila);
     await preencherDadosFila(window._filaPreenchimento);
+    // preencherDadosFila também chama setTipoLaudo(v.tipoLaudo) por garantia (idempotente)
+  } else {
+    setTipoLaudo(localStorage.getItem("lastTipoLaudo")||"simplificado");
   }
 }
 window.reaproveitarResponsavel=()=>{if(!ultimoResponsavel)return;document.getElementById("nv-nome").value=ultimoResponsavel.nome||"";document.getElementById("nv-doc").value=ultimoResponsavel.doc||"";document.getElementById("nv-tel").value=ultimoResponsavel.tel||"";document.getElementById("nv-reaproveitar-box").style.display="none";};
@@ -1266,12 +1271,15 @@ window.criarVistoria=async()=>{
   if(!cId||!colId)return alert("Selecione cliente e coletor");if(!nome||!rua||!num)return alert("Preencha nome, rua e numero");
   const[clS,colS]=await Promise.all([getDoc(doc(db,"clientes",cId)),getDoc(doc(db,"coletores",colId))]);
   const clD=clS.data();const colD=colS.data();const now=new Date();
-  const tipoLaudo=window._tipoLaudoAtual||localStorage.getItem("lastTipoLaudo")||"simplificado";
+  // Source of truth: o card que está visualmente .active no DOM no momento do clique
+  const activeCard=document.querySelector("#s-nova-vistoria .laudo-tipo-card.active");
+  const tipoLaudo=(activeCard&&activeCard.dataset.tipo)||window._tipoLaudoAtual||localStorage.getItem("lastTipoLaudo")||"simplificado";
   localStorage.setItem("lastTipoLaudo",tipoLaudo);
   currentVistoria={clienteId:cId,coletorId:colId,clienteNome:clD.nome,clienteRRT:clD.rrt,coletorNome:colD.nome,responsavel:{nome,doc:docR,tel},endereco:{rua,num,comp},ocupacao:document.getElementById("nv-ocupacao").value,tipo:document.getElementById("nv-tipo").value,tipoLaudo,data:now.toLocaleDateString("pt-BR"),dataCompleta:now.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}),userId:currentUser.uid,checklist:{},observacoes:"",estado:"",idade:"",status:"em_andamento"};
   fotosPendentes={};assinaturaData=null;ambientesExtras=[];
   document.getElementById("v-titulo").textContent=nome.split(" ")[0];
-  document.getElementById("v-info").innerHTML=["<b>"+nome+"</b>",docR?"Doc: "+docR:"",tel?"Tel: "+tel:"",rua+", "+num+(comp?" - "+comp:""),"<span style='color:#aaa;font-size:12px'>Coletor: "+colD.nome+" | RRT: "+clD.rrt+"</span>"].filter(Boolean).join("<br>");
+  const badgeTipo=tipoLaudo==="completo"?'<span class="badge laudo" style="display:inline-block;margin-bottom:4px">Laudo Completo</span><br>':'';
+  document.getElementById("v-info").innerHTML=[badgeTipo+"<b>"+nome+"</b>",docR?"Doc: "+docR:"",tel?"Tel: "+tel:"",rua+", "+num+(comp?" - "+comp:""),"<span style='color:#aaa;font-size:12px'>Coletor: "+colD.nome+" | RRT: "+clD.rrt+"</span>"].filter(Boolean).join("<br>");
   const sel=document.getElementById("v-ambiente");sel.innerHTML='<option value="">Selecione o ambiente...</option>';
   AMBIENTES.forEach(a=>{const o=document.createElement("option");o.value=a;o.textContent=a;sel.appendChild(o);});
   ambientesExtras.forEach(a=>{const o=document.createElement("option");o.value=a;o.textContent=a;sel.appendChild(o);});
@@ -2124,6 +2132,11 @@ window.togglePatologia=(amb,col,pat,checked)=>{if(!currentVistoria.checklist)cur
 window.salvarChecklist=()=>{if(currentVistoria)currentVistoria.observacoes=document.getElementById("cl-obs").value;goTo("s-finalizacao");};
 
 function renderFinalizacao(){
+  // Limpar campos da vistoria anterior (não persistem entre vistorias diferentes)
+  ["fin-idade","fin-estado","fin-status-vistoria","fin-pendente"].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.value="";
+  });
   const prevEl=document.getElementById("sig-tecnico-preview");
   if(!assinaturaTecnico){prevEl.innerHTML='<div class="warn-box">Sem assinatura. <a href="#" onclick="goTo(\'s-perfil\')" style="color:#007aff;font-weight:500">Cadastrar em Perfil</a></div>';}
   else{prevEl.innerHTML='<img src="'+assinaturaTecnico+'" style="max-height:60px;max-width:200px;object-fit:contain"><br><span style="font-size:12px;color:#888;display:block;margin-top:4px">'+(currentUserData&&currentUserData.nome||"")+"</span>";}
