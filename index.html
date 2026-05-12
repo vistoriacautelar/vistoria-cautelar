@@ -109,6 +109,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 .coletor-group{margin-bottom:16px}
 .coletor-group-title{font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.04em;padding:6px 0 4px;border-bottom:1px solid #f0f0f0;margin-bottom:8px}
 .hist-actions{display:flex;gap:6px;flex-shrink:0}
+.laudo-tipo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.laudo-tipo-card{padding:14px 12px;border:1.5px solid #e5e5e5;border-radius:10px;cursor:pointer;text-align:center;background:#fafafa;transition:border-color .15s,background .15s}
+.laudo-tipo-card:active{transform:scale(.98)}
+.laudo-tipo-card.active{border-color:#1c1c1e;background:#1c1c1e;color:#fff}
+.laudo-tipo-card .laudo-tipo-titulo{font-size:15px;font-weight:600;margin-bottom:3px}
+.laudo-tipo-card .laudo-tipo-sub{font-size:11px;opacity:.7;line-height:1.3}
+.badge.laudo{background:#fef3c7;color:#92400e}
 
 </style>
 </head>
@@ -186,6 +193,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
     <div class="card"><h2>Cliente / Coletor</h2>
       <div class="field"><label>Cliente *</label><select id="ni-cliente" onchange="loadColetoresNI()"><option value="">Selecione...</option></select></div>
       <div class="field"><label>Coletor *</label><select id="ni-coletor"><option value="">Selecione o cliente primeiro</option></select></div>
+    </div>
+    <div class="card"><h2>Tipo de laudo</h2>
+      <div class="laudo-tipo-grid">
+        <div class="laudo-tipo-card active" data-tipo="simplificado" onclick="setTipoLaudoNI('simplificado')">
+          <div class="laudo-tipo-titulo">Simplificado</div>
+          <div class="laudo-tipo-sub">Fotos + checklist em 1 página</div>
+        </div>
+        <div class="laudo-tipo-card" data-tipo="completo" onclick="setTipoLaudoNI('completo')">
+          <div class="laudo-tipo-titulo">Completo</div>
+          <div class="laudo-tipo-sub">Modelo CNRP — capa, anexos, legenda A–L</div>
+        </div>
+      </div>
     </div>
     <button class="btn success" onclick="salvarNovoImovel()">Cadastrar Imovel</button>
   </div>
@@ -286,6 +305,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div class="grid2">
         <div class="field"><label>Numero *</label><input type="text" id="nv-num" placeholder="Num" inputmode="numeric"></div>
         <div class="field"><label>Complemento</label><input type="text" id="nv-comp" placeholder="Casa 1, Ap 23..."></div>
+      </div>
+    </div>
+    <div class="card"><h2>Tipo de laudo</h2>
+      <div class="laudo-tipo-grid">
+        <div class="laudo-tipo-card active" data-tipo="simplificado" onclick="setTipoLaudo('simplificado')">
+          <div class="laudo-tipo-titulo">Simplificado</div>
+          <div class="laudo-tipo-sub">Fotos + checklist em 1 página</div>
+        </div>
+        <div class="laudo-tipo-card" data-tipo="completo" onclick="setTipoLaudo('completo')">
+          <div class="laudo-tipo-titulo">Completo</div>
+          <div class="laudo-tipo-sub">Modelo CNRP — capa, anexos, legenda A–L</div>
+        </div>
       </div>
     </div>
     <div class="card"><h2>Tipo de imovel</h2>
@@ -620,6 +651,8 @@ async function loadNovoImovelForm(){
     document.getElementById("ni-coletor").innerHTML='<option value="">Selecione o cliente primeiro</option>';
   }
   ["ni-nome","ni-doc","ni-tel","ni-rua","ni-num","ni-comp"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+  // Tipo de laudo: restaurar último (default simplificado)
+  setTipoLaudoNI(localStorage.getItem("niLastTipoLaudo")||"simplificado");
   // Botão reaproveitar endereço
   const box=document.getElementById("ni-reaproveitar-end-box");
   if(box)box.style.display=(lastRua)?"block":"none";
@@ -667,10 +700,13 @@ window.salvarNovoImovel=async()=>{
   const colArr=_cacheColetores[cId]||[];
   const colNome=(colArr.find(c=>c.id===colId))||{nome:""};
   try{
+    const tipoLaudoNI=window._tipoLaudoNI||localStorage.getItem("niLastTipoLaudo")||"simplificado";
+    localStorage.setItem("niLastTipoLaudo",tipoLaudoNI);
     await addDoc(collection(db,"fila_vistorias"),{
       responsavel:{nome,doc:document.getElementById("ni-doc").value.trim()||"",tel:document.getElementById("ni-tel").value.trim()||""},
       endereco:{rua,num,comp},
       clienteId:cId,clienteNome:clNome.nome||"",coletorId:colId,coletorNome:colNome.nome||"",
+      tipoLaudo:tipoLaudoNI,
       comunicadorId:currentUser.uid,status:"aguardando",criadoEm:serverTimestamp()
     });
     // Salvar para reaproveitamento
@@ -703,9 +739,10 @@ async function loadFila(){
       const statusMap={aguardando:"Aguardando",em_andamento:"Em andamento",concluida:"Concluido"};
       const statusClr={aguardando:"#f59e0b",em_andamento:"#3b82f6",concluida:"#10b981"};
       const st=v.status||"aguardando";
+      const tipoBadge=v.tipoLaudo==="completo"?'<span class="badge laudo" style="margin-right:6px">Completo</span>':'';
       const div=document.createElement("div");
       div.className="list-item";
-      div.innerHTML=`<div class="avatar" style="background:#fff7ed;color:#c2410c"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg></div><div class="info"><div class="title">${v.responsavel&&v.responsavel.nome||"--"}</div><div class="sub">${(v.endereco&&v.endereco.rua||"")} ${(v.endereco&&v.endereco.num||"")} | ${v.coletorNome||""}</div></div><span style="color:${statusClr[st]};font-size:12px;font-weight:600">${statusMap[st]||st}</span>`;
+      div.innerHTML=`<div class="avatar" style="background:#fff7ed;color:#c2410c"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg></div><div class="info"><div class="title">${v.responsavel&&v.responsavel.nome||"--"}</div><div class="sub">${(v.endereco&&v.endereco.rua||"")} ${(v.endereco&&v.endereco.num||"")} | ${v.coletorNome||""}</div></div><div class="hist-actions">${tipoBadge}<span style="color:${statusClr[st]};font-size:12px;font-weight:600">${statusMap[st]||st}</span></div>`;
       if(currentRole!=="comunicador"&&st==="aguardando"){
         div.onclick=()=>iniciarVistoriaFromFila(id,v);
       }
@@ -753,6 +790,8 @@ async function preencherDadosFila(v){
     const selCol=document.getElementById("nv-coletor");
     if(selCol)selCol.value=v.coletorId||"";
   }
+  // Propaga tipo de laudo escolhido pelo Comunicador
+  if(v.tipoLaudo)setTipoLaudo(v.tipoLaudo);
   window._filaPreenchimento=null;
   showToast("Dados pre-preenchidos da fila!");
 }
@@ -1129,12 +1168,26 @@ async function loadNovVistoriaForm(){
     document.getElementById("nv-reaproveitar-rua-box").style.display="none";
   }
   document.getElementById("nv-reaproveitar-box").style.display=ultimoResponsavel?"block":"none";
+  // Tipo de laudo: restaurar último (default simplificado)
+  setTipoLaudo(localStorage.getItem("lastTipoLaudo")||"simplificado");
   // Se veio da fila, sobrescreve com os dados da fila
   if(window._filaPreenchimento){
     await preencherDadosFila(window._filaPreenchimento);
   }
 }
 window.reaproveitarResponsavel=()=>{if(!ultimoResponsavel)return;document.getElementById("nv-nome").value=ultimoResponsavel.nome||"";document.getElementById("nv-doc").value=ultimoResponsavel.doc||"";document.getElementById("nv-tel").value=ultimoResponsavel.tel||"";document.getElementById("nv-reaproveitar-box").style.display="none";};
+window.setTipoLaudo=(tipo)=>{
+  document.querySelectorAll("#s-nova-vistoria .laudo-tipo-card").forEach(c=>{
+    c.classList.toggle("active",c.dataset.tipo===tipo);
+  });
+  window._tipoLaudoAtual=tipo;
+};
+window.setTipoLaudoNI=(tipo)=>{
+  document.querySelectorAll("#s-novo-imovel .laudo-tipo-card").forEach(c=>{
+    c.classList.toggle("active",c.dataset.tipo===tipo);
+  });
+  window._tipoLaudoNI=tipo;
+};
 window.loadColetoresByCliente=async()=>{
   const cId=document.getElementById("nv-cliente").value;
   const sel=document.getElementById("nv-coletor");
@@ -1158,7 +1211,9 @@ window.criarVistoria=async()=>{
   if(!cId||!colId)return alert("Selecione cliente e coletor");if(!nome||!rua||!num)return alert("Preencha nome, rua e numero");
   const[clS,colS]=await Promise.all([getDoc(doc(db,"clientes",cId)),getDoc(doc(db,"coletores",colId))]);
   const clD=clS.data();const colD=colS.data();const now=new Date();
-  currentVistoria={clienteId:cId,coletorId:colId,clienteNome:clD.nome,clienteRRT:clD.rrt,coletorNome:colD.nome,responsavel:{nome,doc:docR,tel},endereco:{rua,num,comp},ocupacao:document.getElementById("nv-ocupacao").value,tipo:document.getElementById("nv-tipo").value,data:now.toLocaleDateString("pt-BR"),dataCompleta:now.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}),userId:currentUser.uid,checklist:{},observacoes:"",estado:"",idade:"",status:"em_andamento"};
+  const tipoLaudo=window._tipoLaudoAtual||localStorage.getItem("lastTipoLaudo")||"simplificado";
+  localStorage.setItem("lastTipoLaudo",tipoLaudo);
+  currentVistoria={clienteId:cId,coletorId:colId,clienteNome:clD.nome,clienteRRT:clD.rrt,coletorNome:colD.nome,responsavel:{nome,doc:docR,tel},endereco:{rua,num,comp},ocupacao:document.getElementById("nv-ocupacao").value,tipo:document.getElementById("nv-tipo").value,tipoLaudo,data:now.toLocaleDateString("pt-BR"),dataCompleta:now.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}),userId:currentUser.uid,checklist:{},observacoes:"",estado:"",idade:"",status:"em_andamento"};
   fotosPendentes={};assinaturaData=null;ambientesExtras=[];
   document.getElementById("v-titulo").textContent=nome.split(" ")[0];
   document.getElementById("v-info").innerHTML=["<b>"+nome+"</b>",docR?"Doc: "+docR:"",tel?"Tel: "+tel:"",rua+", "+num+(comp?" - "+comp:""),"<span style='color:#aaa;font-size:12px'>Coletor: "+colD.nome+" | RRT: "+clD.rrt+"</span>"].filter(Boolean).join("<br>");
@@ -1895,7 +1950,8 @@ async function loadHistorico(){
     docs.sort((a,b)=>(b.criadoEm&&b.criadoEm.seconds||0)-(a.criadoEm&&a.criadoEm.seconds||0));
     docs.forEach(v=>{
       const div=document.createElement("div");div.className="list-item";div.style.cursor="pointer";
-      div.innerHTML='<div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></div><div class="info"><div class="title">'+(v.responsavel&&v.responsavel.nome||"--")+'</div><div class="sub">'+(v.endereco&&v.endereco.rua||"")+" "+( v.endereco&&v.endereco.num||"")+" | "+(v.totalFotos||0)+" fotos | "+(v.data||"")+'</div></div><span class="badge '+({concluida:"ok",parcial:"cad",recusa:"master",ausente:"com"}[v.status]||"ok")+'">'+({"concluida":"Finalizado","parcial":"Parcial","recusa":"Recusa","ausente":"Ausente"}[v.status]||"Finalizado")+"</span>";
+      const tipoBadge=v.tipoLaudo==="completo"?'<span class="badge laudo" style="margin-right:6px">Completo</span>':'';
+      div.innerHTML='<div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></div><div class="info"><div class="title">'+(v.responsavel&&v.responsavel.nome||"--")+'</div><div class="sub">'+(v.endereco&&v.endereco.rua||"")+" "+( v.endereco&&v.endereco.num||"")+" | "+(v.totalFotos||0)+" fotos | "+(v.data||"")+'</div></div><div class="hist-actions">'+tipoBadge+'<span class="badge '+({concluida:"ok",parcial:"cad",recusa:"master",ausente:"com"}[v.status]||"ok")+'">'+({"concluida":"Finalizado","parcial":"Parcial","recusa":"Recusa","ausente":"Ausente"}[v.status]||"Finalizado")+"</span></div>";
       div.onclick=()=>abrirDetalheVistoria(v.id,v);
       el.appendChild(div);
     });
