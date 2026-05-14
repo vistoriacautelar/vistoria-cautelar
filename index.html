@@ -878,7 +878,30 @@ async function loadColetores(){const[snap,clSnap]=await Promise.all([getDocs(col
 window.salvarColetor=async()=>{const cId=document.getElementById("mcol-cliente").value;const n=document.getElementById("mcol-nome").value.trim();if(!cId||!n)return alert("Selecione cliente e informe nome");await addDoc(collection(db,"coletores"),{nome:n,clienteId:cId,criadoEm:serverTimestamp()});closeModal("modal-coletor");document.getElementById("mcol-nome").value="";loadColetores();};
 window.deletarColetor=async id=>{if(!confirm("Excluir?"))return;await deleteDoc(doc(db,"coletores",id));loadColetores();};
 
-async function loadUsuarios(){const snap=await getDocs(collection(db,"users"));const el=document.getElementById("lista-usuarios");el.innerHTML="";const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>(a.nome||"").localeCompare(b.nome||"","pt-BR"));docs.forEach(u=>{const av='<div class="avatar" style="background:#d1fae5;color:#065f46">'+(u.nome||u.email).charAt(0)+"</div>";const badge='<span class="badge '+(u.role==="master"?"master":"cad")+'">'+(u.role==="master"?"Master":"Cad.")+"</span>";el.appendChild(mkLI(av,u.nome||"--",u.email,badge));});}
+async function loadUsuarios(){
+  const el=document.getElementById("lista-usuarios");
+  el.innerHTML="";
+  try{
+    const snap=await getDocs(collection(db,"users"));
+    const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));
+    if(!docs.length){
+      el.innerHTML='<div style="padding:16px;color:#888;font-size:13px;text-align:center">Nenhum usuário encontrado na coleção <code>users</code> do Firestore.<br><br>O e-mail pode estar registrado apenas no Firebase Authentication, mas o documento no Firestore foi apagado ou nunca foi criado.</div>';
+      return;
+    }
+    docs.sort((a,b)=>(a.nome||"").localeCompare(b.nome||"","pt-BR"));
+    docs.forEach(u=>{
+      const av='<div class="avatar" style="background:#d1fae5;color:#065f46">'+(u.nome||u.email).charAt(0)+"</div>";
+      const badge='<span class="badge '+(u.role==="master"?"master":"cad")+'">'+(u.role==="master"?"Master":(u.role==="comunicador"?"Com.":"Cad."))+"</span>";
+      el.appendChild(mkLI(av,u.nome||"--",u.email,badge));
+    });
+  }catch(e){
+    console.error("loadUsuarios:",e);
+    const msg=e.code==="permission-denied"
+      ?"Sem permissão para ler a coleção <code>users</code>. Verifique as Rules do Firestore."
+      :"Erro ao ler usuários: "+(e.message||e.code||"desconhecido");
+    el.innerHTML='<div style="padding:16px;color:#c00;font-size:13px;text-align:center">'+msg+"</div>";
+  }
+}
 window.salvarUsuario=async()=>{const n=document.getElementById("mu-nome").value.trim();const em=document.getElementById("mu-email").value.trim();const pw=document.getElementById("mu-pass").value;const role=document.getElementById("mu-role").value;if(!n||!em||!pw)return alert("Preencha todos os campos");if(pw.length<6)return alert("Senha minimo 6 caracteres");try{const uc=await createUserWithEmailAndPassword(auth,em,pw);await setDoc(doc(db,"users",uc.user.uid),{nome:n,email:em,role,criadoEm:serverTimestamp()});closeModal("modal-usuario");["mu-nome","mu-email","mu-pass"].forEach(id=>document.getElementById(id).value="");loadUsuarios();showToast("Usuario criado!");}catch(e){alert("Erro: "+e.message);}};
 
 // Cache de clientes e coletores para evitar múltiplas leituras ao Firestore
@@ -1811,8 +1834,8 @@ window.confirmarSetas=()=>{
     desenharSetaEmCanvas(ctx,tipX,tipY,origW);
   });
 
-  // Exportar em JPEG qualidade máxima
-  fotoAtualBlob=outCanvas.toDataURL("image/jpeg",1.0);
+  // Exportar em JPEG qualidade alta (0.92 — indistinguível de 1.0, ~50% menor)
+  fotoAtualBlob=outCanvas.toDataURL("image/jpeg",0.92);
   document.getElementById("arrow-overlay").style.display="none";
   abrirModalPatologias();
 };
