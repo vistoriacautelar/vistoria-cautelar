@@ -435,7 +435,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 </div>
 <div id="arrow-overlay" class="canvas-overlay" style="display:none">
   <div style="background:#111;padding:12px 16px;color:#fff;font-size:14px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
-    <span style="font-weight:600">Toque para marcar patologias</span>
+    <span style="font-weight:600" id="arrow-overlay-titulo">Toque para marcar a patologia</span>
     <span id="arrow-counter" style="font-size:12px;color:#aaa;background:rgba(255,255,255,.1);padding:4px 10px;border-radius:20px">0 setas</span>
   </div>
   <canvas id="arrow-canvas"></canvas>
@@ -443,6 +443,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
     <button class="btn-cam" onclick="desfazerSeta()" type="button">Desfazer</button>
     <button class="btn-cam" onclick="limparSetas()" type="button">Limpar</button>
     <button class="btn-cam" style="background:#10b981;border-color:#10b981;margin-left:auto;font-weight:600" onclick="confirmarSetas()" type="button">Confirmar</button>
+  </div>
+</div>
+
+<div id="multi-setas-overlay" class="canvas-overlay" style="display:none">
+  <div style="background:#111;padding:12px 16px;color:#fff;font-size:14px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+    <span style="font-weight:600">Patologias marcadas</span>
+    <span id="multi-setas-counter" style="font-size:12px;color:#aaa;background:rgba(255,255,255,.1);padding:4px 10px;border-radius:20px">0</span>
+  </div>
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;background:#000;overflow:hidden">
+    <img id="multi-setas-preview" style="max-width:100%;max-height:100%;object-fit:contain">
+  </div>
+  <div id="multi-setas-lista" style="background:#1a1a1a;padding:8px 12px;max-height:30vh;overflow-y:auto;flex-shrink:0"></div>
+  <div class="canvas-controls">
+    <button class="btn-cam" style="background:#374151;border-color:#374151;color:#fff" onclick="multiSetasAdicionarOutra()" type="button">+ Adicionar outra seta</button>
+    <button class="btn-cam" style="background:#10b981;border-color:#10b981;margin-left:auto;font-weight:600" onclick="multiSetasConcluir()" type="button">Concluir foto</button>
   </div>
 </div>
 
@@ -635,6 +650,12 @@ let currentVistoria=null,fotosPendentes={};
 let fotoAtualBlob=null,fotoAtualTipo=null,fotoAtualAmbiente=null;
 let cameraStream=null,cameraFacingMode="environment";
 let arrowPoints=[],arrowImage=null;
+
+// === MÚLTIPLAS SETAS POR FOTO (simplificado + completo) ===
+// Cada item: {pontoFracao:{x,y}, combinacao:{...}}
+let _fotoSetasAcumuladas=[];
+// dataUrl da foto ORIGINAL sem nenhuma marcação (para re-renderização limpa)
+let _fotoOriginalBlob=null;
 let sigCanvas=null,sigCtx=null,sigDrawing=false,assinaturaData=null,assinaturaTecnico=null;
 let prestadorDefault=null,ambientesExtras=[],ultimoResponsavel=null,logoB64Upload=null;
 let gpsAtual=null,enderecoLinhas=[];
@@ -1787,6 +1808,8 @@ window.descartarFoto=()=>{
 
 window.usarFotoPreview=()=>{
   document.getElementById("preview-overlay").style.display="none";
+  _fotoSetasAcumuladas=[];
+  _fotoOriginalBlob=fotoAtualBlob;
   if(fotoAtualTipo==="Vista"){salvarFotoFinal(fotoAtualBlob,[]);}
   else{abrirEditorSetas(fotoAtualBlob);}
 };
@@ -1796,6 +1819,11 @@ window.handleFileUpload=e=>{const file=e.target.files[0];if(!file)return;const r
 function abrirEditorSetas(imgDataUrl){
   arrowPoints=[];
   document.getElementById("arrow-counter").textContent="0 setas";
+  const titulo=document.getElementById("arrow-overlay-titulo");
+  if(titulo){
+    const n=_fotoSetasAcumuladas.length;
+    titulo.textContent=n===0?"Toque na foto para marcar a patologia":"Marque mais uma patologia (já tem "+n+")";
+  }
   document.getElementById("arrow-overlay").style.display="flex";
   const canvas=document.getElementById("arrow-canvas");
   const img=new Image();
@@ -1865,16 +1893,15 @@ function desenharCodigoCNRP(ctx,tipX,tipY,codigo,canvasW){
   const padY=Math.round(fontSize*0.30);
   const boxW=Math.round(metrics.width)+padX*2;
   const boxH=Math.round(fontSize)+padY*2;
-  // Posiciona a caixa onde fica o RABO da seta (a seta sai da caixa, como no CNRP).
-  // Rabo da seta: angle = 0.75π → fica acima-esquerda da ponta.
+  // Caixa posicionada na direção do rabo da seta, mas afastada o suficiente
+  // para NÃO cobrir a seta nem o defeito apontado. CNRP-style: caixa próxima, não colada.
   const sz=Math.max(40,Math.round(canvasW*0.08));
-  const angle=Math.PI*0.75;
-  const bodyLen=sz*1.2;
-  const tailX=tipX-bodyLen*Math.cos(angle);
-  const tailY=tipY-bodyLen*Math.sin(angle);
-  // Centraliza a caixa sobre o rabo
-  let bx=Math.round(tailX-boxW/2);
-  let by=Math.round(tailY-boxH/2);
+  const angle=Math.PI*0.75;          // 135° = direção noroeste (acima-esquerda da ponta)
+  const offsetDist=sz*2.8;            // distância da PONTA da seta até o centro da caixa
+  const cx=tipX-offsetDist*Math.cos(angle);
+  const cy=tipY-offsetDist*Math.sin(angle);
+  let bx=Math.round(cx-boxW/2);
+  let by=Math.round(cy-boxH/2);
   // Garantir que fique dentro do canvas
   bx=Math.max(4,Math.min(bx,ctx.canvas.width-boxW-4));
   by=Math.max(4,Math.min(by,ctx.canvas.height-boxH-4));
@@ -1905,35 +1932,12 @@ function desenharSetas(){
 window.desfazerSeta=()=>{arrowPoints.pop();document.getElementById("arrow-counter").textContent=arrowPoints.length+" seta(s)";desenharSetas();};
 window.limparSetas=()=>{arrowPoints=[];document.getElementById("arrow-counter").textContent="0 setas";desenharSetas();};
 window.confirmarSetas=()=>{
-  const displayCanvas=document.getElementById("arrow-canvas");
-  const origW=parseInt(displayCanvas.dataset.origW)||displayCanvas.width;
-  const origH=parseInt(displayCanvas.dataset.origH)||displayCanvas.height;
-  const displayScale=parseFloat(displayCanvas.dataset.displayScale)||1;
-
-  // Criar canvas de SAÍDA na resolução original da foto
-  const outCanvas=document.createElement("canvas");
-  outCanvas.width=origW;
-  outCanvas.height=origH;
-  const ctx=outCanvas.getContext("2d");
-  ctx.imageSmoothingEnabled=true;
-  ctx.imageSmoothingQuality="high";
-
-  // Desenhar foto original em resolução máxima
-  if(arrowImage){
-    ctx.drawImage(arrowImage,0,0,origW,origH);
+  if(arrowPoints.length===0){
+    return alert("Toque na foto para marcar onde está a patologia.");
   }
-
-  // Redesenhar setas na escala original (converter coordenadas de display para original)
-  const scaleToOrig=1/displayScale;
-  arrowPoints.forEach(p=>{
-    // p.x e p.y são frações (0-1) relativas ao canvas de display
-    const tipX=p.x*origW;
-    const tipY=p.y*origH;
-    desenharSetaEmCanvas(ctx,tipX,tipY,origW);
-  });
-
-  // Exportar em JPEG qualidade alta (0.92 — indistinguível de 1.0, ~50% menor)
-  fotoAtualBlob=outCanvas.toDataURL("image/jpeg",0.92);
+  if(arrowPoints.length>1){
+    return alert("Marque apenas UMA seta por vez. Você poderá adicionar mais setas depois.");
+  }
   document.getElementById("arrow-overlay").style.display="none";
   abrirModalPatologias();
 };
@@ -2085,7 +2089,7 @@ window.removerCombinacao=i=>{_patCombinacoes.splice(i,1);renderCombinacoes();};
 
 window.confirmarPatologias=()=>{
   const tipoLaudo=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";
-  // Se ainda há seleção pendente não adicionada, adiciona automaticamente
+  // Auto-adicionar seleção pendente, se houver
   if(tipoLaudo==="completo"){
     const checkedSubs=Array.from(document.querySelectorAll("#pat-list input:checked")).map(cb=>parseInt(cb.value)).sort((a,b)=>a-b);
     if(_patCatSelecionada&&checkedSubs.length){
@@ -2101,38 +2105,115 @@ window.confirmarPatologias=()=>{
     }
   }
   document.getElementById("pat-modal").style.display="none";
-  // No modo completo: re-renderiza a foto com tags de código (B1, H1;4, ...) sobre as setas
-  if(tipoLaudo==="completo"&&_patCombinacoes.length&&arrowImage&&arrowPoints.length){
-    fotoAtualBlob=renderizarFotoComCodigosCNRP();
+
+  // Obrigatório: foto Detalhe precisa ter ao menos uma combinação
+  if(_patCombinacoes.length===0){
+    alert("Selecione ao menos uma patologia antes de confirmar.");
+    document.getElementById("pat-modal").style.display="flex";
+    return;
   }
-  // Montar array de patologias flat para checklist + legenda (apenas no simplificado)
-  const pats=[];
-  if(tipoLaudo!=="completo"){
-    _patCombinacoes.forEach(c=>{
-      c.pats.forEach(p=>pats.push({col:c.col,tipo:c.parte,pat:p,elemento:c.elemento,combo:c}));
-    });
+  // Compactar combinações desta seta em uma só (se usuário marcou várias).
+  // No modo Completo, deve haver apenas UMA combinação por seta (uma caixa só).
+  // No simplificado pode haver várias combinações para o mesmo ponto, mas geralmente é uma.
+  const combinacaoDesta=_patCombinacoes.length===1?_patCombinacoes[0]:{modo:"agrupada",listaInternal:_patCombinacoes.slice()};
+
+  // Salvar seta + combinação acumuladas para esta foto
+  if(arrowPoints.length===1){
+    _fotoSetasAcumuladas.push({pontoFracao:arrowPoints[0],combinacao:combinacaoDesta,combinacoesArr:_patCombinacoes.slice()});
   }
-  salvarFotoFinal(fotoAtualBlob,pats,_patCombinacoes);
+  // Reset do estado do modal para próxima seta
+  _patCombinacoes=[];
+  _patCatSelecionada=null;
+
+  // Renderizar a foto acumulada e abrir overlay de decisão
+  abrirOverlayDecisao();
 };
 
-// Renderiza a foto na resolução original com setas + caixas de código (modo completo).
-// Cada combinação é associada a uma seta na ordem de criação; setas extras ficam sem tag.
-function renderizarFotoComCodigosCNRP(){
+// Abre o overlay "+ Adicionar outra seta / Concluir foto" mostrando a foto com
+// todas as setas/caixas já marcadas até agora.
+function abrirOverlayDecisao(){
+  const tipoLaudo=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";
+  const dataUrl=renderizarFotoComAcumuladas(tipoLaudo);
+  fotoAtualBlob=dataUrl;
+  document.getElementById("multi-setas-preview").src=dataUrl;
+  document.getElementById("multi-setas-counter").textContent=_fotoSetasAcumuladas.length+" seta(s)";
+  // Lista de patologias marcadas
+  const lista=document.getElementById("multi-setas-lista");
+  lista.innerHTML="";
+  _fotoSetasAcumuladas.forEach((s,i)=>{
+    const div=document.createElement("div");
+    div.style.cssText="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.08);color:#fff;font-size:13px;padding:8px 10px;border-radius:6px;margin-bottom:4px";
+    const texto=resumoSetaAcumulada(s);
+    div.innerHTML='<span style="flex:1">'+(i+1)+'. '+texto+'</span><button onclick="removerSetaAcumulada('+i+')" style="background:none;border:none;color:#f87171;font-size:16px;cursor:pointer;padding:0 4px">✕</button>';
+    lista.appendChild(div);
+  });
+  document.getElementById("multi-setas-overlay").style.display="flex";
+}
+
+function resumoSetaAcumulada(s){
+  const combos=s.combinacoesArr||[s.combinacao];
+  return combos.map(c=>gerarLegendaCombo(c)).join(" + ");
+}
+
+window.removerSetaAcumulada=(i)=>{
+  _fotoSetasAcumuladas.splice(i,1);
+  abrirOverlayDecisao();
+};
+
+window.multiSetasAdicionarOutra=()=>{
+  document.getElementById("multi-setas-overlay").style.display="none";
+  // Reabrir editor de setas com a foto acumulada como base (vê as setas já marcadas)
+  abrirEditorSetas(fotoAtualBlob);
+};
+
+window.multiSetasConcluir=()=>{
+  document.getElementById("multi-setas-overlay").style.display="none";
+  const tipoLaudo=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";
+  // Re-renderizar UMA última vez na resolução original para máxima qualidade
+  fotoAtualBlob=renderizarFotoComAcumuladas(tipoLaudo);
+  // Coletar todas as combinações de todas as setas para checklist / legenda
+  const todasCombos=[];
+  _fotoSetasAcumuladas.forEach(s=>{(s.combinacoesArr||[s.combinacao]).forEach(c=>todasCombos.push(c));});
+  // Para o simplificado, montar array flat de patologias
+  const pats=[];
+  if(tipoLaudo!=="completo"){
+    todasCombos.forEach(c=>{
+      if(c.pats)c.pats.forEach(p=>pats.push({col:c.col,tipo:c.parte,pat:p,elemento:c.elemento,combo:c}));
+    });
+  }
+  salvarFotoFinal(fotoAtualBlob,pats,todasCombos);
+  // Limpar estado
+  _fotoSetasAcumuladas=[];
+  _fotoOriginalBlob=null;
+};
+
+// Renderiza a foto ORIGINAL com todas as setas/caixas acumuladas.
+// No modo completo, adiciona a caixa vermelha com código (B1, H1;3) próxima à seta.
+function renderizarFotoComAcumuladas(tipoLaudo){
+  if(!arrowImage)return fotoAtualBlob;
   const origW=arrowImage.naturalWidth,origH=arrowImage.naturalHeight;
   const outCanvas=document.createElement("canvas");
   outCanvas.width=origW;outCanvas.height=origH;
   const ctx=outCanvas.getContext("2d");
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
   ctx.drawImage(arrowImage,0,0,origW,origH);
-  arrowPoints.forEach((p,i)=>{
-    const tipX=p.x*origW,tipY=p.y*origH;
+  _fotoSetasAcumuladas.forEach(s=>{
+    const tipX=s.pontoFracao.x*origW;
+    const tipY=s.pontoFracao.y*origH;
     desenharSetaEmCanvas(ctx,tipX,tipY,origW);
-    const combo=_patCombinacoes[i];
-    if(combo&&combo.modo==="completo"){
-      desenharCodigoCNRP(ctx,tipX,tipY,combo.codigo,origW);
+    if(tipoLaudo==="completo"){
+      // Pegar primeiro código (modo completo só tem 1 por seta)
+      const c=s.combinacao;
+      const codigo=c&&c.modo==="completo"?c.codigo:(c&&c.codigo);
+      if(codigo)desenharCodigoCNRP(ctx,tipX,tipY,codigo,origW);
     }
   });
-  return outCanvas.toDataURL("image/jpeg",1.0);
+  return outCanvas.toDataURL("image/jpeg",0.92);
+}
+
+// (Mantido por compatibilidade com chamadas antigas — não usado no novo fluxo)
+function renderizarFotoComCodigosCNRP(){
+  return renderizarFotoComAcumuladas("completo");
 }
 
 // Lê a orientação EXIF de um dataUrl JPEG
@@ -2211,6 +2292,33 @@ function comprimirFoto(dataUrl){
       res(c.toDataURL("image/jpeg",0.75));
     };
     img.onerror=()=>res(dataUrl);
+    img.src=dataUrl;
+  });
+}
+
+// Recomprime imagem para inclusão no PDF: redimensiona se acima de maxDim e re-encoda.
+// Reduz drasticamente o consumo de memória ao chamar pdf.addImage no jsPDF (Android).
+function recomprimirParaPDF(dataUrl,maxDim,quality){
+  return new Promise((res,rej)=>{
+    const img=new Image();
+    img.onload=()=>{
+      try{
+        let w=img.naturalWidth,h=img.naturalHeight;
+        const maior=Math.max(w,h);
+        if(maior>maxDim){
+          const sc=maxDim/maior;
+          w=Math.round(w*sc);h=Math.round(h*sc);
+        }
+        const c=document.createElement("canvas");
+        c.width=w;c.height=h;
+        const ctx=c.getContext("2d");
+        ctx.imageSmoothingEnabled=true;
+        ctx.imageSmoothingQuality="high";
+        ctx.drawImage(img,0,0,w,h);
+        res(c.toDataURL("image/jpeg",quality));
+      }catch(e){rej(e);}
+    };
+    img.onerror=()=>rej(new Error("Falha ao carregar imagem"));
     img.src=dataUrl;
   });
 }
@@ -2459,6 +2567,9 @@ async function regeRarPDF(data){
 
 // ===== GERAR PDF COMPLETO =====
 window.finalizarVistoria=async()=>{
+  if(!currentVistoria){
+    return alert("Sessão da vistoria foi perdida. Volte para a tela anterior e reinicie.");
+  }
   const idadeVal=document.getElementById("fin-idade").value;
   if(!idadeVal||isNaN(parseInt(idadeVal)))return alert("Informe a Idade Aparente do Imóvel (obrigatório)");
   const statusVal=document.getElementById("fin-status-vistoria").value;
@@ -2468,13 +2579,35 @@ window.finalizarVistoria=async()=>{
   const btn=document.getElementById("btn-finalizar");
   const setStatus=t=>{if(btn)btn.textContent=t;};
   setStatus("Preparando...");btn.disabled=true;
+  // Snapshot defensivo: caso algo falhe, ainda temos cópia para retomar
+  const _backupVistoria={...currentVistoria};
+  const _backupFotos={...fotosPendentes};
   currentVistoria.estado=document.getElementById("fin-estado").value;
   currentVistoria.idade=document.getElementById("fin-idade").value;
   currentVistoria.statusVistoria=document.getElementById("fin-status-vistoria").value||"concluida";
   const isPendente=currentVistoria.statusVistoria==="ausente"&&document.getElementById("fin-pendente")&&document.getElementById("fin-pendente").value==="sim";
   currentVistoria.pendente_retorno=isPendente;
   ultimoResponsavel={...currentVistoria.responsavel};
+  let erroFotos=0;
   try{
+    // Recompressão prévia: reduz cada foto para no máximo 1600px no eixo maior + qualidade 0.85.
+    // Evita estouro de memória quando addImage do jsPDF lida com base64 enorme em Android.
+    setStatus("Otimizando fotos...");
+    const fotosRecomp={};
+    const fotosArr=Object.entries(fotosPendentes);
+    for(let i=0;i<fotosArr.length;i++){
+      const[id,f]=fotosArr[i];
+      setStatus("Otimizando "+(i+1)+"/"+fotosArr.length+"...");
+      try{
+        const optimized=await recomprimirParaPDF(f.dataUrl,1600,0.85);
+        fotosRecomp[id]={...f,dataUrl:optimized};
+      }catch(eOpt){
+        console.warn("Recompressão falhou na foto",id,eOpt);
+        fotosRecomp[id]=f;
+      }
+      await yieldThread();
+    }
+    fotosPendentes=fotosRecomp;
     const{jsPDF}=window.jspdf;
     const pdf=new jsPDF("p","mm","a4");
     // === LAYOUT MODELO EXATO (margens 0.5" = 12.7mm em todos) ===
@@ -2532,7 +2665,7 @@ window.finalizarVistoria=async()=>{
         const fw=Math.round(dims.w*sc),fh=Math.round(dims.h*sc);
         const xo=Math.round((CW-fw)/2),yo=Math.round((F01H-fh)/2);
         pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(ML,y,CW,F01H,"S");
-        try{await addImgPDF(pdf,f0.dataUrl,ML+xo,y+yo,fw,fh);}catch(e){}
+        try{await addImgPDF(pdf,f0.dataUrl,ML+xo,y+yo,fw,fh);}catch(e){erroFotos++;console.error("addImgPDF fachada:",e);}
         // Legenda sem linha central
         pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);
         pdf.line(ML,y+F01H,ML+CW,y+F01H);
@@ -2551,7 +2684,7 @@ window.finalizarVistoria=async()=>{
         for(let i=0;i<resto.length;i+=2){
           const count=Math.min(2,resto.length-i);
           const isLastSolo=(count===1&&i+1>=resto.length);
-          await pdfPar(pdf,resto,i,count,ML,y,CW,isLastSolo?CW:FPL,isLastSolo?CW:FPR,FPH,fotoNum);
+          erroFotos+=await pdfPar(pdf,resto,i,count,ML,y,CW,isLastSolo?CW:FPL,isLastSolo?CW:FPR,FPH,fotoNum)||0;
           fotoNum+=count;
           y+=FPH+LEGH;
         }
@@ -2562,7 +2695,7 @@ window.finalizarVistoria=async()=>{
         for(let i=0;i<pF.length;i+=2){
           const count=Math.min(2,pF.length-i);
           const isLastSolo=(count===1&&i+1>=pF.length);
-          await pdfPar(pdf,pF,i,count,ML,y,CW,isLastSolo?CW:FPL,isLastSolo?CW:FPR,FPH,fotoNum);
+          erroFotos+=await pdfPar(pdf,pF,i,count,ML,y,CW,isLastSolo?CW:FPL,isLastSolo?CW:FPR,FPH,fotoNum)||0;
           fotoNum+=count;
           y+=FPH+LEGH;
         }
@@ -2733,9 +2866,18 @@ window.finalizarVistoria=async()=>{
     const endArq=(currentVistoria.endereco.rua+" "+currentVistoria.endereco.num+(currentVistoria.endereco.comp?" "+currentVistoria.endereco.comp:"")).replace(/[^a-zA-Z0-9\s]/g,"").trim().replace(/\s+/g,"_");
     const colArq=currentVistoria.coletorNome.replace(/[^a-zA-Z0-9\s]/g,"").trim().replace(/\s+/g,"_");
     const nomeBase=colArq+"-"+endArq+"-"+dataArq;
+    // Alerta de fotos quebradas: se alguma falhou ao entrar no PDF, perguntar antes de continuar
+    if(erroFotos>0){
+      const seguir=confirm(erroFotos+" foto(s) falharam ao serem inseridas no PDF.\n\nO PDF será gerado SEM essas fotos. Continuar mesmo assim?\n\nClique Cancelar para abortar e tentar gerar novamente.");
+      if(!seguir){
+        throw new Error("Geração abortada pelo usuário: "+erroFotos+" fotos falharam.");
+      }
+    }
     setStatus("Gerando PDF...");
     await yieldThread();
     await shareOrDownload(pdf.output("blob"),nomeBase+".pdf","application/pdf");
+    // Restaurar fotos originais (qualidade máxima) ANTES do ZIP — a recompressão só serve para o PDF
+    fotosPendentes=_backupFotos;
 
     if(window.JSZip){
       try{
@@ -2764,17 +2906,22 @@ window.finalizarVistoria=async()=>{
     }
     currentVistoria=null;fotosPendentes={};assinaturaData=null;ambientesExtras=[];
     goTo(destinoFinal);
-  }catch(e){console.error(e);alert("Erro: "+e.message);}
+  }catch(e){
+    console.error(e);
+    // Restaurar estado: sessão de vistoria deve permanecer disponível para nova tentativa
+    if(_backupVistoria&&!currentVistoria)currentVistoria=_backupVistoria;
+    if(_backupFotos&&Object.keys(fotosPendentes).length===0)fotosPendentes=_backupFotos;
+    alert("Erro ao gerar PDF: "+(e.message||e.code||"desconhecido")+"\n\nVocê pode tentar finalizar novamente.");
+  }
   finally{btn.textContent="Gerar PDF + ZIP e finalizar";btn.disabled=false;btn.style.opacity="1";}
 };
 
 async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
   const LEGH=8;
   const PAD=2;
-  const LW=0.2; // espessura linha fina uniforme
-
+  const LW=0.2;
+  let erros=0;
   if(count===1){
-    // Foto solitária centralizada
     const f=fotos[startIdx];
     const fx=ML+(CW-FPL)/2;
     const dims=await getImgDims(f.dataUrl);
@@ -2782,10 +2929,8 @@ async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
     const fw=Math.round(dims.w*sc),fh=Math.round(dims.h*sc);
     const xo=Math.round((FPL-fw)/2),yo=Math.round((FPH-fh)/2);
     pdf.setDrawColor(0,0,0);pdf.setLineWidth(LW);
-    // Borda da foto (4 lados)
     pdf.rect(fx,y,FPL,FPH,"S");
-    try{await addImgPDF(pdf,f.dataUrl,fx+xo,y+yo,fw,fh);}catch(e){}
-    // Legenda: linha superior (= base da foto), bordas lat, linha inferior
+    try{await addImgPDF(pdf,f.dataUrl,fx+xo,y+yo,fw,fh);}catch(e){erros++;console.error("addImgPDF solo:",e);}
     pdf.line(fx,y+FPH+LEGH,fx+FPL,y+FPH+LEGH);
     pdf.line(fx,y+FPH,fx,y+FPH+LEGH);
     pdf.line(fx+FPL,y+FPH,fx+FPL,y+FPH+LEGH);
@@ -2794,19 +2939,12 @@ async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
     pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);
     const leg1=pdf.splitTextToSize(f.legenda||f.tipo||"Vista",FPL-2);
     pdf.text(leg1[0],fx+FPL/2,y+FPH+6.8,{align:"center"});
-
   } else {
-    // Par: desenhar borda externa completa da área foto+legenda
     pdf.setDrawColor(0,0,0);pdf.setLineWidth(LW);
     const totalH=FPH+LEGH;
-    // Borda externa do bloco inteiro
     pdf.rect(ML,y,CW,totalH,"S");
-    // Linha divisória central vertical (do topo ao fim da legenda)
     pdf.line(ML+FPL,y,ML+FPL,y+totalH);
-    // Linha separadora foto/legenda (horizontal, largura total)
     pdf.line(ML,y+FPH,ML+CW,y+FPH);
-
-    // Fotos
     for(let k=0;k<2&&startIdx+k<fotos.length;k++){
       const f=fotos[startIdx+k];
       const fw_k=k===0?FPL:FPR;
@@ -2815,7 +2953,7 @@ async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
       const sc=Math.min((fw_k-PAD*2)/dims.w,(FPH-PAD*2)/dims.h);
       const fwR=Math.round(dims.w*sc),fhR=Math.round(dims.h*sc);
       const xo=Math.round((fw_k-fwR)/2),yo=Math.round((FPH-fhR)/2);
-      try{await addImgPDF(pdf,f.dataUrl,fx+xo,y+yo,fwR,fhR);}catch(e){}
+      try{await addImgPDF(pdf,f.dataUrl,fx+xo,y+yo,fwR,fhR);}catch(e){erros++;console.error("addImgPDF par:",e);}
       pdf.setFont("helvetica","bold");pdf.setFontSize(8);
       pdf.text("Foto "+String(fotoNum+k).padStart(2,"0"),fx+fw_k/2,y+FPH+3.2,{align:"center"});
       pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);
@@ -2823,6 +2961,7 @@ async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
       pdf.text(legTxt[0],fx+fw_k/2,y+FPH+6.8,{align:"center"});
     }
   }
+  return erros;
 }
 
 // Pre-renderiza logo com OffscreenCanvas 2x para PDF nítido
