@@ -171,7 +171,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Cadastrar Imovel</h1></div>
   <div class="content">
     <div class="card"><h2>Dados do morador</h2>
-      <div class="field"><label>Nome completo *</label><input type="text" id="ni-nome" placeholder="Nome do morador ou Imovel Vazio"></div>
+      <div class="field"><label>Nome completo *</label><input type="text" id="ni-nome" placeholder="Nome do morador ou Imovel Vazio" oninput="capitalizarInput(this)"></div>
       <div class="field" style="display:flex;gap:8px;align-items:flex-end">
         <div style="flex:1"><label>RG / CPF</label><input type="text" id="ni-doc" placeholder="000.000.000-00" inputmode="numeric" oninput="maskCPF(this)"></div>
         <button class="btn small" onclick="naoInformadoDoc()" style="margin-bottom:0;white-space:nowrap">Nao informado</button>
@@ -185,9 +185,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div id="ni-reaproveitar-end-box" style="display:none;background:#f0fdf4;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:#15803d">
         Reaproveitar endereço anterior? <button class="btn small" onclick="reaproveitarEnderecoNI()" style="margin-left:8px;color:#15803d;border-color:#15803d">Sim</button>
       </div>
-      <div class="field"><label>Rua *</label><input type="text" id="ni-rua" placeholder="Nome da rua"></div>
+      <div class="field"><label>Rua *</label><input type="text" id="ni-rua" placeholder="Nome da rua" oninput="capitalizarInput(this)"></div>
       <div class="field"><label>Numero *</label><input type="text" id="ni-num" placeholder="123" inputmode="numeric"></div>
-      <div class="field"><label>Complemento</label><input type="text" id="ni-comp" placeholder="Apto, casa, etc"></div>
+      <div class="field"><label>Complemento</label><input type="text" id="ni-comp" placeholder="Apto, casa, etc" oninput="capitalizarInput(this)"></div>
     </div>
     <div class="card"><h2>Cliente / Coletor</h2>
       <div class="field"><label>Cliente *</label><select id="ni-cliente" onchange="loadColetoresNI()"><option value="">Selecione...</option></select></div>
@@ -285,7 +285,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
         <div class="info-box">Reaproveitar dados do responsavel anterior?</div>
         <div class="grid2"><button class="btn small" onclick="reaproveitarResponsavel()">Sim</button><button class="btn small" onclick="document.getElementById('nv-reaproveitar-box').style.display='none'">Nao</button></div>
       </div>
-      <div class="field"><label>Nome completo *</label><input type="text" id="nv-nome" placeholder="Nome do responsavel ou Imovel Vazio"></div>
+      <div class="field"><label>Nome completo *</label><input type="text" id="nv-nome" placeholder="Nome do responsavel ou Imovel Vazio" oninput="capitalizarInput(this)"></div>
       <div class="field" style="display:flex;gap:8px;align-items:flex-end">
         <div style="flex:1"><label>RG / CPF</label><input type="text" id="nv-doc" placeholder="000.000.000-00" inputmode="numeric" oninput="maskCPF(this)"></div>
         <button class="btn small" onclick="document.getElementById('nv-doc').value='Nao informado'" style="margin-bottom:0;white-space:nowrap">Nao inf.</button>
@@ -300,10 +300,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
         <div class="info-box" id="nv-rua-info">Reaproveitar rua anterior?</div>
         <div class="grid2" style="margin-top:6px"><button class="btn small" onclick="document.getElementById('nv-reaproveitar-rua-box').style.display='none'">Sim, manter</button><button class="btn small" onclick="document.getElementById('nv-rua').value='';document.getElementById('nv-reaproveitar-rua-box').style.display='none'">Não, limpar</button></div>
       </div>
-      <div class="field"><label>Rua *</label><input type="text" id="nv-rua" placeholder="Nome da rua"></div>
+      <div class="field"><label>Rua *</label><input type="text" id="nv-rua" placeholder="Nome da rua" oninput="capitalizarInput(this)"></div>
       <div class="grid2">
         <div class="field"><label>Numero *</label><input type="text" id="nv-num" placeholder="Num" inputmode="numeric"></div>
-        <div class="field"><label>Complemento</label><input type="text" id="nv-comp" placeholder="Casa 1, Ap 23..."></div>
+        <div class="field"><label>Complemento</label><input type="text" id="nv-comp" placeholder="Casa 1, Ap 23..." oninput="capitalizarInput(this)"></div>
       </div>
     </div>
     <div class="card"><h2>Tipo de laudo</h2>
@@ -372,7 +372,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   <div class="topbar"><button class="back" onclick="goTo('s-checklist')">&#8249; Checklist</button><h1>Finalizacao</h1></div>
   <div class="content">
     <div class="card"><h2>Estado de conservacao</h2>
-      <div class="field"><label>Status da Vistoria <span style="color:#dc2626">*</span></label><select id="fin-status-vistoria" onchange="togglePendente(this.value)"><option value="">Selecione o status...</option><option value="concluida">Finalizado</option><option value="parcial">Vistoria Parcial</option><option value="recusa">Recusa</option><option value="ausente">Ausente</option></select></div>
+      <div class="field"><label>Status da Vistoria <span style="color:#dc2626">*</span></label><select id="fin-status-vistoria" onchange="togglePendente(this.value)"><option value="">Selecione o status...</option><option value="concluida">Finalizado</option><option value="parcial">Parcial</option><option value="recusa">Recusa</option><option value="ausente">Ausente</option></select></div>
       <div class="field" id="field-pendente" style="display:none"><label>Pendente de retorno?</label><select id="fin-pendente"><option value="nao">Não — encerrar</option><option value="sim">Sim — retornar</option></select></div>
       <div class="field"><label>Estado de Conservacao</label><select id="fin-estado"><option>Bom</option><option selected>Regular</option><option>Ruim</option><option>Péssimo</option></select></div>
       <div class="field"><label>Idade Aparente do Imóvel (anos) *</label><input type="number" id="fin-idade" placeholder="Ex: 30" min="0" max="200" inputmode="numeric" required></div>
@@ -598,6 +598,16 @@ const PATOLOGIAS=["Fissura","Trinca","Rachadura","Umidade","Infiltração","Desp
 const PATOLOGIAS_CK=["Fissura/Trinca/Rachadura","Umidade/Infiltração","Desplacamento","Armadura Exposta","Danificado"];
 const PATOLOGIAS_CK_MAP={"Fissura/Trinca/Rachadura":["Fissura","Trinca","Rachadura"],"Umidade/Infiltração":["Umidade","Infiltração"],"Desplacamento":["Desplacamento"],"Armadura Exposta":["Armadura Exposta"],"Danificado":["Danificado"]};
 const ELEMENTOS=["Estrutura","Parede","Teto","Piso","Calçada","Porta","Esquadria"];
+// Mapeia elemento construtivo (passo 3 do modal simplificado, agora único) para a coluna do checklist
+const ELEMENTO_TO_COL={
+  "Estrutura":"estrutura",
+  "Parede":"paredes",
+  "Teto":"cobertura",
+  "Piso":"piso",
+  "Calçada":"piso",
+  "Porta":"portas",
+  "Esquadria":"portas"
+};
 
 // ===== LAUDO COMPLETO: 12 categorias A-L com subitens =====
 const PATOLOGIAS_AL=[
@@ -687,6 +697,96 @@ window.resetTipoFoto=()=>{
   if(sel)sel.value="Vista";
 };
 window.togglePass=(id,btn)=>{const i=document.getElementById(id);if(i.type==="password"){i.type="text";btn.textContent="Ocultar";}else{i.type="password";btn.textContent="Mostrar";}};
+
+// ===== ARMAZENAMENTO LOCAL DE FOTOS (IndexedDB) =====
+// Permite editar fotos e regerar PDF após finalização, mas apenas no dispositivo
+// onde a vistoria foi gerada. Não sincroniza entre celulares.
+const LOCAL_DB_NAME="vistoria-cautelar-fotos";
+const LOCAL_DB_STORE="fotos";
+const LOCAL_DB_VERSION=1;
+let _localDB=null;
+function localDB(){
+  if(_localDB)return Promise.resolve(_localDB);
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open(LOCAL_DB_NAME,LOCAL_DB_VERSION);
+    req.onupgradeneeded=()=>{
+      const db=req.result;
+      if(!db.objectStoreNames.contains(LOCAL_DB_STORE)){
+        db.createObjectStore(LOCAL_DB_STORE,{keyPath:"vistoriaId"});
+      }
+    };
+    req.onsuccess=()=>{_localDB=req.result;res(_localDB);};
+    req.onerror=()=>rej(req.error);
+  });
+}
+async function localSalvarFotos(vistoriaId,fotos){
+  try{
+    const db=await localDB();
+    return new Promise((res,rej)=>{
+      const tx=db.transaction(LOCAL_DB_STORE,"readwrite");
+      const store=tx.objectStore(LOCAL_DB_STORE);
+      store.put({vistoriaId,fotos,savedAt:Date.now()});
+      tx.oncomplete=()=>res(true);
+      tx.onerror=()=>rej(tx.error);
+    });
+  }catch(e){console.error("localSalvarFotos:",e);return false;}
+}
+async function localBuscarFotos(vistoriaId){
+  try{
+    const db=await localDB();
+    return new Promise((res,rej)=>{
+      const tx=db.transaction(LOCAL_DB_STORE,"readonly");
+      const req=tx.objectStore(LOCAL_DB_STORE).get(vistoriaId);
+      req.onsuccess=()=>res(req.result?req.result.fotos:null);
+      req.onerror=()=>rej(req.error);
+    });
+  }catch(e){console.error("localBuscarFotos:",e);return null;}
+}
+async function localApagarFotos(vistoriaId){
+  try{
+    const db=await localDB();
+    return new Promise((res,rej)=>{
+      const tx=db.transaction(LOCAL_DB_STORE,"readwrite");
+      tx.objectStore(LOCAL_DB_STORE).delete(vistoriaId);
+      tx.oncomplete=()=>res(true);
+      tx.onerror=()=>rej(tx.error);
+    });
+  }catch(e){console.error("localApagarFotos:",e);return false;}
+}
+async function localListarIds(){
+  try{
+    const db=await localDB();
+    return new Promise((res,rej)=>{
+      const tx=db.transaction(LOCAL_DB_STORE,"readonly");
+      const req=tx.objectStore(LOCAL_DB_STORE).getAllKeys();
+      req.onsuccess=()=>res(req.result||[]);
+      req.onerror=()=>rej(req.error);
+    });
+  }catch(e){console.error("localListarIds:",e);return[];}
+}
+
+// Capitaliza texto estilo "Título" — primeira letra de cada palavra maiúscula,
+// exceto conectores em português (de, da, do, das, dos, e). Aplicado em tempo real.
+const _CAPITAL_CONECTORES=new Set(["de","da","do","das","dos","e"]);
+function capitalizarTitulo(s){
+  if(!s)return s;
+  return s.toLocaleLowerCase("pt-BR").split(" ").map((p,i)=>{
+    if(!p)return p;
+    if(i>0&&_CAPITAL_CONECTORES.has(p))return p;
+    return p.charAt(0).toLocaleUpperCase("pt-BR")+p.slice(1);
+  }).join(" ");
+}
+window.capitalizarInput=(el)=>{
+  if(!el)return;
+  const start=el.selectionStart;
+  const val=el.value;
+  const novo=capitalizarTitulo(val);
+  if(novo!==val){
+    el.value=novo;
+    // Restaurar posição do cursor (em geral a posição é estável porque só muda case)
+    try{el.setSelectionRange(start,start);}catch(e){}
+  }
+};
 
 // Detectar orientacao do dispositivo
 window.addEventListener("deviceorientationabsolute",e=>{if(e.beta!==null)deviceOrientation=Math.round(e.beta);},true);
@@ -1045,9 +1145,17 @@ let _efFotoEditando=null,_efFotoIdx=null;
 let _efCameraMode=null; // 'adicionar' | 'substituir'
 let _efAmbienteAlvo=null,_efSubstIdx=null;
 
-window.abrirEditorFotos=(id,data)=>{
+window.abrirEditorFotos=async(id,data)=>{
   _efId=id;_efData=data;
-  _efFotos=(data.fotosBase64||[]).map((f,i)=>({...f,_idx:i}));
+  // Tenta IndexedDB primeiro (novo armazenamento local-only); fallback p/ fotosBase64 antigo
+  let fotos=null;
+  try{fotos=await localBuscarFotos(id);}catch(e){}
+  if(!fotos||!fotos.length)fotos=data.fotosBase64||[];
+  if(!fotos||!fotos.length){
+    alert("Esta vistoria não tem fotos disponíveis para edição neste dispositivo.\n\nA edição de fotos só fica disponível no dispositivo em que a vistoria foi originalmente gerada.");
+    return;
+  }
+  _efFotos=fotos.map((f,i)=>({...f,_idx:i}));
   goTo("s-editor-fotos");
 };
 
@@ -1190,9 +1298,9 @@ window.salvarEdicaoFotos=async()=>{
   if(btn){btn.textContent="Salvando...";btn.disabled=true;}
   try{
     _efRenumerar();
-    // Salvar no Firestore
+    // Salvar fotos no IndexedDB (local-only) e apenas metadado no Firestore
+    await localSalvarFotos(_efId,_efFotos);
     await updateDoc(doc(db,"vistorias",_efId),{
-      fotosBase64:_efFotos,
       totalFotos:_efFotos.length
     });
     // Gerar ZIP com fotos atualizadas
@@ -1277,7 +1385,7 @@ window.abrirRetorno=async(id,v)=>{
     +'<div class="field" style="margin-top:12px"><label>Novo status</label><select id="retorno-status" onchange="togglePendenteRetorno(this.value)">'
     +'<option value="ausente">Ausente</option>'
     +'<option value="concluida">Finalizado</option>'
-    +'<option value="parcial">Vistoria Parcial</option>'
+    +'<option value="parcial">Parcial</option>'
     +'<option value="recusa">Recusa</option>'
     +'</select></div>'
     +(visitas+1<3?'<div class="field" id="field-pendente-retorno"><label>Pendente de retorno?</label><select id="retorno-pendente"><option value="nao">Não — encerrar</option><option value="sim">Sim — retornar</option></select></div>':
@@ -1301,19 +1409,23 @@ window.confirmarRetorno=async()=>{
   const pendente=elPend?elPend.value==="sim":false;
   const visitas=(_retornoData.visitas||1)+1;
   const novasPendente=novoStatus==="ausente"&&pendente&&visitas<3;
-  // Merge fotos antigas + novas
-  const fotosAntigas=_retornoData.fotosBase64||[];
+  // Merge fotos antigas (IndexedDB local primeiro, fallback Firestore antigo) + novas
+  let fotosAntigas=null;
+  try{fotosAntigas=await localBuscarFotos(_retornoId);}catch(e){}
+  if(!fotosAntigas||!fotosAntigas.length)fotosAntigas=_retornoData.fotosBase64||[];
   const fotosNovas=Object.values(fotosPendentes).map(f=>({dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,legenda:f.legenda||f.tipo,numero:f.numero,combinacoes:f.combinacoes||[]}));
   const todasFotos=[...fotosAntigas,...fotosNovas];
   try{
+    // Salvar metadados no Firestore (sem fotos — vão para IndexedDB local-only)
     await updateDoc(doc(db,"vistorias",_retornoId),{
       status:novoStatus,
       pendente_retorno:novasPendente,
       visitas,
-      fotosBase64:todasFotos,
       totalFotos:todasFotos.length,
       ultimaVisita:serverTimestamp()
     });
+    // Atualizar fotos no IndexedDB local
+    try{await localSalvarFotos(_retornoId,todasFotos);}catch(e){console.error(e);}
     // Gerar PDF com todas as fotos
     const vAtual={..._retornoData,status:novoStatus,fotosBase64:todasFotos,visitas};
     await gerarPDFRetorno(vAtual);
@@ -1794,13 +1906,18 @@ function processarFoto(){
 }
 
 function mostrarPreviewFoto(dataUrl){
-  document.getElementById("preview-img").src=dataUrl;
+  const img=document.getElementById("preview-img");
+  // Limpa o src antes para não exibir a foto anterior por uma fração de segundo
+  img.removeAttribute("src");
+  // Força o repaint antes de carregar a nova foto
+  requestAnimationFrame(()=>{img.src=dataUrl;});
   document.getElementById("preview-label").textContent=fotoAtualAmbiente+" | "+fotoAtualTipo;
   document.getElementById("preview-overlay").style.display="flex";
 }
 
 window.descartarFoto=()=>{
   document.getElementById("preview-overlay").style.display="none";
+  document.getElementById("preview-img").removeAttribute("src");
   fotoAtualBlob=null;
   // Reabrir camera diretamente
   abrirCamera();
@@ -1961,34 +2078,40 @@ function abrirModalPatologias(){
 }
 
 function abrirModalPatologiasSimplificado(){
-  // Restaurar labels e elemento (caso o usuário tenha trocado de tipo de vistoria na mesma sessão)
-  document.getElementById("pat-label-1").textContent="1. Onde esta a patologia?";
-  document.getElementById("pat-label-2").textContent="2. Qual patologia?";
-  document.getElementById("pat-elem-wrap").style.display="block";
-  // Grid de partes (checklist)
-  const grid=document.getElementById("part-grid");grid.innerHTML="";
-  PARTES.forEach((p,i)=>{
-    const btn=document.createElement("button");btn.className="part-btn";btn.textContent=p;
-    btn.dataset.col=COLS[i];
-    btn.onclick=()=>{document.querySelectorAll("#part-grid .part-btn").forEach(b=>b.classList.remove("selected"));btn.classList.add("selected");};
-    grid.appendChild(btn);
-  });
-  // Lista patologias (checkboxes individuais)
-  const list=document.getElementById("pat-list");list.innerHTML="";
+  // Modal simplificado agora tem apenas 2 etapas: Patologia e Elemento.
+  // A "parte" (coluna do checklist) é derivada automaticamente do Elemento via ELEMENTO_TO_COL.
+  document.getElementById("pat-label-1").textContent="1. Qual patologia?";
+  document.getElementById("pat-label-2").textContent="2. Em qual elemento?";
+  document.getElementById("pat-elem-wrap").style.display="none";
+  // Esconder o grid de partes (não usado mais no simplificado)
+  // Como #part-grid é seguido pelo label-2 e pat-list (que era "Qual patologia"),
+  // remapeamos o uso dos slots:
+  //   - part-grid → vai conter a LISTA de patologias (checkboxes)
+  //   - pat-list  → vai conter os ELEMENTOS (botões)
+  const partGrid=document.getElementById("part-grid");
+  partGrid.innerHTML="";
+  // Renderizar patologias como item-list (checkboxes)
+  partGrid.style.gridTemplateColumns="1fr"; // uma coluna pra ficar tipo lista
   PATOLOGIAS.forEach(p=>{
-    const item=document.createElement("div");item.className="pat-item";
-    const cb=document.createElement("input");cb.type="checkbox";cb.id="pat-cb-"+p;cb.value=p;
-    const lbl=document.createElement("label");lbl.htmlFor="pat-cb-"+p;lbl.textContent=p;
+    const item=document.createElement("div");item.className="pat-item";item.style.cursor="pointer";
+    const cb=document.createElement("input");cb.type="checkbox";cb.id="pat-cb-"+p;cb.value=p;cb.style.marginRight="8px";
+    const lbl=document.createElement("label");lbl.htmlFor="pat-cb-"+p;lbl.textContent=p;lbl.style.flex="1";
+    item.style.display="flex";item.style.alignItems="center";
     item.appendChild(cb);item.appendChild(lbl);
     item.onclick=e=>{if(e.target!==cb)cb.checked=!cb.checked;};
-    list.appendChild(item);
+    partGrid.appendChild(item);
   });
-  // Grid de elementos construtivos
-  const eg=document.getElementById("elem-grid");eg.innerHTML="";
+  // Renderizar elementos como botões no slot do "pat-list"
+  const elemSlot=document.getElementById("pat-list");
+  elemSlot.innerHTML="";
+  elemSlot.style.display="grid";
+  elemSlot.style.gridTemplateColumns="repeat(2,1fr)";
+  elemSlot.style.gap="6px";
   ELEMENTOS.forEach(e=>{
     const btn=document.createElement("button");btn.className="part-btn";btn.textContent=e;
-    btn.onclick=()=>{document.querySelectorAll("#elem-grid .part-btn").forEach(b=>b.classList.remove("selected"));btn.classList.add("selected");};
-    eg.appendChild(btn);
+    btn.dataset.elemento=e;
+    btn.onclick=()=>{document.querySelectorAll("#pat-list .part-btn").forEach(b=>b.classList.remove("selected"));btn.classList.add("selected");};
+    elemSlot.appendChild(btn);
   });
 }
 
@@ -1996,8 +2119,15 @@ function abrirModalPatologiasCompleto(){
   document.getElementById("pat-label-1").textContent="1. Categoria";
   document.getElementById("pat-label-2").textContent="2. Subitens";
   document.getElementById("pat-elem-wrap").style.display="none";
+  // Resetar estilos que o modo simplificado pode ter aplicado
+  const partGrid=document.getElementById("part-grid");
+  partGrid.style.gridTemplateColumns="";
+  partGrid.innerHTML="";
+  const patList=document.getElementById("pat-list");
+  patList.style.display="";
+  patList.style.gridTemplateColumns="";
+  patList.style.gap="";
   // Grid de categorias A–L
-  const grid=document.getElementById("part-grid");grid.innerHTML="";
   PATOLOGIAS_AL.forEach(cat=>{
     const btn=document.createElement("button");btn.className="part-btn";
     btn.innerHTML='<b>'+cat.cod+'</b> '+cat.nome;
@@ -2008,10 +2138,10 @@ function abrirModalPatologiasCompleto(){
       _patCatSelecionada=cat.cod;
       renderSubitensCompleto(cat.cod);
     };
-    grid.appendChild(btn);
+    partGrid.appendChild(btn);
   });
   // Subitens vazios até categoria ser selecionada
-  document.getElementById("pat-list").innerHTML='<div style="font-size:12px;color:#888;padding:8px">Selecione uma categoria para ver os subitens.</div>';
+  patList.innerHTML='<div style="font-size:12px;color:#888;padding:8px">Selecione uma categoria para ver os subitens.</div>';
 }
 
 function renderSubitensCompleto(cod){
@@ -2045,18 +2175,18 @@ window.adicionarCombinacao=()=>{
     renderCombinacoes();
     return;
   }
-  // Simplificado (fluxo original)
-  const selectedPart=document.querySelector("#part-grid .part-btn.selected");
-  const checkedPats=Array.from(document.querySelectorAll("#pat-list input:checked")).map(cb=>cb.value);
-  const selectedElem=document.querySelector("#elem-grid .part-btn.selected");
+  // Simplificado (novo fluxo: só patologia + elemento)
+  const checkedPats=Array.from(document.querySelectorAll("#part-grid input:checked")).map(cb=>cb.value);
+  const selectedElem=document.querySelector("#pat-list .part-btn.selected");
   if(!checkedPats.length)return alert("Selecione ao menos uma patologia");
   if(!selectedElem)return alert("Selecione o elemento construtivo");
-  const combo={col:selectedPart?selectedPart.dataset.col:"paredes",parte:selectedPart?selectedPart.textContent:"",pats:checkedPats,elemento:selectedElem.textContent};
+  const elementoTxt=selectedElem.dataset.elemento||selectedElem.textContent;
+  const col=ELEMENTO_TO_COL[elementoTxt]||"paredes";
+  const combo={col,parte:"",pats:checkedPats,elemento:elementoTxt};
   _patCombinacoes.push(combo);
   // Limpar seleções para próxima combinação
-  document.querySelectorAll("#part-grid .part-btn").forEach(b=>b.classList.remove("selected"));
-  document.querySelectorAll("#pat-list input:checked").forEach(cb=>cb.checked=false);
-  document.querySelectorAll("#elem-grid .part-btn").forEach(b=>b.classList.remove("selected"));
+  document.querySelectorAll("#part-grid input:checked").forEach(cb=>cb.checked=false);
+  document.querySelectorAll("#pat-list .part-btn").forEach(b=>b.classList.remove("selected"));
   renderCombinacoes();
 };
 
@@ -2097,11 +2227,13 @@ window.confirmarPatologias=()=>{
       _patCombinacoes.push({modo:"completo",categoria:_patCatSelecionada,categoriaNome:cat.nome,subs:checkedSubs,codigo:_patCatSelecionada+checkedSubs.join(";")});
     }
   } else {
-    const checkedPats=Array.from(document.querySelectorAll("#pat-list input:checked")).map(cb=>cb.value);
-    const selectedElem=document.querySelector("#elem-grid .part-btn.selected");
+    // Simplificado: seletores atualizados (sem grid de partes)
+    const checkedPats=Array.from(document.querySelectorAll("#part-grid input:checked")).map(cb=>cb.value);
+    const selectedElem=document.querySelector("#pat-list .part-btn.selected");
     if(checkedPats.length&&selectedElem){
-      const selectedPart=document.querySelector("#part-grid .part-btn.selected");
-      _patCombinacoes.push({col:selectedPart?selectedPart.dataset.col:"paredes",parte:selectedPart?selectedPart.textContent:"",pats:checkedPats,elemento:selectedElem.textContent});
+      const elementoTxt=selectedElem.dataset.elemento||selectedElem.textContent;
+      const col=ELEMENTO_TO_COL[elementoTxt]||"paredes";
+      _patCombinacoes.push({col,parte:"",pats:checkedPats,elemento:elementoTxt});
     }
   }
   document.getElementById("pat-modal").style.display="none";
@@ -2282,14 +2414,24 @@ function corrigirOrientacaoFoto(dataUrl){
 }
 
 // Comprime foto para JPEG 0.75 — reduz ~4MB para ~600KB sem perda visual
+// Compressão padrão para fotos no app: reduz dimensão máxima para 2400px e qualidade 0.85.
+// Reduz drasticamente o consumo de RAM ao gerenciar 100+ fotos em uma única vistoria.
 function comprimirFoto(dataUrl){
   return new Promise(res=>{
     const img=new Image();
     img.onload=()=>{
+      let w=img.naturalWidth,h=img.naturalHeight;
+      const maior=Math.max(w,h);
+      if(maior>2400){
+        const sc=2400/maior;
+        w=Math.round(w*sc);h=Math.round(h*sc);
+      }
       const c=document.createElement("canvas");
-      c.width=img.naturalWidth;c.height=img.naturalHeight;
-      c.getContext("2d").drawImage(img,0,0);
-      res(c.toDataURL("image/jpeg",0.75));
+      c.width=w;c.height=h;
+      const ctx=c.getContext("2d");
+      ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
+      ctx.drawImage(img,0,0,w,h);
+      res(c.toDataURL("image/jpeg",0.85));
     };
     img.onerror=()=>res(dataUrl);
     img.src=dataUrl;
@@ -2368,11 +2510,16 @@ window.togglePatologia=(amb,col,pat,checked)=>{if(!currentVistoria.checklist)cur
 window.salvarChecklist=()=>{if(currentVistoria)currentVistoria.observacoes=document.getElementById("cl-obs").value;goTo("s-finalizacao");};
 
 function renderFinalizacao(){
-  // Limpar campos da vistoria anterior (não persistem entre vistorias diferentes)
-  ["fin-idade","fin-estado","fin-status-vistoria","fin-pendente"].forEach(id=>{
+  // Limpar campos da vistoria anterior e aplicar defaults
+  const defaults={"fin-idade":"","fin-estado":"Regular","fin-status-vistoria":"concluida","fin-pendente":""};
+  Object.entries(defaults).forEach(([id,val])=>{
     const el=document.getElementById(id);
-    if(el)el.value="";
+    if(el)el.value=val;
   });
+  // Sincronizar a UI de "pendente_retorno" (campo só aparece quando status=ausente)
+  if(typeof togglePendente==="function"){
+    try{togglePendente(document.getElementById("fin-status-vistoria").value);}catch(e){}
+  }
   const prevEl=document.getElementById("sig-tecnico-preview");
   if(!assinaturaTecnico){prevEl.innerHTML='<div class="warn-box">Sem assinatura. <a href="#" onclick="goTo(\'s-perfil\')" style="color:#007aff;font-weight:500">Cadastrar em Perfil</a></div>';}
   else{prevEl.innerHTML='<img src="'+assinaturaTecnico+'" style="max-height:60px;max-width:200px;object-fit:contain"><br><span style="font-size:12px;color:#888;display:block;margin-top:4px">'+(currentUserData&&currentUserData.nome||"")+"</span>";}
@@ -2412,7 +2559,7 @@ function abrirDetalheVistoria(id,data){
   document.getElementById("dv-titulo").textContent=data.responsavel&&data.responsavel.nome||"Vistoria";
   const c=document.getElementById("dv-content");c.innerHTML="";
   // Badge de status no topo
-  const statusLabel={"concluida":"Finalizado","parcial":"Vistoria Parcial","recusa":"Recusa","ausente":"Ausente"};
+  const statusLabel={"concluida":"Finalizado","parcial":"Parcial","recusa":"Recusa","ausente":"Ausente"};
   const statusColor={"concluida":"#10b981","parcial":"#3b82f6","recusa":"#dc2626","ausente":"#f59e0b"};
   const st=data.status||"concluida";
   const badgeDiv=document.createElement("div");
@@ -2437,12 +2584,20 @@ function abrirDetalheVistoria(id,data){
   }
   // Observacoes
   if(data.observacoes){const card3=document.createElement("div");card3.className="card";card3.innerHTML='<h2>Observacoes</h2><p style="font-size:13px;color:#555">'+data.observacoes+"</p>";c.appendChild(card3);}
-  // Botao editar fotos
-  if(data.fotosBase64&&data.fotosBase64.length){
-    const btnEdit=document.createElement("button");btnEdit.className="btn";btnEdit.style.cssText="background:#fff7ed;color:#c2410c;border:1px solid #c2410c;margin-bottom:8px";btnEdit.textContent="Editar Fotos";btnEdit.onclick=()=>abrirEditorFotos(id,data);c.appendChild(btnEdit);
-  }
-  // Botao regenerar PDF
-  const btnPDF=document.createElement("button");btnPDF.className="btn primary";btnPDF.textContent="Regerar PDF";btnPDF.onclick=()=>regeRarPDF(data);c.appendChild(btnPDF);
+  // Botão editar fotos e regerar PDF — disponíveis se houver fotos no IndexedDB local
+  // ou no Firestore (vistorias antigas com fotosBase64).
+  const btnEdit=document.createElement("button");btnEdit.className="btn";btnEdit.style.cssText="background:#fff7ed;color:#c2410c;border:1px solid #c2410c;margin-bottom:8px";btnEdit.textContent="Editar Fotos";btnEdit.onclick=()=>abrirEditorFotos(id,data);c.appendChild(btnEdit);
+  const btnPDF=document.createElement("button");btnPDF.className="btn primary";btnPDF.textContent="Regerar PDF";btnPDF.onclick=async()=>{
+    // Tenta enriquecer data com fotos do IndexedDB antes de chamar regeRarPDF
+    let fotos=null;
+    try{fotos=await localBuscarFotos(id);}catch(e){}
+    const dadosCompletos={...data};
+    if(fotos&&fotos.length){dadosCompletos.fotosBase64=fotos;}
+    if(!dadosCompletos.fotosBase64||!dadosCompletos.fotosBase64.length){
+      return alert("As fotos desta vistoria não estão disponíveis neste dispositivo.\n\nA regeração de PDF só funciona no celular onde a vistoria foi originalmente gerada.");
+    }
+    regeRarPDF(dadosCompletos);
+  };c.appendChild(btnPDF);
   goTo("s-detalhe-vistoria");
 }
 
@@ -2855,10 +3010,14 @@ window.finalizarVistoria=async()=>{
     pdf.text("Responsável Técnico",sigXR+sigW/2,yf+9.5,{align:"center"});
     pdfFooter(pdf,FLPW,FLPH,FLML,FLMR,FLMB,prest);
 
-    // Salvar Firebase + download
-    const fotosBase64=isPendente?Object.values(fotosPendentes).map(f=>({dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,legenda:f.legenda||f.tipo,numero:f.numero,combinacoes:f.combinacoes||[]})):[];
-    const vDoc={clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,coletorNome:currentVistoria.coletorNome,responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,ocupacao:currentVistoria.ocupacao,tipo:currentVistoria.tipo,estado:currentVistoria.estado,idade:currentVistoria.idade,data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,userId:currentUser.uid,checklist:currentVistoria.checklist,ambientesExtras:ambientesExtras||[],observacoes:currentVistoria.observacoes,totalFotos:Object.keys(fotosPendentes).length,status:currentVistoria.statusVistoria||"concluida",pendente_retorno:isPendente,visitas:1,fotosBase64,criadoEm:serverTimestamp()};
-    await addDoc(collection(db,"vistorias"),vDoc);
+    // Salvar Firebase (sem fotos — fotos vão para IndexedDB local-only) + download
+    const vDoc={clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,coletorNome:currentVistoria.coletorNome,responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,ocupacao:currentVistoria.ocupacao,tipo:currentVistoria.tipo,tipoLaudo:currentVistoria.tipoLaudo||"simplificado",estado:currentVistoria.estado,idade:currentVistoria.idade,data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,userId:currentUser.uid,checklist:currentVistoria.checklist,ambientesExtras:ambientesExtras||[],observacoes:currentVistoria.observacoes,totalFotos:Object.keys(fotosPendentes).length,status:currentVistoria.statusVistoria||"concluida",pendente_retorno:isPendente,visitas:1,criadoEm:serverTimestamp()};
+    const vRef=await addDoc(collection(db,"vistorias"),vDoc);
+    // Salvar fotos local-only (IndexedDB) usando o ID gerado pelo Firestore
+    try{
+      const fotosLocais=Object.values(fotosPendentes).map(f=>({dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,legenda:f.legenda||f.tipo,numero:f.numero,combinacoes:f.combinacoes||[]}));
+      await localSalvarFotos(vRef.id,fotosLocais);
+    }catch(eLocal){console.error("Falha ao salvar fotos local-only:",eLocal);}
     // Fechar item da fila se veio de la
     if(window._filaItemId){try{await updateDoc(doc(db,"fila_vistorias",window._filaItemId),{status:"concluida"});}catch(e){}window._filaItemId=null;}
 
