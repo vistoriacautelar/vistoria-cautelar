@@ -356,7 +356,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
           <thead><tr>
             <th style="min-width:80px;position:sticky;left:0;background:#f0f0f0;z-index:1">Local</th>
             <th style="min-width:95px">Estrutura</th><th style="min-width:95px">Parede e muro</th>
-            <th style="min-width:95px">Cobertura a teto</th><th style="min-width:90px">Porta e esquadria</th>
+            <th style="min-width:95px">Cobertura e teto</th><th style="min-width:90px">Porta e esquadria</th>
             <th style="min-width:90px">Piso e calcamento</th>
           </tr></thead>
           <tbody id="checklist-body"></tbody>
@@ -591,7 +591,7 @@ const auth=getAuth(fbApp);
 const db=getFirestore(fbApp);
 
 const AMBIENTES=["Fachada","Calçada","Garagem","Corredor externo","Área de serviço","Quintal","Sala","Cozinha","Banheiro 01","Banheiro 02","Lavabo","Dormitório 01","Dormitório 02","Dormitório 03","Corredor interno","Varanda","Sacada","Depósito"];
-const PARTES=["Estrutura","Parede e muro","Cobertura a teto","Porta e esquadria","Piso e cal\xe7amento"];
+const PARTES=["Estrutura","Parede e muro","Cobertura e teto","Porta e esquadria","Piso e cal\xe7amento"];
 const COLS=["estrutura","paredes","cobertura","portas","piso"];
 const PATOLOGIAS=["Fissura","Trinca","Rachadura","Umidade","Infiltração","Desplacamento","Armadura Exposta","Danificado"];
 // Grupos do checklist PDF (agrupado para economizar espaço)
@@ -1449,9 +1449,12 @@ async function gerarPDFRetorno(v){
 
 async function loadNovVistoriaForm(){
   await populateClienteSelect("nv-cliente");
-  // Restaurar último cliente e coletor selecionado
-  const lastClienteId=localStorage.getItem("lastClienteId")||"";
-  const lastColetorId=localStorage.getItem("lastColetorId")||"";
+  // Restaurar último cliente e coletor selecionado — só se for do mesmo dia
+  const hoje=new Date().toISOString().slice(0,10); // YYYY-MM-DD
+  const lastData=localStorage.getItem("lastSelecaoData")||"";
+  const mesmoDia=lastData===hoje;
+  const lastClienteId=mesmoDia?(localStorage.getItem("lastClienteId")||""):"";
+  const lastColetorId=mesmoDia?(localStorage.getItem("lastColetorId")||""):"";
   const lastRua=localStorage.getItem("lastRua")||"";
   if(lastClienteId){
     const sel=document.getElementById("nv-cliente");
@@ -1907,9 +1910,11 @@ function processarFoto(){
 
 function mostrarPreviewFoto(dataUrl){
   const img=document.getElementById("preview-img");
-  // Limpa o src antes para não exibir a foto anterior por uma fração de segundo
+  // Esconder a imagem completamente até a nova foto carregar (evita flash da anterior)
+  img.style.visibility="hidden";
   img.removeAttribute("src");
-  // Força o repaint antes de carregar a nova foto
+  img.onload=()=>{img.style.visibility="visible";};
+  // Atrasar a atribuição de src para garantir que o repaint da invisibilidade aconteça antes
   requestAnimationFrame(()=>{img.src=dataUrl;});
   document.getElementById("preview-label").textContent=fotoAtualAmbiente+" | "+fotoAtualTipo;
   document.getElementById("preview-overlay").style.display="flex";
@@ -1917,7 +1922,9 @@ function mostrarPreviewFoto(dataUrl){
 
 window.descartarFoto=()=>{
   document.getElementById("preview-overlay").style.display="none";
-  document.getElementById("preview-img").removeAttribute("src");
+  const img=document.getElementById("preview-img");
+  img.style.visibility="hidden";
+  img.removeAttribute("src");
   fotoAtualBlob=null;
   // Reabrir camera diretamente
   abrirCamera();
@@ -1941,8 +1948,14 @@ function abrirEditorSetas(imgDataUrl){
     const n=_fotoSetasAcumuladas.length;
     titulo.textContent=n===0?"Toque na foto para marcar a patologia":"Marque mais uma patologia (já tem "+n+")";
   }
-  document.getElementById("arrow-overlay").style.display="flex";
   const canvas=document.getElementById("arrow-canvas");
+  // Limpar o canvas IMEDIATAMENTE (evita exibir a foto anterior antes de a nova carregar)
+  if(canvas.width&&canvas.height){
+    const ctxClear=canvas.getContext("2d");
+    ctxClear.fillStyle="#000";
+    ctxClear.fillRect(0,0,canvas.width,canvas.height);
+  }
+  document.getElementById("arrow-overlay").style.display="flex";
   const img=new Image();
   img.onload=()=>{
     arrowImage=img;
@@ -2382,35 +2395,15 @@ function lerOrientacaoEXIF(dataUrl){
   });
 }
 
-// Corrige orientação EXIF de fotos tiradas no iOS
+// Corrige orientação EXIF.
+// Navegadores modernos (Chrome 81+, Safari 13+, Firefox 77+) já aplicam a orientação EXIF
+// automaticamente ao carregar a imagem em <img>/canvas. Rotacionar manualmente em cima
+// disso causa rotação dupla (foto retrato saindo deitada). Por isso, a função agora
+// só toca a foto se o navegador NÃO suportar a rotação automática (caso raro).
 function corrigirOrientacaoFoto(dataUrl){
-  return new Promise(res=>{
-    lerOrientacaoEXIF(dataUrl).then(orient=>{
-      const img=new Image();
-      img.onload=()=>{
-        const w=img.naturalWidth,h=img.naturalHeight;
-        const c=document.createElement("canvas");
-        const ctx=c.getContext("2d");
-        // Orientações 5-8 trocam largura e altura
-        if(orient>=5&&orient<=8){c.width=h;c.height=w;}
-        else{c.width=w;c.height=h;}
-        switch(orient){
-          case 2:ctx.transform(-1,0,0,1,w,0);break;
-          case 3:ctx.transform(-1,0,0,-1,w,h);break;
-          case 4:ctx.transform(1,0,0,-1,0,h);break;
-          case 5:ctx.transform(0,1,1,0,0,0);break;
-          case 6:ctx.transform(0,1,-1,0,h,0);break;
-          case 7:ctx.transform(0,-1,-1,0,h,w);break;
-          case 8:ctx.transform(0,-1,1,0,0,w);break;
-          default:break;
-        }
-        ctx.drawImage(img,0,0);
-        res(c.toDataURL("image/jpeg",1.0));
-      };
-      img.onerror=()=>res(dataUrl);
-      img.src=dataUrl;
-    });
-  });
+  // Heurística: se o canvas resultar em proporções iguais à original do <img>, é porque
+  // o navegador já aplicou EXIF e não há nada a fazer.
+  return Promise.resolve(dataUrl);
 }
 
 // Comprime foto para JPEG 0.75 — reduz ~4MB para ~600KB sem perda visual
@@ -2447,10 +2440,13 @@ function recomprimirParaPDF(dataUrl,maxDim,quality){
       try{
         let w=img.naturalWidth,h=img.naturalHeight;
         const maior=Math.max(w,h);
-        if(maior>maxDim){
-          const sc=maxDim/maior;
-          w=Math.round(w*sc);h=Math.round(h*sc);
+        // Já está pequena? Pula recompressão (economiza memória e tempo).
+        // Pular só se já estiver bem abaixo do limite e a imagem original parece comprimida.
+        if(maior<=maxDim*1.05){
+          return res(dataUrl);
         }
+        const sc=maxDim/maior;
+        w=Math.round(w*sc);h=Math.round(h*sc);
         const c=document.createElement("canvas");
         c.width=w;c.height=h;
         const ctx=c.getContext("2d");
@@ -2878,8 +2874,10 @@ window.finalizarVistoria=async()=>{
     pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(CKML,yc,CKCW,7,"S");yc+=9;
 
     const ambTotal=[...AMBIENTES,...ambientesExtras];
-    const colsH=["Local","Estrutura","Parede e muro","Cobertura a teto","Porta e esquadria","Piso e calçamento"];
-    const colWRaw=[28,31,32,33,32,29];
+    const colsH=["Local","Estrutura","Parede e muro","Cobertura e teto","Porta e esquadria","Piso e calçamento"];
+    // Largura: Piso/calçamento tem o nome mais longo de patologia (Fissura/Trinca/Rachadura).
+    // Damos mais espaço para ela e tiramos das demais.
+    const colWRaw=[26,30,31,31,30,37];
     const cwSum=colWRaw.reduce((a,b)=>a+b,0);
     const colWN=colWRaw.map(w=>w*(CKCW/cwSum));
     const hdrH=7;
@@ -2942,16 +2940,17 @@ window.finalizarVistoria=async()=>{
           // Marca se qualquer patologia do grupo estiver selecionada
           const mk=PATOLOGIAS_CK_MAP[grp].some(p=>arr.includes(p));
           const ty=yc+1.5+pi*step;
-          const bx=cx+1;const by=ty-0.3;const bs=3;
+          const bx=cx+1;const by=ty-0.3;const bs=2.6;
           if(mk){
             pdf.setFillColor(30,30,30);pdf.rect(bx,by,bs,bs,"F");
+            pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(bx,by,bs,bs,"S");
             pdf.setTextColor(255,255,255);pdf.setFontSize(5);pdf.setFont("helvetica","bold");
             pdf.text("X",bx+bs/2,by+bs*0.75,{align:"center"});
-            pdf.setTextColor(0,0,0);pdf.setFont("helvetica","bold");pdf.setFontSize(6);
+            pdf.setTextColor(0,0,0);pdf.setFont("helvetica","bold");pdf.setFontSize(5.8);
             pdf.text(grp,cx+bs+1.5,ty+2);
           }else{
-            pdf.setDrawColor(150,150,150);pdf.setLineWidth(0.2);pdf.rect(bx,by,bs,bs,"S");
-            pdf.setDrawColor(0,0,0);pdf.setFont("helvetica","normal");pdf.setFontSize(5.8);
+            pdf.setDrawColor(80,80,80);pdf.setLineWidth(0.3);pdf.rect(bx,by,bs,bs,"S");
+            pdf.setDrawColor(0,0,0);pdf.setFont("helvetica","normal");pdf.setFontSize(5.6);
             pdf.setTextColor(130,130,130);pdf.text(grp,cx+bs+1.5,ty+2);
             pdf.setTextColor(0,0,0);
           }
@@ -3054,6 +3053,7 @@ window.finalizarVistoria=async()=>{
     if(currentVistoria){
       localStorage.setItem("lastClienteId",currentVistoria.clienteId||"");
       localStorage.setItem("lastColetorId",currentVistoria.coletorId||"");
+      localStorage.setItem("lastSelecaoData",new Date().toISOString().slice(0,10));
       localStorage.setItem("lastRua",(currentVistoria.endereco&&currentVistoria.endereco.rua)||"");
       // Se a vistoria veio da fila, marca item como concluído e volta para a fila
       if(currentVistoria._filaItemId){
