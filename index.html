@@ -264,10 +264,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
         <div class="grid2" style="margin-top:6px"><button class="btn small" onclick="document.getElementById('nv-reaproveitar-rua-box').style.display='none'">Sim, manter</button><button class="btn small" onclick="document.getElementById('nv-rua').value='';document.getElementById('nv-reaproveitar-rua-box').style.display='none'">Não, limpar</button></div>
       </div>
       <div class="field"><label>Rua *</label><input type="text" id="nv-rua" placeholder="Nome da rua" oninput="capitalizarInput(this)"></div>
-      <div class="grid2">
-        <div class="field"><label>Numero *</label><input type="text" id="nv-num" placeholder='Nº ou "SN"' style="text-transform:uppercase"></div>
-        <div class="field"><label>Complemento</label><input type="text" id="nv-comp" placeholder="Casa 1, Ap 23..." oninput="capitalizarInput(this)"></div>
+      <div class="field" style="display:flex;gap:8px;align-items:flex-end">
+        <div style="flex:1"><label>Numero *</label><input type="text" id="nv-num" placeholder="123" inputmode="numeric"></div>
+        <button class="btn small" onclick="document.getElementById('nv-num').value='SN'" style="margin-bottom:0;white-space:nowrap">SN</button>
       </div>
+      <div class="field"><label>Complemento</label><input type="text" id="nv-comp" placeholder="Casa 1, Ap 23..." oninput="capitalizarInput(this)"></div>
     </div>
     <div class="card"><h2>Tipo de laudo</h2>
       <div class="laudo-tipo-grid">
@@ -320,8 +321,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 </div>
 
 <div id="s-finalizacao" class="screen">
-  <div class="topbar"><button class="back" onclick="goTo('s-vistoria')">&#8249; Voltar</button><h1>Finalizacao</h1></div>
+  <div class="topbar"><button class="back" onclick="goTo('s-vistoria')" id="fin-back">&#8249; Voltar</button><h1>Finalizacao</h1></div>
   <div class="content">
+    <!-- Banner pós-finalização: aparece após gerar PDF, com botões de ação. -->
+    <div id="fin-sucesso-banner" style="display:none">
+      <div class="card" style="background:#ecfdf5;border:1px solid #6ee7b7">
+        <h2 style="color:#065f46;margin-bottom:8px">✓ Vistoria finalizada</h2>
+        <p style="font-size:13px;color:#065f46;margin-bottom:14px">PDF e ZIP de fotos foram gerados. Agora você pode:</p>
+        <button class="btn primary" onclick="acaoGerarPDFNovamente()" style="margin-bottom:8px">Gerar PDF Novamente</button>
+        <button class="btn" onclick="acaoEnviarComprovante(event)" style="background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;margin-bottom:8px">Enviar Comprovante</button>
+        <button class="btn" onclick="acaoNovaVistoria()" style="margin-bottom:0">Nova Vistoria</button>
+      </div>
+    </div>
+    <!-- Blocos normais da Finalização: ocultados quando o banner aparece -->
+    <div id="fin-blocos-normais">
     <div class="card"><h2>Estado de conservacao</h2>
       <div class="field"><label>Status da Vistoria <span style="color:#dc2626">*</span></label><select id="fin-status-vistoria" onchange="togglePendente(this.value)"><option value="">Selecione o status...</option><option value="concluida">Finalizado</option><option value="parcial">Parcial</option><option value="recusa">Recusa</option><option value="ausente">Ausente</option></select></div>
       <div class="field" id="field-pendente" style="display:none"><label>Pendente de retorno?</label><select id="fin-pendente"><option value="nao" selected>Não — encerrar</option><option value="sim">Sim — retornar</option></select></div>
@@ -337,6 +350,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
     <div class="card"><h2>Assinatura do tecnico</h2><div id="sig-tecnico-preview" style="padding:10px;background:#f9f9f9;border-radius:8px;text-align:center"></div></div>
     <div id="sig-confirmado" style="display:none;background:#d1fae5;color:#065f46;padding:12px 16px;border-radius:10px;font-size:14px;font-weight:500;text-align:center">Assinatura confirmada</div>
     <button class="btn success" onclick="finalizarVistoria()" id="btn-finalizar" disabled style="opacity:.4">Gerar PDF + ZIP e finalizar</button>
+    </div>
   </div>
 </div>
 
@@ -2791,6 +2805,21 @@ window.togglePatologia=(amb,col,pat,checked)=>{if(!currentVistoria.checklist)cur
 window.salvarChecklist=()=>{if(currentVistoria){const obsEl=document.getElementById("cl-obs");if(obsEl)currentVistoria.observacoes=obsEl.value;}goTo("s-finalizacao");};
 
 function renderFinalizacao(){
+  // === MODO PÓS-FINALIZAÇÃO: se acabamos de gerar PDF, mostrar banner com botões de ação ===
+  const banner=document.getElementById("fin-sucesso-banner");
+  const blocosNormais=document.getElementById("fin-blocos-normais");
+  const btnBack=document.getElementById("fin-back");
+  if(window._ultimaVistoriaFinalizada){
+    if(banner)banner.style.display="block";
+    if(blocosNormais)blocosNormais.style.display="none";
+    // Botão Voltar muda para ir pro Dash (não pra Vistoria — que já não tem mais estado)
+    if(btnBack)btnBack.setAttribute("onclick","goTo('s-dash')");
+    return;
+  }
+  // Caminho normal (vistoria em andamento): garantir UI normal visível
+  if(banner)banner.style.display="none";
+  if(blocosNormais)blocosNormais.style.display="block";
+  if(btnBack)btnBack.setAttribute("onclick","goTo('s-vistoria')");
   // Limpar campos da vistoria anterior e aplicar defaults
   const defaults={"fin-idade":"","fin-estado":"Regular","fin-status-vistoria":"concluida","fin-pendente":""};
   Object.entries(defaults).forEach(([id,val])=>{
@@ -2815,6 +2844,32 @@ function renderFinalizacao(){
 window.limparAssinatura=()=>{if(!sigCtx)return;sigCtx.fillStyle="#fff";sigCtx.fillRect(0,0,sigCanvas.width,sigCanvas.height);assinaturaData=null;document.getElementById("sig-confirmado").style.display="none";document.getElementById("btn-finalizar").disabled=true;document.getElementById("btn-finalizar").style.opacity=".4";};
 window.salvarAssinatura=()=>{assinaturaData=sigCanvas.toDataURL("image/png");document.getElementById("sig-confirmado").style.display="block";document.getElementById("btn-finalizar").disabled=false;document.getElementById("btn-finalizar").style.opacity="1";};
 window.confirmarSairVistoria=()=>{if(confirm("Sair? Dados nao salvos serao perdidos."))goTo("s-dash");};
+
+// ===== AÇÕES DO BANNER PÓS-FINALIZAÇÃO =====
+window.acaoGerarPDFNovamente=async()=>{
+  const u=window._ultimaVistoriaFinalizada;
+  if(!u){alert("Sessão expirada. Acesse a vistoria pelo histórico.");return;}
+  // Buscar dados completos (incluindo fotos do IndexedDB)
+  try{
+    const fotosLocais=await localBuscarFotos(u.id);
+    const dadosCompletos={...u.data,id:u.id};
+    if(fotosLocais&&fotosLocais.length){dadosCompletos.fotosBase64=fotosLocais;}
+    await regeRarPDF(dadosCompletos);
+  }catch(e){
+    console.error("acaoGerarPDFNovamente:",e);
+    alert("Erro: "+(e.message||e));
+  }
+};
+window.acaoEnviarComprovante=async(ev)=>{
+  const u=window._ultimaVistoriaFinalizada;
+  if(!u){alert("Sessão expirada.");return;}
+  await enviarComprovanteVistoria(u.id,u.data,ev);
+};
+window.acaoNovaVistoria=()=>{
+  // Limpa o estado de "última vistoria" e vai pra tela de nova vistoria
+  window._ultimaVistoriaFinalizada=null;
+  goTo("s-nova-vistoria");
+};
 
 // Ir direto pra finalização sem passar pela tela de checklist (removida).
 // Apenas valida que ao menos uma foto foi tirada (caso contrário sugere finalizar como Ausente).
@@ -2952,7 +3007,7 @@ function abrirDetalheVistoria(id,data){
   // Botão editar fotos e regerar PDF — disponíveis se houver fotos no IndexedDB local
   // ou no Firestore (vistorias antigas com fotosBase64).
   const btnEdit=document.createElement("button");btnEdit.className="btn";btnEdit.style.cssText="background:#fff7ed;color:#c2410c;border:1px solid #c2410c;margin-bottom:8px";btnEdit.textContent="Editar Fotos";btnEdit.onclick=()=>abrirEditorFotos(id,data);c.appendChild(btnEdit);
-  const btnComprov=document.createElement("button");btnComprov.className="btn";btnComprov.style.cssText="background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;margin-bottom:8px";btnComprov.textContent="Enviar Comprovante";btnComprov.onclick=()=>enviarComprovanteVistoria(id,data);c.appendChild(btnComprov);
+  const btnComprov=document.createElement("button");btnComprov.className="btn";btnComprov.style.cssText="background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;margin-bottom:8px";btnComprov.textContent="Enviar Comprovante";btnComprov.onclick=(ev)=>enviarComprovanteVistoria(id,data,ev);c.appendChild(btnComprov);
   const btnPDF=document.createElement("button");btnPDF.className="btn primary";btnPDF.textContent="Gerar PDF Novamente";btnPDF.onclick=async()=>{
     // Tenta enriquecer data com fotos do IndexedDB antes de chamar regeRarPDF
     let fotos=null;
@@ -3244,8 +3299,15 @@ async function uploadComprovante(blob,vistoriaId){
   if(!currentUser)throw new Error("Sem usuário autenticado");
   const path="comprovantes/"+currentUser.uid+"/"+vistoriaId+".pdf";
   const r=storageRef(fbStorage,path);
-  await uploadBytes(r,blob,{contentType:"application/pdf"});
-  const url=await getDownloadURL(r);
+  // TIMEOUT: o Firebase Storage pode "pendurar" indefinidamente quando há erro de CORS,
+  // permissão não configurada ou rede instável. Esperamos no máximo 20s pelo upload.
+  const uploadPromise=uploadBytes(r,blob,{contentType:"application/pdf"});
+  const timeoutPromise=new Promise((_,rej)=>setTimeout(()=>rej(new Error("Tempo esgotado (20s) ao enviar para o Firebase Storage. Verifique se Storage está habilitado e se as Regras do Storage permitem upload.")),20000));
+  await Promise.race([uploadPromise,timeoutPromise]);
+  const url=await Promise.race([
+    getDownloadURL(r),
+    new Promise((_,rej)=>setTimeout(()=>rej(new Error("Tempo esgotado ao obter URL do comprovante.")),10000))
+  ]);
   // Registra metadados no Firestore para retomar depois sem regerar
   try{
     const expiraEm=Date.now()+30*24*60*60*1000;
@@ -3319,23 +3381,28 @@ window.compartilharComprovanteLink=async()=>{
 };
 
 // Envia comprovante de uma vistoria já existente no histórico (regera se preciso).
-window.enviarComprovanteVistoria=async(vistoriaId,vData)=>{
+window.enviarComprovanteVistoria=async(vistoriaId,vData,ev)=>{
+  // Estado visual de progresso no botão
+  const btn=ev&&ev.currentTarget;
+  const origTxt=btn&&btn.textContent;
+  if(btn){btn.disabled=true;btn.textContent="Gerando...";}
+  let blobGerado=null;
   try{
     // Se já temos URL ativa e não expirou, só mostra o QR
     if(vData.comprovanteUrl&&vData.comprovanteExpira&&vData.comprovanteExpira>Date.now()){
       mostrarModalQRComprovante(vData.comprovanteUrl);
       return;
     }
-    // Caso contrário, regenerar
-    showToast("Gerando comprovante...",3000);
+    showToast("Gerando comprovante...",2000);
     // Para regerar, precisamos da assinatura do responsável (salva no Firestore quando finalizada)
     const assinaturaResp=vData.assinaturaResp||null;
     const assinaturaTec=(currentUserData&&currentUserData.assinatura)||vData.assinaturaTecnico||null;
     if(!assinaturaResp){
-      alert("Esta vistoria foi finalizada antes da implementação do comprovante e não possui a assinatura do responsável salva. Não é possível gerar novamente.");
-      return;
+      // Vistoria sem assinatura (ausente/recusa): permitir gerar comprovante sem ela
+      const seguir=confirm("Esta vistoria não tem a assinatura do responsável (pode ser ausente/recusa).\n\nGerar comprovante mesmo assim?");
+      if(!seguir){if(btn){btn.disabled=false;btn.textContent=origTxt;}return;}
     }
-    // Reconstruir conclusão e ambientes utilizados a partir das fotos do IndexedDB (se disponíveis)
+    // Reconstruir ambientes utilizados a partir das fotos do IndexedDB (se disponíveis)
     const conclusaoLinhas=[];
     let ambUtilizados=[];
     try{
@@ -3344,12 +3411,28 @@ window.enviarComprovanteVistoria=async(vistoriaId,vData)=>{
         fotosLocais.forEach(f=>{if(f&&f.ambiente&&!ambUtilizados.includes(f.ambiente))ambUtilizados.push(f.ambiente);});
       }
     }catch(e){}
-    const blob=await gerarComprovanteBlob(vData,conclusaoLinhas,assinaturaResp,assinaturaTec,vData.ambientesExtras||[],ambUtilizados);
-    const url=await uploadComprovante(blob,vistoriaId);
-    mostrarModalQRComprovante(url);
+    if(btn)btn.textContent="Gerando PDF...";
+    blobGerado=await gerarComprovanteBlob(vData,conclusaoLinhas,assinaturaResp,assinaturaTec,vData.ambientesExtras||[],ambUtilizados);
+    // Tentar upload pro Storage com timeout
+    if(btn)btn.textContent="Enviando...";
+    try{
+      const url=await uploadComprovante(blobGerado,vistoriaId);
+      mostrarModalQRComprovante(url);
+    }catch(eUp){
+      console.error("Falha upload Storage:",eUp);
+      // Fallback: oferecer download/share local do PDF
+      const nomeArq="comprovante_"+(vData.responsavel&&vData.responsavel.nome||"vistoria").replace(/[^a-zA-Z0-9]/g,"_")+".pdf";
+      const usarLocal=confirm("Não foi possível enviar para a nuvem (geração de QR Code).\n\nMotivo provável: Firebase Storage não está habilitado ou as Regras do Storage bloqueiam o upload.\n\nDeseja BAIXAR o comprovante para enviar manualmente pelo WhatsApp/Email?\n\nDetalhes: "+(eUp.message||"desconhecido"));
+      if(usarLocal){
+        await shareOrDownload(blobGerado,nomeArq,"application/pdf");
+        showToast("Comprovante baixado. Envie manualmente.",3500);
+      }
+    }
   }catch(e){
-    console.error(e);
+    console.error("enviarComprovanteVistoria:",e);
     alert("Erro ao gerar comprovante: "+(e.message||e));
+  } finally {
+    if(btn){btn.disabled=false;btn.textContent=origTxt||"Enviar Comprovante";}
   }
 };
 
@@ -3786,15 +3869,25 @@ window.finalizarVistoria=async()=>{
     // acionar manualmente pelo botão "Enviar Comprovante" no histórico (s-detalhe-vistoria).
     // Isso evita o travamento que acontecia no fim da finalização ao tentar fazer upload
     // pro Storage. ===
-    // Salvar defaults ANTES de limpar
+    // Salvar defaults ANTES de limpar parcialmente
     if(currentVistoria){
       localStorage.setItem("lastClienteId",currentVistoria.clienteId||"");
       localStorage.setItem("lastColetorId",currentVistoria.coletorId||"");
       localStorage.setItem("lastSelecaoData",new Date().toISOString().slice(0,10));
       localStorage.setItem("lastRua",(currentVistoria.endereco&&currentVistoria.endereco.rua)||"");
     }
+    // Em vez de limpar tudo e voltar pra Nova Vistoria, mantém os dados desta vistoria
+    // disponíveis para o usuário acionar "Gerar PDF Novamente" e/ou "Enviar Comprovante".
+    // Os dados ficam guardados num objeto temporário (window._ultimaVistoriaFinalizada) que
+    // a tela de Finalização mostra como banner de sucesso com botões de ação.
+    window._ultimaVistoriaFinalizada={
+      id:vRef.id,
+      data:{...vDoc,id:vRef.id},
+      criadoEmTs:Date.now()
+    };
     currentVistoria=null;fotosPendentes={};assinaturaData=null;ambientesExtras=[];
-    goTo("s-nova-vistoria");
+    // Recarrega a tela de Finalização para mostrar o estado de sucesso com botões
+    renderFinalizacao();
   }catch(e){
     console.error(e);
     // Restaurar estado: sessão de vistoria deve permanecer disponível para nova tentativa
