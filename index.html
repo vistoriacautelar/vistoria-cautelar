@@ -151,67 +151,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div class="list-item" onclick="goTo('s-usuarios')"><div class="avatar" style="background:#d1fae5;color:#065f46"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg></div><div class="info"><div class="title">Usuarios</div><div class="sub">Tecnicos cadastradores</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
       <div class="sep"></div>
     </div>
-    <div id="dash-comunicador-section" style="display:none">
-      <div class="section-header">Captacao</div>
-      <div class="list-item" onclick="goTo('s-novo-imovel')"><div class="avatar" style="background:#fff7ed;color:#c2410c"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg></div><div class="info"><div class="title">Cadastrar Imovel</div><div class="sub">Registrar morador e endereco</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
-      <div class="list-item" onclick="goTo('s-fila')"><div class="avatar" style="background:#fff7ed;color:#c2410c"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg></div><div class="info"><div class="title">Imoveis Cadastrados</div><div class="sub" id="dash-fila-count">Carregando...</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
-    </div>
     <div id="dash-cadastrador-section">
       <div class="section-header">Vistorias</div>
-      <div class="list-item" onclick="goTo('s-fila')"><div class="avatar" style="background:#dbeafe;color:#1d4ed8"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg></div><div class="info"><div class="title">Fila de Imoveis</div><div class="sub" id="dash-fila-count2">Aguardando vistoria</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
+      <div class="list-item" onclick="goTo('s-nova-vistoria')"><div class="avatar" style="background:#fef3c7;color:#92400e"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div><div class="info"><div class="title">Nova Vistoria</div><div class="sub">Iniciar nova vistoria</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
       <div class="list-item" onclick="goTo('s-pendentes')"><div class="avatar" style="background:#fef2f2;color:#dc2626"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div><div class="info"><div class="title">Ausentes Pendentes</div><div class="sub" id="dash-pendentes-count2">Carregando...</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
-      <div class="list-item" onclick="goTo('s-nova-vistoria')"><div class="avatar" style="background:#fef3c7;color:#92400e"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div><div class="info"><div class="title">Nova Vistoria</div><div class="sub">Iniciar sem imovel pre-cadastrado</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
       <div class="list-item" onclick="goTo('s-historico')"><div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg></div><div class="info"><div class="title">Minhas Vistorias</div><div class="sub" id="dash-count">Carregando...</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
     </div>
-  </div>
-</div>
-
-<div id="s-novo-imovel" class="screen">
-  <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Cadastrar Imovel</h1></div>
-  <div class="content">
-    <div class="card"><h2>Dados do morador</h2>
-      <div class="field"><label>Nome completo *</label><input type="text" id="ni-nome" placeholder="Nome do morador ou Imovel Vazio" oninput="capitalizarInput(this)"></div>
-      <div class="field" style="display:flex;gap:8px;align-items:flex-end">
-        <div style="flex:1"><label>RG / CPF</label><input type="text" id="ni-doc" placeholder="000.000.000-00" inputmode="numeric" oninput="maskCPF(this)"></div>
-        <button class="btn small" onclick="naoInformadoDoc()" style="margin-bottom:0;white-space:nowrap">Não Informado</button>
-      </div>
-      <div class="field" style="display:flex;gap:8px;align-items:flex-end">
-        <div style="flex:1"><label>Telefone</label><input type="tel" id="ni-tel" placeholder="(00) 9 0000-0000" inputmode="numeric" oninput="maskTel(this)"></div>
-        <button class="btn small" onclick="naoInformadoTel()" style="margin-bottom:0;white-space:nowrap">Não Informado</button>
-      </div>
-    </div>
-    <div class="card"><h2>Endereco</h2>
-      <div id="ni-reaproveitar-end-box" style="display:none;background:#f0fdf4;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:#15803d">
-        Reaproveitar endereço anterior? <button class="btn small" onclick="reaproveitarEnderecoNI()" style="margin-left:8px;color:#15803d;border-color:#15803d">Sim</button>
-      </div>
-      <div class="field"><label>Rua *</label><input type="text" id="ni-rua" placeholder="Nome da rua" oninput="capitalizarInput(this)"></div>
-      <div class="field"><label>Numero *</label><input type="text" id="ni-num" placeholder="123" inputmode="numeric"></div>
-      <div class="field"><label>Complemento</label><input type="text" id="ni-comp" placeholder="Apto, casa, etc" oninput="capitalizarInput(this)"></div>
-    </div>
-    <div class="card"><h2>Cliente / Coletor</h2>
-      <div class="field"><label>Cliente *</label><select id="ni-cliente" onchange="loadColetoresNI()"><option value="">Selecione...</option></select></div>
-      <div class="field"><label>Coletor *</label><select id="ni-coletor"><option value="">Selecione o cliente primeiro</option></select></div>
-    </div>
-    <div class="card"><h2>Tipo de laudo</h2>
-      <div class="laudo-tipo-grid">
-        <div class="laudo-tipo-card active" data-tipo="simplificado" onclick="setTipoLaudoNI('simplificado')">
-          <div class="laudo-tipo-titulo">Simplificado</div>
-          <div class="laudo-tipo-sub">Fotos + checklist em 1 página</div>
-        </div>
-        <div class="laudo-tipo-card" data-tipo="completo" onclick="setTipoLaudoNI('completo')">
-          <div class="laudo-tipo-titulo">Completo</div>
-          <div class="laudo-tipo-sub">Modelo CNRP — capa, anexos, legenda A–L</div>
-        </div>
-      </div>
-    </div>
-    <button class="btn success" onclick="salvarNovoImovel()">Cadastrar Imovel</button>
-  </div>
-</div>
-
-<div id="s-fila" class="screen">
-  <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Fila de Imoveis</h1><button class="btn small primary" onclick="goTo('s-novo-imovel')" style="color:#007aff;border-color:#007aff">+ Novo</button></div>
-  <div class="content">
-    <div id="lista-fila"></div>
   </div>
 </div>
 
@@ -257,7 +202,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div id="perfil-arm-resumo" style="font-size:13px;color:#555;margin-bottom:10px">Carregando...</div>
       <button class="btn" onclick="goTo('s-armazenamento')">Gerenciar fotos locais</button>
     </div>
+    <div class="card"><h2>Cômodos personalizados</h2>
+      <p style="font-size:13px;color:#888;margin-bottom:10px">Cômodos criados por você ou pela equipe. Disponíveis para todos os cadastradores.</p>
+      <button class="btn" onclick="goTo('s-ambientes-custom')">Gerenciar cômodos</button>
+    </div>
   </div>
+</div>
+
+<div id="s-ambientes-custom" class="screen">
+  <div class="topbar"><button class="back" onclick="goTo('s-perfil')">&#8249; Voltar</button><h1>Cômodos Personalizados</h1>
+    <button class="btn small primary" onclick="abrirNovoAmbienteCustom()" style="margin-right:4px">+ Novo</button>
+  </div>
+  <div class="content" id="lista-ambientes-custom"></div>
 </div>
 
 <div id="s-armazenamento" class="screen">
@@ -302,9 +258,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
         <div class="info-box">Reaproveitar dados do responsavel anterior?</div>
         <div class="grid2"><button class="btn small" onclick="reaproveitarResponsavel()">Sim</button><button class="btn small" onclick="document.getElementById('nv-reaproveitar-box').style.display='none'">Nao</button></div>
       </div>
-      <div class="field"><label>Nome completo *</label><input type="text" id="nv-nome" placeholder="Nome do responsavel ou Imovel Vazio" oninput="capitalizarInput(this)"></div>
+      <div class="field"><label>Nome do morador</label><input type="text" id="nv-nome" placeholder="Opcional se for ausente — obrigatório nos demais casos" oninput="capitalizarInput(this)"></div>
       <div class="field" style="display:flex;gap:8px;align-items:flex-end">
-        <div style="flex:1"><label>RG / CPF</label><input type="text" id="nv-doc" placeholder="000.000.000-00" inputmode="numeric" oninput="maskCPF(this)"></div>
+        <div style="flex:1"><label>RG / CPF</label><input type="text" id="nv-doc" placeholder="Digite o documento" inputmode="numeric"></div>
         <button class="btn small" onclick="document.getElementById('nv-doc').value='Não Informado'" style="margin-bottom:0;white-space:nowrap">Não inf.</button>
       </div>
       <div class="field" style="display:flex;gap:8px;align-items:flex-end">
@@ -349,7 +305,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
     <div class="card"><h2>Resumo</h2><div id="v-info" style="font-size:13px;color:#555;line-height:1.8"></div></div>
     <div id="gps-status" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:8px 12px;font-size:12px;color:#0369a1">Aguardando GPS...</div>
     <div class="card"><h2>Capturar foto</h2>
-      <div class="field"><label>Ambiente</label><select id="v-ambiente" onchange="resetTipoFoto()"><option value="">Selecione o ambiente...</option></select></div>
+      <div class="field"><label>Ambiente</label><select id="v-ambiente" onchange="onChangeAmbienteSelect(this)"><option value="">Selecione o ambiente...</option></select></div>
       <div class="field"><label>Tipo de foto</label><select id="v-tipo-foto"><option value="Vista">Vista - ambiente geral</option><option value="Detalhe">Detalhe - foco na patologia</option></select></div>
       <div class="grid2" style="margin-top:4px">
         <button class="btn primary" onclick="abrirCamera()">Camera</button>
@@ -358,6 +314,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
     </div>
     <div id="fotos-por-ambiente"></div>
     <button class="btn success" onclick="goTo('s-checklist')">Ir para Checklist</button>
+    <div style="margin-top:18px;padding-top:14px;border-top:1px dashed #d4d4d8">
+      <p style="font-size:12px;color:#888;text-align:center;margin-bottom:6px">Imóvel sem ninguém presente?</p>
+      <button class="btn" onclick="marcarAusentePassivelRetorno()" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;width:100%">⏳ Ausente — Passível de Retorno</button>
+    </div>
   </div>
   <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleFileUpload(event)">
 </div>
@@ -542,7 +502,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
     <div class="field"><label>Nome completo *</label><input type="text" id="mu-nome"></div>
     <div class="field"><label>E-mail *</label><input type="email" id="mu-email"></div>
     <div class="field"><label>Senha *</label><div class="pass-wrap"><input type="password" id="mu-pass" placeholder="Minimo 6 caracteres"><button class="pass-toggle" onclick="togglePass('mu-pass',this)" type="button">Mostrar</button></div></div>
-    <div class="field"><label>Nivel de acesso</label><select id="mu-role"><option value="cadastrador">Cadastrador</option><option value="comunicador">Comunicador</option><option value="master">Master</option></select></div>
+    <div class="field"><label>Nivel de acesso</label><select id="mu-role"><option value="cadastrador">Cadastrador</option><option value="master">Master</option></select></div>
     <div class="grid2" style="margin-top:8px"><button class="btn" onclick="closeModal('modal-usuario')">Cancelar</button><button class="btn primary" onclick="salvarUsuario()">Salvar</button></div>
   </div>
 </div>
@@ -560,7 +520,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   <div class="modal"><h3>Editar Usuario</h3>
     <div class="field"><label>Nome completo *</label><input type="text" id="mue-nome"></div>
     <div class="field"><label>E-mail (somente leitura)</label><input type="email" id="mue-email" disabled style="background:#f5f5f5;color:#888"></div>
-    <div class="field"><label>Nivel de acesso</label><select id="mue-role"><option value="cadastrador">Cadastrador</option><option value="comunicador">Comunicador</option><option value="master">Master</option></select></div>
+    <div class="field"><label>Nivel de acesso</label><select id="mue-role"><option value="cadastrador">Cadastrador</option><option value="master">Master</option></select></div>
     <div class="grid2" style="margin-top:8px"><button class="btn" onclick="closeModal('modal-user-editar')">Cancelar</button><button class="btn primary" onclick="salvarEdicaoUsuario()">Salvar</button></div>
   </div>
 </div>
@@ -588,7 +548,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 <div id="modal-editar-resp" class="modal-bg" style="display:none" onclick="closeModalBg(event,'modal-editar-resp')">
   <div class="modal"><h3>Editar Dados</h3>
     <div class="field"><label>Nome</label><input type="text" id="er-nome"></div>
-    <div class="field"><label>CPF/RG</label><input type="text" id="er-doc" inputmode="numeric" oninput="maskCPF(this)"></div>
+    <div class="field"><label>CPF/RG</label><input type="text" id="er-doc" inputmode="numeric"></div>
     <div class="field"><label>Telefone</label><input type="tel" id="er-tel" inputmode="numeric" oninput="maskTel(this)"></div>
     <div class="field"><label>Rua</label><input type="text" id="er-rua"></div>
     <div class="grid2">
@@ -632,7 +592,12 @@ const auth=getAuth(fbApp);
 const db=getFirestore(fbApp);
 const fbStorage=getStorage(fbApp);
 
-const AMBIENTES=["Fachada","Calçada","Garagem","Corredor externo","Área de serviço","Quintal","Sala","Cozinha","Banheiro 01","Banheiro 02","Lavabo","Dormitório 01","Dormitório 02","Dormitório 03","Corredor interno","Varanda","Sacada","Depósito"];
+// AMBIENTES é uma lista dinâmica: começa com a base fixa, e recebe cômodos custom carregados
+// do Firestore (coleção "ambientes") após o login. Cadastradores podem criar novos cômodos via
+// botão "+ Novo cômodo" na tela de Vistoria, que persistem para todos os usuários.
+const AMBIENTES_BASE=["Fachada","Calçada","Garagem","Corredor externo","Área de serviço","Quintal","Sala","Cozinha","Banheiro 01","Banheiro 02","Lavabo","Dormitório 01","Dormitório 02","Dormitório 03","Corredor interno","Varanda","Sacada","Depósito"];
+let AMBIENTES=[...AMBIENTES_BASE];
+let _ambientesCustomCache=[]; // [{id, nome}] do Firestore
 const PARTES=["Estrutura","Parede e muro","Cobertura e teto","Porta e esquadria","Piso e cal\xe7amento"];
 const COLS=["estrutura","paredes","cobertura","portas","piso"];
 const PATOLOGIAS=["Fissura","Trinca","Rachadura","Umidade","Infiltração","Desplacamento","Armadura Exposta","Danificado"];
@@ -880,7 +845,7 @@ window.goTo=(id)=>{
   }
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   document.getElementById(id).classList.add("active");window.scrollTo(0,0);
-  const m={"s-dash":loadDash,"s-prestadores":loadPrestadores,"s-clientes":loadClientes,"s-coletores":loadColetores,"s-usuarios":loadUsuarios,"s-nova-vistoria":loadNovVistoriaForm,"s-historico":loadHistorico,"s-checklist":renderChecklist,"s-finalizacao":renderFinalizacao,"s-perfil":renderPerfil,"s-vistoria":iniciarGPS,"s-novo-imovel":loadNovoImovelForm,"s-fila":loadFila,"s-pendentes":loadPendentes,"s-editor-fotos":renderEditorFotos,"s-armazenamento":loadArmazenamento};
+  const m={"s-dash":loadDash,"s-prestadores":loadPrestadores,"s-clientes":loadClientes,"s-coletores":loadColetores,"s-usuarios":loadUsuarios,"s-nova-vistoria":loadNovVistoriaForm,"s-historico":loadHistorico,"s-checklist":renderChecklist,"s-finalizacao":renderFinalizacao,"s-perfil":renderPerfil,"s-vistoria":iniciarGPS,"s-pendentes":loadPendentes,"s-editor-fotos":renderEditorFotos,"s-armazenamento":loadArmazenamento,"s-ambientes-custom":loadAmbientesCustomList};
   if(m[id])m[id]();
 };
 window.showModal=(id)=>{if(id==="modal-coletor")populateClienteSelect("mcol-cliente");document.getElementById(id).style.display="flex";};
@@ -902,196 +867,163 @@ onAuthStateChanged(auth,async user=>{
     const snap=await getDoc(doc(db,"users",user.uid));
     if(snap.exists()){currentUserData=snap.data();currentRole=currentUserData.role;assinaturaTecnico=currentUserData.assinatura||null;}
     else{currentRole="master";currentUserData={nome:"Admin",email:user.email,role:"master"};await setDoc(doc(db,"users",user.uid),{...currentUserData,criadoEm:serverTimestamp()});}
-    await loadPrestadorDefault();goTo("s-dash");
+    await loadPrestadorDefault();await loadAmbientesCustom();goTo("s-dash");
   }else{goTo("s-login");}
 });
 
 async function loadPrestadorDefault(){try{const q=query(collection(db,"prestadores"),where("isDefault","==",true));const s=await getDocs(q);if(!s.empty)prestadorDefault={id:s.docs[0].id,...s.docs[0].data()};}catch(e){}}
+
+// Carrega os cômodos personalizados criados por qualquer cadastrador.
+// Mistura com AMBIENTES_BASE em uma única lista AMBIENTES exposta ao app.
+async function loadAmbientesCustom(){
+  try{
+    const snap=await getDocs(collection(db,"ambientes"));
+    _ambientesCustomCache=[];
+    snap.forEach(d=>{const data=d.data();if(data&&data.nome)_ambientesCustomCache.push({id:d.id,nome:data.nome});});
+    _ambientesCustomCache.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
+    // Reconstrói AMBIENTES = base + custom (sem duplicar)
+    const usadosLower=new Set(AMBIENTES_BASE.map(a=>a.toLowerCase()));
+    const custom=_ambientesCustomCache.filter(c=>!usadosLower.has(c.nome.toLowerCase())).map(c=>c.nome);
+    AMBIENTES=[...AMBIENTES_BASE,...custom];
+  }catch(e){console.warn("loadAmbientesCustom:",e);}
+}
+
+// Cria um novo cômodo persistido para todos os usuários.
+// Retorna o nome (string) caso seja criado com sucesso, ou null se falhar/cancelar.
+window.criarAmbienteCustom=async()=>{
+  const nome=prompt("Nome do novo cômodo:\n(será criado para todos os cadastradores)");
+  if(!nome||!nome.trim())return null;
+  const nomeTrim=nome.trim();
+  // Capitaliza primeira letra de cada palavra (preserva minúsculas de "de", "do", "da")
+  const nomeFmt=nomeTrim.split(" ").map((w,i)=>{
+    const lo=w.toLowerCase();
+    if(i>0&&["de","da","do","das","dos","e"].includes(lo))return lo;
+    return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase();
+  }).join(" ");
+  // Evita duplicata (case-insensitive contra a base + cache)
+  const existeBase=AMBIENTES_BASE.some(a=>a.toLowerCase()===nomeFmt.toLowerCase());
+  const existeCustom=_ambientesCustomCache.some(c=>c.nome.toLowerCase()===nomeFmt.toLowerCase());
+  if(existeBase||existeCustom){
+    if(!confirm('"'+nomeFmt+'" já existe na lista. Deseja apenas selecioná-lo?'))return null;
+    return nomeFmt;
+  }
+  try{
+    const ref=await addDoc(collection(db,"ambientes"),{nome:nomeFmt,criadoPor:currentUser.uid,criadoEm:serverTimestamp()});
+    _ambientesCustomCache.push({id:ref.id,nome:nomeFmt});
+    _ambientesCustomCache.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
+    AMBIENTES=[...AMBIENTES_BASE,..._ambientesCustomCache.map(c=>c.nome).filter(n=>!AMBIENTES_BASE.some(b=>b.toLowerCase()===n.toLowerCase()))];
+    showToast('"'+nomeFmt+'" criado e disponível para todos!',3500);
+    return nomeFmt;
+  }catch(e){
+    console.error("criarAmbienteCustom:",e);
+    if(e.code==="permission-denied"){
+      alert("Sem permissão para criar cômodos no banco.\n\nO Master precisa autorizar Cadastradores a escrever na coleção 'ambientes' nas regras do Firestore.\n\nO cômodo NÃO será salvo para outros usuários, mas pode ser usado nesta vistoria.");
+    } else {
+      alert("Erro ao criar cômodo: "+(e.message||"desconhecido"));
+    }
+    return null;
+  }
+};
+
+// ===== TELA: gerenciar cômodos personalizados (renomear, excluir) =====
+async function loadAmbientesCustomList(){
+  const el=document.getElementById("lista-ambientes-custom");
+  el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Carregando...</p>';
+  // Recarrega do Firestore para garantir versão atual (cache pode estar stale após edição em outro dispositivo)
+  await loadAmbientesCustom();
+  el.innerHTML="";
+  // Card explicativo no topo
+  const info=document.createElement("div");
+  info.style.cssText="background:#f5f5f7;border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:13px;color:#555";
+  info.innerHTML='Os cômodos abaixo foram criados pela equipe e ficam disponíveis para todos. A lista base do app (Fachada, Sala, etc.) não pode ser editada.';
+  el.appendChild(info);
+  if(_ambientesCustomCache.length===0){
+    const vazio=document.createElement("p");
+    vazio.style.cssText="text-align:center;color:#aaa;padding:24px";
+    vazio.textContent='Nenhum cômodo personalizado criado ainda. Toque em "+ Novo" no topo para criar.';
+    el.appendChild(vazio);
+    return;
+  }
+  _ambientesCustomCache.forEach(c=>{
+    const div=document.createElement("div");
+    div.className="list-item";
+    div.innerHTML='<div class="avatar" style="background:#e0f2fe;color:#0369a1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/></svg></div>'
+      +'<div class="info"><div class="title">'+c.nome+'</div><div class="sub">Cômodo personalizado</div></div>'
+      +'<div class="hist-actions">'
+      +'<button class="btn small" onclick="editarAmbienteCustom(\''+c.id+'\',event)" style="margin-right:4px;color:#007aff;border-color:#007aff">Editar</button>'
+      +(currentRole==="master"?'<button class="btn small danger" onclick="excluirAmbienteCustom(\''+c.id+'\',event)">Excluir</button>':'')
+      +'</div>';
+    el.appendChild(div);
+  });
+}
+
+window.abrirNovoAmbienteCustom=async()=>{
+  const nomeCriado=await criarAmbienteCustom();
+  if(nomeCriado)loadAmbientesCustomList();
+};
+
+window.editarAmbienteCustom=async(id,ev)=>{
+  if(ev)ev.stopPropagation();
+  const atual=_ambientesCustomCache.find(c=>c.id===id);
+  if(!atual)return;
+  const novo=prompt("Renomear cômodo:",atual.nome);
+  if(!novo||!novo.trim())return;
+  const nomeTrim=novo.trim();
+  if(nomeTrim===atual.nome)return; // sem mudança
+  // Capitalização consistente com criarAmbienteCustom
+  const nomeFmt=nomeTrim.split(" ").map((w,i)=>{
+    const lo=w.toLowerCase();
+    if(i>0&&["de","da","do","das","dos","e"].includes(lo))return lo;
+    return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase();
+  }).join(" ");
+  // Conflito com base ou outro custom?
+  const existeBase=AMBIENTES_BASE.some(a=>a.toLowerCase()===nomeFmt.toLowerCase());
+  const existeCustom=_ambientesCustomCache.some(c=>c.id!==id&&c.nome.toLowerCase()===nomeFmt.toLowerCase());
+  if(existeBase||existeCustom){
+    return alert('"'+nomeFmt+'" já existe na lista. Escolha outro nome.');
+  }
+  try{
+    await updateDoc(doc(db,"ambientes",id),{nome:nomeFmt,atualizadoPor:currentUser.uid,atualizadoEm:serverTimestamp()});
+    // Atualiza cache local
+    const ix=_ambientesCustomCache.findIndex(c=>c.id===id);
+    if(ix>=0)_ambientesCustomCache[ix].nome=nomeFmt;
+    _ambientesCustomCache.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
+    // Reconstrói AMBIENTES
+    AMBIENTES=[...AMBIENTES_BASE,..._ambientesCustomCache.map(c=>c.nome).filter(n=>!AMBIENTES_BASE.some(b=>b.toLowerCase()===n.toLowerCase()))];
+    showToast("Cômodo renomeado!",2500);
+    loadAmbientesCustomList();
+  }catch(e){
+    console.error("editarAmbienteCustom:",e);
+    if(e.code==="permission-denied"){
+      alert("Sem permissão para editar.\n\nO Master precisa autorizar Cadastradores a editar a coleção 'ambientes' nas regras do Firestore.");
+    } else {
+      alert("Erro ao renomear: "+(e.message||"desconhecido"));
+    }
+  }
+};
+
+window.excluirAmbienteCustom=async(id,ev)=>{
+  if(ev)ev.stopPropagation();
+  const atual=_ambientesCustomCache.find(c=>c.id===id);
+  if(!atual)return;
+  if(!confirm('Excluir o cômodo "'+atual.nome+'" da lista compartilhada?\n\nVistorias antigas que usaram este cômodo permanecem inalteradas.\nApenas Master pode excluir.'))return;
+  try{
+    await deleteDoc(doc(db,"ambientes",id));
+    _ambientesCustomCache=_ambientesCustomCache.filter(c=>c.id!==id);
+    AMBIENTES=[...AMBIENTES_BASE,..._ambientesCustomCache.map(c=>c.nome).filter(n=>!AMBIENTES_BASE.some(b=>b.toLowerCase()===n.toLowerCase()))];
+    showToast("Cômodo excluído",2500);
+    loadAmbientesCustomList();
+  }catch(e){
+    console.error("excluirAmbienteCustom:",e);
+    alert("Erro ao excluir: "+(e.message||"desconhecido"));
+  }
+};
+
 window.doLogin=async()=>{const email=document.getElementById("login-email").value.trim();const pass=document.getElementById("login-pass").value;const err=document.getElementById("login-err");if(!email||!pass){err.textContent="Preencha e-mail e senha";err.style.display="block";return;}try{await signInWithEmailAndPassword(auth,email,pass);localStorage.setItem("lastLoginDate",new Date().toDateString());err.style.display="none";}catch(e){err.textContent="E-mail ou senha incorretos";err.style.display="block";}};
 window.doLogout=async()=>await signOut(auth);
 
-function loadDash(){const el=document.getElementById("dash-role");const roleLabel=currentRole==="master"?"Master":currentRole==="comunicador"?"Comunicador":"Cadastrador";const roleCls=currentRole==="master"?"master":currentRole==="comunicador"?"com":"cad";el.textContent=roleLabel;el.className="badge "+roleCls;document.getElementById("dash-master-section").style.display=currentRole==="master"?"block":"none";document.getElementById("dash-comunicador-section").style.display=currentRole==="comunicador"?"block":"none";document.getElementById("dash-cadastrador-section").style.display=(currentRole==="cadastrador"||currentRole==="master")?"block":"none";if(currentRole!=="comunicador"){loadDashCount();}loadFilaCount();if(currentRole!=="comunicador"){loadPendentesCount();}}
+function loadDash(){const el=document.getElementById("dash-role");const roleLabel=currentRole==="master"?"Master":"Cadastrador";const roleCls=currentRole==="master"?"master":"cad";el.textContent=roleLabel;el.className="badge "+roleCls;document.getElementById("dash-master-section").style.display=currentRole==="master"?"block":"none";loadDashCount();loadPendentesCount();}
 async function loadDashCount(){try{const q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));const s=await getDocs(q);document.getElementById("dash-count").textContent=s.size+" vistoria(s)";}catch(e){}}
-
-async function loadFilaCount(){try{const q=query(collection(db,"fila_vistorias"),where("status","==","aguardando"));const s=await getDocs(q);const txt=s.size+" aguardando";const el1=document.getElementById("dash-fila-count");const el2=document.getElementById("dash-fila-count2");if(el1)el1.textContent=txt;if(el2)el2.textContent=txt;}catch(e){}}
-
-// ── COMUNICADOR: Cadastrar Imóvel ─────────────────────────────
-async function loadNovoImovelForm(){
-  await populateClienteSelect("ni-cliente");
-  // Restaurar último cliente/coletor
-  const lastCl=localStorage.getItem("niLastClienteId")||"";
-  const lastCol=localStorage.getItem("niLastColetorId")||"";
-  const lastRua=localStorage.getItem("niLastRua")||"";
-  const lastNum=localStorage.getItem("niLastNum")||"";
-  const lastComp=localStorage.getItem("niLastComp")||"";
-  if(lastCl){
-    const sel=document.getElementById("ni-cliente");
-    sel.value=lastCl;
-    if(sel.value===lastCl)await loadColetoresNI();
-    if(lastCol){const cs=document.getElementById("ni-coletor");if(cs)cs.value=lastCol;}
-  } else {
-    document.getElementById("ni-coletor").innerHTML='<option value="">Selecione o cliente primeiro</option>';
-  }
-  ["ni-nome","ni-doc","ni-tel","ni-rua","ni-num","ni-comp"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
-  // Tipo de laudo: restaurar último (default simplificado)
-  setTipoLaudoNI(localStorage.getItem("niLastTipoLaudo")||"simplificado");
-  // Botão reaproveitar endereço
-  const box=document.getElementById("ni-reaproveitar-end-box");
-  if(box)box.style.display=(lastRua)?"block":"none";
-  if(lastRua)box.dataset.rua=lastRua,box.dataset.num=lastNum,box.dataset.comp=lastComp;
-}
-
-window.reaproveitarEnderecoNI=()=>{
-  const box=document.getElementById("ni-reaproveitar-end-box");
-  document.getElementById("ni-rua").value=box.dataset.rua||"";
-  document.getElementById("ni-num").value=box.dataset.num||"";
-  document.getElementById("ni-comp").value=box.dataset.comp||"";
-  box.style.display="none";
-};
-
-window.loadColetoresNI=async()=>{
-  const cId=document.getElementById("ni-cliente").value;
-  const sel=document.getElementById("ni-coletor");
-  if(!cId){sel.innerHTML='<option value="">Selecione o cliente primeiro</option>';return;}
-  if(!_cacheColetores[cId]){
-    sel.innerHTML='<option value="">Carregando...</option>';
-    const snap=await getDocs(query(collection(db,"coletores"),where("clienteId","==",cId)));
-    _cacheColetores[cId]=[];
-    snap.forEach(d=>_cacheColetores[cId].push({id:d.id,...d.data()}));
-    _cacheColetores[cId].sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
-  }
-  sel.innerHTML='<option value="">Selecione...</option>';
-  _cacheColetores[cId].forEach(d=>{const o=document.createElement("option");o.value=d.id;o.textContent=d.nome;sel.appendChild(o);});
-};
-
-window.naoInformadoDoc=()=>{document.getElementById("ni-doc").value="Não Informado";};
-window.naoInformadoTel=()=>{document.getElementById("ni-tel").value="Não Informado";};
-
-window.salvarNovoImovel=async()=>{
-  const nome=document.getElementById("ni-nome").value.trim();
-  const rua=document.getElementById("ni-rua").value.trim();
-  const num=document.getElementById("ni-num").value.trim();
-  const comp=document.getElementById("ni-comp").value.trim();
-  const cId=document.getElementById("ni-cliente").value;
-  const colId=document.getElementById("ni-coletor").value;
-  if(!nome)return alert("Informe o nome do morador ou 'Imovel Vazio'");
-  if(!rua||!num)return alert("Informe o endereco completo");
-  if(!cId||!colId)return alert("Selecione cliente e coletor");
-  // Usa cache de clientes/coletores
-  const clNome=(_cacheClientes&&_cacheClientes.find(c=>c.id===cId))||{nome:""};
-  const colArr=_cacheColetores[cId]||[];
-  const colNome=(colArr.find(c=>c.id===colId))||{nome:""};
-  // Pré-validação: a regra do Firestore exige role="comunicador" ou "master" para criar
-  // na coleção fila_vistorias. Se o doc users/{uid} estiver sem o campo role, falha.
-  if(!currentRole||(currentRole!=="comunicador"&&currentRole!=="cadastrador"&&currentRole!=="master")){
-    return alert("Seu usuário não está com permissão configurada. Peça ao Master para revisar seu cadastro (role).");
-  }
-  try{
-    const activeCardNI=document.querySelector("#s-novo-imovel .laudo-tipo-card.active");
-    const tipoLaudoNI=(activeCardNI&&activeCardNI.dataset.tipo)||window._tipoLaudoNI||localStorage.getItem("niLastTipoLaudo")||"simplificado";
-    localStorage.setItem("niLastTipoLaudo",tipoLaudoNI);
-    await addDoc(collection(db,"fila_vistorias"),{
-      responsavel:{nome,doc:document.getElementById("ni-doc").value.trim()||"",tel:document.getElementById("ni-tel").value.trim()||""},
-      endereco:{rua,num,comp},
-      clienteId:cId,clienteNome:clNome.nome||"",coletorId:colId,coletorNome:colNome.nome||"",
-      tipoLaudo:tipoLaudoNI,
-      comunicadorId:currentUser.uid,status:"aguardando",criadoEm:serverTimestamp()
-    });
-    // Salvar para reaproveitamento
-    localStorage.setItem("niLastClienteId",cId);
-    localStorage.setItem("niLastColetorId",colId);
-    localStorage.setItem("niLastRua",rua);
-    localStorage.setItem("niLastNum",num);
-    localStorage.setItem("niLastComp",comp);
-    showToast("Imovel cadastrado na fila!");
-    goTo("s-fila");
-  }catch(e){
-    console.error("salvarNovoImovel falhou:",e);
-    console.error("Detalhes:",{code:e.code,message:e.message,uid:currentUser&&currentUser.uid,role:currentRole});
-    // Erros de regra do Firestore: mensagem mais útil
-    if(e.code==="permission-denied"||(e.message||"").toLowerCase().includes("missing or insufficient permissions")){
-      alert("Permissão negada pelo servidor.\n\nVerifique no Firebase Console:\n• users/"+currentUser.uid+" existe?\n• Tem campo role com valor exatamente \"comunicador\" (minúsculas)?\n\nRole detectado no app: "+(currentRole||"(vazio)"));
-    } else {
-      alert("Erro: "+e.message+(e.code?" ("+e.code+")":""));
-    }
-  }
-};
-
-// ── FILA DE IMÓVEIS ───────────────────────────────────────────
-async function loadFila(){
-  const el=document.getElementById("lista-fila");
-  el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Carregando...</p>';
-  try{
-    let q;
-    if(currentRole==="comunicador"){
-      q=query(collection(db,"fila_vistorias"),where("comunicadorId","==",currentUser.uid),orderBy("criadoEm","desc"));
-    }else{
-      q=query(collection(db,"fila_vistorias"),where("status","==","aguardando"),orderBy("criadoEm","desc"));
-    }
-    const snap=await getDocs(q);
-    if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhum imovel na fila</p>';return;}
-    el.innerHTML="";
-    snap.forEach(d=>{
-      const v=d.data();const id=d.id;
-      const statusMap={aguardando:"Aguardando",em_andamento:"Em andamento",concluida:"Concluido"};
-      const statusClr={aguardando:"#f59e0b",em_andamento:"#3b82f6",concluida:"#10b981"};
-      const st=v.status||"aguardando";
-      const tipoBadge=v.tipoLaudo==="completo"?'<span class="badge laudo" style="margin-right:6px">Completo</span>':'';
-      const div=document.createElement("div");
-      div.className="list-item";
-      div.innerHTML=`<div class="avatar" style="background:#fff7ed;color:#c2410c"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg></div><div class="info"><div class="title">${v.responsavel&&v.responsavel.nome||"--"}</div><div class="sub">${(v.endereco&&v.endereco.rua||"")} ${(v.endereco&&v.endereco.num||"")} | ${v.coletorNome||""}</div></div><div class="hist-actions">${tipoBadge}<span style="color:${statusClr[st]};font-size:12px;font-weight:600">${statusMap[st]||st}</span></div>`;
-      if(currentRole!=="comunicador"&&st==="aguardando"){
-        div.onclick=()=>iniciarVistoriaFromFila(id,v);
-      }
-      el.appendChild(div);
-    });
-    loadFilaCount();
-  }catch(e){el.innerHTML='<p style="text-align:center;color:#e44">Erro ao carregar fila</p>';}
-}
-
-async function iniciarVistoriaFromFila(filaId,v){
-  if(!confirm("Iniciar vistoria para "+(v.responsavel&&v.responsavel.nome||"este imovel")+"?"))return;
-  try{
-    // Transação atômica: só marca em_andamento se ainda estiver aguardando
-    await runTransaction(db,async t=>{
-      const ref=doc(db,"fila_vistorias",filaId);
-      const snap=await t.get(ref);
-      if(!snap.exists()||snap.data().status!=="aguardando"){
-        throw new Error("Este imóvel já foi iniciado por outro cadastrador.");
-      }
-      t.update(ref,{status:"em_andamento",cadastradorId:currentUser.uid});
-    });
-  }catch(e){
-    alert(e.message||"Erro ao iniciar vistoria.");
-    loadFila(); // recarrega para remover o item da lista
-    return;
-  }
-  window._filaItemId=filaId;
-  window._filaPreenchimento=v;
-  goTo("s-nova-vistoria");
-}
-
-async function preencherDadosFila(v){
-  if(!v)return;
-  const setVal=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val||"";};
-  setVal("nv-nome",v.responsavel&&v.responsavel.nome);
-  setVal("nv-doc",v.responsavel&&v.responsavel.doc);
-  setVal("nv-tel",v.responsavel&&v.responsavel.tel);
-  setVal("nv-rua",v.endereco&&v.endereco.rua);
-  setVal("nv-num",v.endereco&&v.endereco.num);
-  setVal("nv-comp",v.endereco&&v.endereco.comp);
-  const selCl=document.getElementById("nv-cliente");
-  if(selCl&&v.clienteId){
-    selCl.value=v.clienteId;
-    await loadColetoresByCliente();
-    const selCol=document.getElementById("nv-coletor");
-    if(selCol)selCol.value=v.coletorId||"";
-  }
-  // Propaga tipo de laudo escolhido pelo Comunicador
-  if(v.tipoLaudo)setTipoLaudo(v.tipoLaudo);
-  window._filaPreenchimento=null;
-  showToast("Dados pre-preenchidos da fila!");
-}
 
 function renderPerfil(){
   document.getElementById("perfil-nome").value=currentUserData&&currentUserData.nome||"";
@@ -1274,7 +1206,7 @@ async function loadUsuarios(){
     docs.sort((a,b)=>(a.nome||"").localeCompare(b.nome||"","pt-BR"));
     docs.forEach(u=>{
       const av='<div class="avatar" style="background:#d1fae5;color:#065f46">'+(u.nome||u.email).charAt(0)+"</div>";
-      const badge='<span class="badge '+(u.role==="master"?"master":"cad")+'">'+(u.role==="master"?"Master":(u.role==="comunicador"?"Com.":"Cad."))+"</span>";
+      const badge='<span class="badge '+(u.role==="master"?"master":"cad")+'">'+(u.role==="master"?"Master":"Cad.")+"</span>";
       const item=mkLI(av,u.nome||"--",u.email,badge);
       if(currentRole==="master"){
         item.style.cursor="pointer";
@@ -1367,10 +1299,6 @@ async function populateClienteSelect(selectId){
   const sel=document.getElementById(selectId);sel.innerHTML='<option value="">Selecione...</option>';
   _cacheClientes.forEach(d=>{const o=document.createElement("option");o.value=d.id;o.textContent=d.nome;sel.appendChild(o);});
 }
-
-// ===== COMUNICADOR =====
-window.naoInformadoDoc=()=>{document.getElementById("ni-doc").value="Não Informado";};
-window.naoInformadoTel=()=>{document.getElementById("ni-tel").value="Não Informado";};
 
 // ===== EDITOR DE FOTOS DE VISTORIA SALVA =====
 let _efId=null,_efData=null,_efFotos=[];
@@ -1553,7 +1481,7 @@ window.salvarEdicaoFotos=async()=>{
     // Atualizar dados locais para regerar PDF
     _efData={..._efData,fotosBase64:_efFotos,totalFotos:_efFotos.length};
     vistoriaDetalheData=_efData;
-    showToast("Fotos salvas! Use 'Regerar PDF' para atualizar o relatório.");
+    showToast("Fotos salvas! Use 'Gerar PDF Novamente' para atualizar o relatório.");
     goTo("s-detalhe-vistoria");
   }catch(e){alert("Erro ao salvar: "+e.message);}
   finally{if(btn){btn.textContent="Salvar";btn.disabled=false;}}
@@ -1717,16 +1645,7 @@ async function loadNovVistoriaForm(){
     document.getElementById("nv-reaproveitar-rua-box").style.display="none";
   }
   document.getElementById("nv-reaproveitar-box").style.display=ultimoResponsavel?"block":"none";
-  // Tipo de laudo: se veio da fila, usa o da fila; senão, restaura último (default simplificado)
-  // ATENÇÃO: aplicar PRIMEIRO o da fila (sync) antes de tocar em qualquer outro setTipoLaudo
-  if(window._filaPreenchimento){
-    const tipoFila=window._filaPreenchimento.tipoLaudo||"simplificado";
-    setTipoLaudo(tipoFila);
-    await preencherDadosFila(window._filaPreenchimento);
-    // preencherDadosFila também chama setTipoLaudo(v.tipoLaudo) por garantia (idempotente)
-  } else {
-    setTipoLaudo(localStorage.getItem("lastTipoLaudo")||"simplificado");
-  }
+  setTipoLaudo(localStorage.getItem("lastTipoLaudo")||"simplificado");
 }
 window.reaproveitarResponsavel=()=>{if(!ultimoResponsavel)return;document.getElementById("nv-nome").value=ultimoResponsavel.nome||"";document.getElementById("nv-doc").value=ultimoResponsavel.doc||"";document.getElementById("nv-tel").value=ultimoResponsavel.tel||"";document.getElementById("nv-reaproveitar-box").style.display="none";};
 window.setTipoLaudo=(tipo)=>{
@@ -1734,12 +1653,6 @@ window.setTipoLaudo=(tipo)=>{
     c.classList.toggle("active",c.dataset.tipo===tipo);
   });
   window._tipoLaudoAtual=tipo;
-};
-window.setTipoLaudoNI=(tipo)=>{
-  document.querySelectorAll("#s-novo-imovel .laudo-tipo-card").forEach(c=>{
-    c.classList.toggle("active",c.dataset.tipo===tipo);
-  });
-  window._tipoLaudoNI=tipo;
 };
 window.loadColetoresByCliente=async()=>{
   const cId=document.getElementById("nv-cliente").value;
@@ -1761,24 +1674,60 @@ window.criarVistoria=async()=>{
   const cId=document.getElementById("nv-cliente").value;const colId=document.getElementById("nv-coletor").value;
   const nome=document.getElementById("nv-nome").value.trim();const docR=document.getElementById("nv-doc").value.trim();const tel=document.getElementById("nv-tel").value.trim();
   const rua=document.getElementById("nv-rua").value.trim();const num=document.getElementById("nv-num").value.trim();const comp=document.getElementById("nv-comp").value.trim();
-  if(!cId||!colId)return alert("Selecione cliente e coletor");if(!nome||!rua||!num)return alert("Preencha nome, rua e numero");
+  if(!cId||!colId)return alert("Selecione cliente e coletor");
+  // Endereço sempre obrigatório. Nome do morador: OPCIONAL ao iniciar — permite registrar ausentes
+  // sem conhecer o morador. Validação de obrigatoriedade do nome acontece somente em finalizarVistoria
+  // (caminho normal, status diferente de Ausente).
+  if(!rua||!num)return alert("Preencha rua e numero do imóvel");
   const[clS,colS]=await Promise.all([getDoc(doc(db,"clientes",cId)),getDoc(doc(db,"coletores",colId))]);
   const clD=clS.data();const colD=colS.data();const now=new Date();
   // Source of truth: o card que está visualmente .active no DOM no momento do clique
   const activeCard=document.querySelector("#s-nova-vistoria .laudo-tipo-card.active");
   const tipoLaudo=(activeCard&&activeCard.dataset.tipo)||window._tipoLaudoAtual||localStorage.getItem("lastTipoLaudo")||"simplificado";
   localStorage.setItem("lastTipoLaudo",tipoLaudo);
-  currentVistoria={clienteId:cId,coletorId:colId,clienteNome:clD.nome,clienteRRT:clD.rrt,coletorNome:colD.nome,responsavel:{nome,doc:docR,tel},endereco:{rua,num,comp},ocupacao:document.getElementById("nv-ocupacao").value,tipo:document.getElementById("nv-tipo").value,tipoLaudo,data:now.toLocaleDateString("pt-BR"),dataCompleta:now.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}),userId:currentUser.uid,checklist:{},observacoes:"",estado:"",idade:"",status:"em_andamento",_filaItemId:window._filaItemId||null};
-  // Limpar referência da fila — já está copiada para currentVistoria
-  window._filaItemId=null;
+  currentVistoria={clienteId:cId,coletorId:colId,clienteNome:clD.nome,clienteRRT:clD.rrt,coletorNome:colD.nome,responsavel:{nome,doc:docR,tel},endereco:{rua,num,comp},ocupacao:document.getElementById("nv-ocupacao").value,tipo:document.getElementById("nv-tipo").value,tipoLaudo,data:now.toLocaleDateString("pt-BR"),dataCompleta:now.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}),userId:currentUser.uid,checklist:{},observacoes:"",estado:"",idade:"",status:"em_andamento"};
   fotosPendentes={};assinaturaData=null;ambientesExtras=[];
-  document.getElementById("v-titulo").textContent=nome.split(" ")[0];
+  document.getElementById("v-titulo").textContent=nome?nome.split(" ")[0]:"Vistoria";
   const badgeTipo=tipoLaudo==="completo"?'<span class="badge laudo" style="display:inline-block;margin-bottom:4px">Laudo Completo</span><br>':'';
-  document.getElementById("v-info").innerHTML=[badgeTipo+"<b>"+nome+"</b>",docR?"Doc: "+docR:"",tel?"Tel: "+tel:"",rua+", "+num+(comp?" - "+comp:""),"<span style='color:#aaa;font-size:12px'>Coletor: "+colD.nome+" | RRT: "+clD.rrt+"</span>"].filter(Boolean).join("<br>");
-  const sel=document.getElementById("v-ambiente");sel.innerHTML='<option value="">Selecione o ambiente...</option>';
-  AMBIENTES.forEach(a=>{const o=document.createElement("option");o.value=a;o.textContent=a;sel.appendChild(o);});
-  ambientesExtras.forEach(a=>{const o=document.createElement("option");o.value=a;o.textContent=a;sel.appendChild(o);});
+  const nomeHtml=nome?("<b>"+nome+"</b>"):'<span style="color:#888;font-style:italic">Morador não identificado</span>';
+  document.getElementById("v-info").innerHTML=[badgeTipo+nomeHtml,docR?"Doc: "+docR:"",tel?"Tel: "+tel:"",rua+", "+num+(comp?" - "+comp:""),"<span style='color:#aaa;font-size:12px'>Coletor: "+colD.nome+" | RRT: "+clD.rrt+"</span>"].filter(Boolean).join("<br>");
+  const sel=document.getElementById("v-ambiente");
+  popularSeletorAmbiente(sel);
   goTo("s-vistoria");renderFotos();
+};
+
+// Popula o select de ambiente com base + custom + extras temporários + opção "Novo cômodo".
+// Reusable para garantir consistência ao adicionar um novo cômodo no meio da vistoria.
+function popularSeletorAmbiente(sel){
+  if(!sel)sel=document.getElementById("v-ambiente");
+  if(!sel)return;
+  const valorAtual=sel.value;
+  sel.innerHTML='<option value="">Selecione o ambiente...</option>';
+  AMBIENTES.forEach(a=>{const o=document.createElement("option");o.value=a;o.textContent=a;sel.appendChild(o);});
+  // Extras temporários (legado, mantidos por compat)
+  ambientesExtras.forEach(a=>{
+    if(AMBIENTES.includes(a))return;
+    const o=document.createElement("option");o.value=a;o.textContent=a;sel.appendChild(o);
+  });
+  // Opção sempre no final, marcando criação de novo cômodo
+  const novoOpt=document.createElement("option");
+  novoOpt.value="__novo_comodo__";
+  novoOpt.textContent="+ Novo cômodo...";
+  novoOpt.style.color="#007aff";novoOpt.style.fontWeight="600";
+  sel.appendChild(novoOpt);
+  // Restaura seleção prévia, se ainda existe
+  if(valorAtual&&[...sel.options].some(o=>o.value===valorAtual))sel.value=valorAtual;
+}
+
+// Handler do change do seletor: detecta opção "+ Novo cômodo..." e dispara prompt
+window.onChangeAmbienteSelect=async(sel)=>{
+  if(sel.value!=="__novo_comodo__"){resetTipoFoto();return;}
+  // Reset para vazio enquanto o usuário decide
+  sel.value="";
+  const nomeCriado=await criarAmbienteCustom();
+  popularSeletorAmbiente(sel);
+  if(nomeCriado){sel.value=nomeCriado;}
+  resetTipoFoto();
 };
 
 function renderFotos(){
@@ -2968,7 +2917,7 @@ function abrirDetalheVistoria(id,data){
   // ou no Firestore (vistorias antigas com fotosBase64).
   const btnEdit=document.createElement("button");btnEdit.className="btn";btnEdit.style.cssText="background:#fff7ed;color:#c2410c;border:1px solid #c2410c;margin-bottom:8px";btnEdit.textContent="Editar Fotos";btnEdit.onclick=()=>abrirEditorFotos(id,data);c.appendChild(btnEdit);
   const btnComprov=document.createElement("button");btnComprov.className="btn";btnComprov.style.cssText="background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;margin-bottom:8px";btnComprov.textContent="Enviar Comprovante";btnComprov.onclick=()=>enviarComprovanteVistoria(id,data);c.appendChild(btnComprov);
-  const btnPDF=document.createElement("button");btnPDF.className="btn primary";btnPDF.textContent="Regerar PDF";btnPDF.onclick=async()=>{
+  const btnPDF=document.createElement("button");btnPDF.className="btn primary";btnPDF.textContent="Gerar PDF Novamente";btnPDF.onclick=async()=>{
     // Tenta enriquecer data com fotos do IndexedDB antes de chamar regeRarPDF
     let fotos=null;
     try{fotos=await localBuscarFotos(id);}catch(e){}
@@ -3092,7 +3041,7 @@ async function regeRarPDF(data){
     await window.finalizarVistoria();
   }catch(e){
     console.error("regeRarPDF:",e);
-    alert("Erro ao regerar PDF: "+(e.message||e));
+    alert("Erro ao gerar PDF novamente: "+(e.message||e));
   }finally{
     // Restaurar estado
     window._modoRegerar=false;
@@ -3107,7 +3056,9 @@ async function regeRarPDF(data){
 // ===== COMPROVANTE: PDF compacto (checklist + assinatura) para responsável =====
 // Gera apenas 2 páginas: identificação de patologias + conclusão/assinatura.
 // Usado tanto na finalização (sobe pro Storage e mostra QR) quanto na regeração no histórico.
-async function gerarComprovanteBlob(data,conclusaoLinhas,assinaturaResp,assinaturaTec,ambientesExtrasArr){
+// ambientesUtilizadosArr: opcional, lista de cômodos com foto. Se passado, o checklist mostra
+// SÓ esses ambientes (na ordem informada). Se omitido, mostra todos (legado).
+async function gerarComprovanteBlob(data,conclusaoLinhas,assinaturaResp,assinaturaTec,ambientesExtrasArr,ambientesUtilizadosArr){
   const{jsPDF}=window.jspdf;
   const pdf=new jsPDF("p","mm","a4");
   const PW=210,PH=297;
@@ -3131,7 +3082,11 @@ async function gerarComprovanteBlob(data,conclusaoLinhas,assinaturaResp,assinatu
   pdf.setFont("helvetica","normal");const endVc=(data.endereco&&data.endereco.rua||"")+" "+(data.endereco&&data.endereco.num||"");
   pdf.text(endVc,CKML+CKCW/2+1.5+pdf.getTextWidth(endLc),yc+4.5);
   pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(CKML,yc,CKCW,7,"S");yc+=9;
-  const ambTotal=[...AMBIENTES,...(ambientesExtrasArr||[])];
+  // Se a vistoria informou os ambientes utilizados, usa só eles (na ordem informada).
+  // Caso contrário, mostra todos (fallback legado).
+  const ambTotal=(ambientesUtilizadosArr&&ambientesUtilizadosArr.length)
+    ? ambientesUtilizadosArr.slice()
+    : [...AMBIENTES,...(ambientesExtrasArr||[])];
   const colsH=["Local","Estrutura","Parede e muro","Cobertura e teto","Porta e esquadria","Piso e calçamento"];
   const colWRaw=[26,30,31,31,30,37];
   const cwSum=colWRaw.reduce((a,b)=>a+b,0);
@@ -3148,9 +3103,10 @@ async function gerarComprovanteBlob(data,conclusaoLinhas,assinaturaResp,assinatu
   };
   yc=renderCKHeader(yc);
   const ROW_MIN=10;
+  const ROW_MAX=22;
   const availForRows=(CKH-CKMB)-yc-1;
-  const rowHCalc=Math.floor((availForRows/ambTotal.length)*10)/10;
-  const rowH=Math.max(ROW_MIN,rowHCalc);
+  const rowHCalc=ambTotal.length?Math.floor((availForRows/ambTotal.length)*10)/10:ROW_MIN;
+  const rowH=Math.min(ROW_MAX,Math.max(ROW_MIN,rowHCalc));
   let cx;
   ambTotal.forEach((amb,ri)=>{
     if(yc+rowH>(CKH-CKMB)-1){
@@ -3323,14 +3279,19 @@ window.enviarComprovanteVistoria=async(vistoriaId,vData)=>{
     const assinaturaResp=vData.assinaturaResp||null;
     const assinaturaTec=(currentUserData&&currentUserData.assinatura)||vData.assinaturaTecnico||null;
     if(!assinaturaResp){
-      alert("Esta vistoria foi finalizada antes da implementação do comprovante e não possui a assinatura do responsável salva. Não é possível regerar.");
+      alert("Esta vistoria foi finalizada antes da implementação do comprovante e não possui a assinatura do responsável salva. Não é possível gerar novamente.");
       return;
     }
-    // Reconstruir conclusao a partir dos dados salvos (sem fotosPendentes — usa apenas checklist)
-    // Aqui poderíamos buscar fotos do IndexedDB e gerar a conclusão real, mas como o comprovante
-    // não tem fotos, vamos usar uma versão simplificada: vazio se não tivermos as combinações.
+    // Reconstruir conclusão e ambientes utilizados a partir das fotos do IndexedDB (se disponíveis)
     const conclusaoLinhas=[];
-    const blob=await gerarComprovanteBlob(vData,conclusaoLinhas,assinaturaResp,assinaturaTec,vData.ambientesExtras||[]);
+    let ambUtilizados=[];
+    try{
+      const fotosLocais=await localBuscarFotos(vistoriaId);
+      if(fotosLocais&&fotosLocais.length){
+        fotosLocais.forEach(f=>{if(f&&f.ambiente&&!ambUtilizados.includes(f.ambiente))ambUtilizados.push(f.ambiente);});
+      }
+    }catch(e){}
+    const blob=await gerarComprovanteBlob(vData,conclusaoLinhas,assinaturaResp,assinaturaTec,vData.ambientesExtras||[],ambUtilizados);
     const url=await uploadComprovante(blob,vistoriaId);
     mostrarModalQRComprovante(url);
   }catch(e){
@@ -3351,6 +3312,11 @@ window.finalizarVistoria=async()=>{
     if(!idadeVal||isNaN(parseInt(idadeVal)))return alert("Informe a Idade Aparente do Imóvel (obrigatório)");
     const statusVal=document.getElementById("fin-status-vistoria").value;
     if(!statusVal)return alert("Selecione o Status da Vistoria (obrigatório)");
+    // Nome do morador: obrigatório SALVO se status="ausente" (vistoria de ausente pode não ter nome conhecido)
+    const nomeResp=currentVistoria&&currentVistoria.responsavel&&currentVistoria.responsavel.nome||"";
+    if(statusVal!=="ausente"&&!nomeResp.trim()){
+      return alert("Informe o nome do morador (obrigatório para vistorias não-ausentes).\n\nVolte para o início da vistoria para preencher o nome.");
+    }
     if(!assinaturaData)return alert("Confirme a assinatura do responsavel");
     if(!assinaturaTecnico)return alert("Cadastre sua assinatura em Perfil");
   }
@@ -3534,7 +3500,16 @@ window.finalizarVistoria=async()=>{
     pdf.text(endVc,CKML+CKCW/2+1.5+pdf.getTextWidth(endLc),yc+4.5);
     pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(CKML,yc,CKCW,7,"S");yc+=9;
 
-    const ambTotal=[...AMBIENTES,...ambientesExtras];
+    // Checklist: SÓ os cômodos que foram efetivamente fotografados nesta vistoria,
+    // na ordem em que apareceram pela primeira vez. Cômodos sem foto não entram
+    // no PDF para o checklist ficar mais limpo e direto. A ordem aqui já está alinhada
+    // ao agrupamento feito acima em fotosPendentes, então iteramos por Object.values.
+    const ambientesComFoto=[];
+    Object.values(fotosPendentes).forEach(f=>{
+      if(f&&f.ambiente&&!ambientesComFoto.includes(f.ambiente))ambientesComFoto.push(f.ambiente);
+    });
+    // Se nenhuma foto, mostra ao menos os ambientes extras manualmente cadastrados (fallback)
+    const ambTotal=ambientesComFoto.length?ambientesComFoto:[...ambientesExtras];
     const colsH=["Local","Estrutura","Parede e muro","Cobertura e teto","Porta e esquadria","Piso e calçamento"];
     // Largura: Piso/calçamento tem o nome mais longo de patologia (Fissura/Trinca/Rachadura).
     // Damos mais espaço para ela e tiramos das demais.
@@ -3549,12 +3524,16 @@ window.finalizarVistoria=async()=>{
     pdf.setDrawColor(0,0,0);
     cx=CKML;pdf.setFontSize(7);pdf.setFont("helvetica","bold");
     colsH.forEach((c,i)=>{pdf.text(c,cx+colWN[i]/2,yc+4.8,{align:"center"});cx+=colWN[i];});yc+=hdrH;
-    // rowH: mínimo 14mm para 8 patologias não encavalarem (step>=1.4mm)
-    // Se não couberem todos numa página, quebra naturalmente
-    const ROW_MIN=10; // mm mínimo por linha com 5 grupos
+    // rowH: cada linha precisa caber 5 grupos de patologia legíveis.
+    // Antes: dividíamos a área disponível por N (sempre ~18) → ~14mm/linha. Agora N pode ser
+    // pequeno (poucos cômodos fotografados), então sem teto a linha vira um bloco gigante.
+    // Limitamos a um MÁXIMO razoável e empurramos o restante do espaço para depois (preenchemos
+    // só o que precisa, deixando o final em branco).
+    const ROW_MIN=10;
+    const ROW_MAX=22;
     const availForRows=(CKH-CKMB)-yc-1;
-    const rowHCalc=Math.floor((availForRows/ambTotal.length)*10)/10;
-    const rowH=Math.max(ROW_MIN,rowHCalc);
+    const rowHCalc=ambTotal.length?Math.floor((availForRows/ambTotal.length)*10)/10:ROW_MIN;
+    const rowH=Math.min(ROW_MAX,Math.max(ROW_MIN,rowHCalc));
     // Função auxiliar para renderizar o cabeçalho da tabela numa página de checklist
     const renderCKHeader=(ycLocal)=>{
       pdf.setFillColor(200,200,200);
@@ -3676,7 +3655,7 @@ window.finalizarVistoria=async()=>{
       const dataArqR=currentVistoria.data.replace(/\//g,"-");
       const endArqR=(currentVistoria.endereco.rua+" "+currentVistoria.endereco.num+(currentVistoria.endereco.comp?" "+currentVistoria.endereco.comp:"")).replace(/[^a-zA-Z0-9\s]/g,"").trim().replace(/\s+/g,"_");
       const colArqR=(currentVistoria.coletorNome||"vistoria").replace(/[^a-zA-Z0-9\s]/g,"").trim().replace(/\s+/g,"_");
-      const nomeBaseR=colArqR+"-"+endArqR+"-"+dataArqR+"_regerado";
+      const nomeBaseR=colArqR+"-"+endArqR+"-"+dataArqR+"_v2";
       if(erroFotos>0){
         const seguirR=confirm(erroFotos+" foto(s) falharam ao serem inseridas no PDF.\n\nGerar mesmo assim?");
         if(!seguirR)throw new Error("Geração abortada pelo usuário.");
@@ -3685,7 +3664,7 @@ window.finalizarVistoria=async()=>{
       await yieldThread();
       await shareOrDownload(pdf.output("blob"),nomeBaseR+".pdf","application/pdf");
       fotosPendentes=_backupFotos;
-      showToast("PDF regerado!",3000);
+      showToast("PDF gerado novamente!",3000);
       return; // não cai no finally do botão porque é regerar — finally do regeRarPDF restaura estado
     }
     // Salvar Firebase (sem fotos — fotos vão para IndexedDB local-only) + download
@@ -3697,8 +3676,6 @@ window.finalizarVistoria=async()=>{
       const fotosLocais=Object.values(fotosPendentes).map(f=>({dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,legenda:f.legenda||f.tipo,numero:f.numero,combinacoes:f.combinacoes||[]}));
       await localSalvarFotos(vRef.id,fotosLocais);
     }catch(eLocal){console.error("Falha ao salvar fotos local-only:",eLocal);}
-    // Fechar item da fila se veio de la
-    if(window._filaItemId){try{await updateDoc(doc(db,"fila_vistorias",window._filaItemId),{status:"concluida"});}catch(e){}window._filaItemId=null;}
 
     const dataArq=currentVistoria.data.replace(/\//g,"-");
     const endArq=(currentVistoria.endereco.rua+" "+currentVistoria.endereco.num+(currentVistoria.endereco.comp?" "+currentVistoria.endereco.comp:"")).replace(/[^a-zA-Z0-9\s]/g,"").trim().replace(/\s+/g,"_");
@@ -3733,7 +3710,12 @@ window.finalizarVistoria=async()=>{
       setStatus("Gerando comprovante...");
       await yieldThread();
       const conclusao=gerarTextoConclusao();
-      const comprovanteBlob=await gerarComprovanteBlob(currentVistoria,conclusao,assinaturaData,assinaturaTecnico,ambientesExtras||[]);
+      // Lista de ambientes que foram efetivamente fotografados (na ordem de aparição)
+      const ambientesComFotoCompr=[];
+      Object.values(fotosPendentes).forEach(f=>{
+        if(f&&f.ambiente&&!ambientesComFotoCompr.includes(f.ambiente))ambientesComFotoCompr.push(f.ambiente);
+      });
+      const comprovanteBlob=await gerarComprovanteBlob(currentVistoria,conclusao,assinaturaData,assinaturaTecnico,ambientesExtras||[],ambientesComFotoCompr);
       // Download local junto com o resto (para reenvio futuro sem regerar)
       await shareOrDownload(comprovanteBlob,nomeBase+"_comprovante.pdf","application/pdf");
       // Upload para Storage (não bloqueia se falhar)
@@ -3748,22 +3730,14 @@ window.finalizarVistoria=async()=>{
       }
     }catch(eC){console.error("Falha ao gerar comprovante:",eC);}
     // Salvar defaults ANTES de limpar
-    let destinoFinal="s-nova-vistoria";
     if(currentVistoria){
       localStorage.setItem("lastClienteId",currentVistoria.clienteId||"");
       localStorage.setItem("lastColetorId",currentVistoria.coletorId||"");
       localStorage.setItem("lastSelecaoData",new Date().toISOString().slice(0,10));
       localStorage.setItem("lastRua",(currentVistoria.endereco&&currentVistoria.endereco.rua)||"");
-      // Se a vistoria veio da fila, marca item como concluído e volta para a fila
-      if(currentVistoria._filaItemId){
-        try{
-          await updateDoc(doc(db,"fila_vistorias",currentVistoria._filaItemId),{status:"concluida"});
-        }catch(e){console.error("Erro ao atualizar fila:",e);}
-        destinoFinal="s-fila";
-      }
     }
     currentVistoria=null;fotosPendentes={};assinaturaData=null;ambientesExtras=[];
-    goTo(destinoFinal);
+    goTo("s-nova-vistoria");
   }catch(e){
     console.error(e);
     // Restaurar estado: sessão de vistoria deve permanecer disponível para nova tentativa
@@ -3772,6 +3746,177 @@ window.finalizarVistoria=async()=>{
     alert("Erro ao gerar PDF: "+(e.message||e.code||"desconhecido")+"\n\nVocê pode tentar finalizar novamente.");
   }
   finally{btn.textContent="Gerar PDF + ZIP e finalizar";btn.disabled=false;btn.style.opacity="1";}
+};
+
+// ===== FLUXO RÁPIDO: AUSENTE PASSÍVEL DE RETORNO =====
+// Para imóveis sem ninguém presente. Vistoriador tira só fotos da fachada (ou nenhuma),
+// pula checklist/patologias/assinatura do responsável, gera PDF curto e finaliza.
+// Pode ser chamado MUITO no mesmo dia — fluxo precisa ser bem rápido.
+window.marcarAusentePassivelRetorno=async()=>{
+  if(!currentVistoria){
+    return alert("Sessão da vistoria foi perdida. Volte para a tela anterior e reinicie.");
+  }
+  if(!assinaturaTecnico){
+    return alert("Cadastre sua assinatura em Perfil antes de finalizar.");
+  }
+  const totalFotos=Object.keys(fotosPendentes).length;
+  if(totalFotos===0){
+    if(!confirm("Nenhuma foto foi tirada ainda.\n\nRecomendado: tire ao menos 1 foto da fachada como prova da tentativa.\n\nFinalizar mesmo assim?"))return;
+  }
+  if(!confirm("Marcar este imóvel como AUSENTE — passível de retorno?\n\nO PDF será gerado com as fotos atuais (sem checklist nem patologias).\nA assinatura do responsável NÃO é necessária.\nEle permanecerá na lista de Pendentes para nova visita."))return;
+  // Snapshot defensivo
+  const _backupVistoriaA={...currentVistoria};
+  let _backupFotosA={...fotosPendentes};
+  currentVistoria.estado=currentVistoria.estado||"Regular";
+  currentVistoria.idade=currentVistoria.idade||"-";
+  currentVistoria.statusVistoria="ausente";
+  currentVistoria.pendente_retorno=true;
+  ultimoResponsavel={...currentVistoria.responsavel};
+  let erroFotos=0;
+  try{
+    // Reaproveita a recompressão + agrupamento existentes via "modo ausente": como o fluxo é simples,
+    // gera PDF inline aqui mesmo, com header padrão + as fotos (se houver) + página final curta.
+    showToast("Gerando PDF de ausência...",4000);
+    await yieldThread();
+    // Recompressão (se houver fotos)
+    if(totalFotos>0){
+      const fotosRecomp={};
+      const fotosArr=Object.entries(fotosPendentes);
+      for(let i=0;i<fotosArr.length;i++){
+        const[id,f]=fotosArr[i];
+        try{
+          const optimized=await recomprimirParaPDF(f.dataUrl,1600,0.85);
+          fotosRecomp[id]={...f,dataUrl:optimized};
+        }catch(eOpt){fotosRecomp[id]=f;}
+        await yieldThread();
+      }
+      fotosPendentes=fotosRecomp;
+    }
+    const{jsPDF}=window.jspdf;
+    const pdf=new jsPDF("p","mm","a4");
+    const PW=210,PH=297,ML=12.7,MT=12.7,MR=12.7,MB=12.7;
+    const CW=PW-ML-MR;
+    const HDR=47;
+    const Y0=MT+HDR;
+    const PGB=PH-MB-14;
+    const prest=prestadorDefault||{nome:"CNRP ARQUITETURA E CONSTRUÇÕES LTDA.",cnpj:"22.121.094/0001-90",endereco:"Av. Marechal Eurico Gaspar Dutra, nº 1292 | Santana | São Paulo – SP | CEP 02239-010",email:"ronaldopinto@rbarquitetura.com"};
+    const logoSrc=prest.logo||LOGO_CONST;
+    const logoPrep=await prepLogoForPDF(logoSrc,45,15);
+    const fotosArr=Object.values(fotosPendentes);
+    // === PÁGINA 1: HEADER + AVISO DE AUSÊNCIA + FOTOS (se houver) ===
+    pdfHeader(pdf,ML,PW,CW,currentVistoria,"Fachada",logoSrc,HDR,MT,logoPrep);
+    let y=Y0;
+    // Banner explicativo
+    pdf.setFillColor(255,243,205);pdf.rect(ML,y,CW,12,"F");
+    pdf.setDrawColor(245,158,11);pdf.setLineWidth(0.4);pdf.rect(ML,y,CW,12,"S");
+    pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.setTextColor(146,64,14);
+    pdf.text("IMÓVEL AUSENTE — PASSÍVEL DE RETORNO",ML+CW/2,y+5,{align:"center"});
+    pdf.setFont("helvetica","normal");pdf.setFontSize(8);
+    pdf.text("Tentativa "+( currentVistoria.visitas||1)+" — Não foi possível realizar a vistoria interna. Imóvel permanece pendente para nova visita.",ML+CW/2,y+9.5,{align:"center"});
+    pdf.setTextColor(0,0,0);
+    y+=16;
+    // Fotos (1 ou mais)
+    if(fotosArr.length>0){
+      const espacoDisp=PGB-y-20;
+      if(fotosArr.length===1){
+        const f=fotosArr[0];
+        const dims=await getImgDims(f.dataUrl);
+        const maxFH=espacoDisp;
+        const sc=Math.min((CW-4)/dims.w,(maxFH-4)/dims.h);
+        const fw=Math.round(dims.w*sc),fh=Math.round(dims.h*sc);
+        const xo=Math.round((CW-fw)/2);
+        pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(ML,y,CW,fh+10,"S");
+        try{await addImgPDF(pdf,f.dataUrl,ML+xo,y+2,fw,fh);}catch(e){erroFotos++;}
+        pdf.line(ML,y+fh+2,ML+CW,y+fh+2);
+        pdf.setFont("helvetica","bold");pdf.setFontSize(9);
+        pdf.text("Foto 01",ML+CW/2,y+fh+5,{align:"center"});
+        pdf.setFont("helvetica","normal");pdf.setFontSize(8);
+        pdf.text(f.legenda||f.ambiente||"Fachada",ML+CW/2,y+fh+8.5,{align:"center"});
+        y+=fh+14;
+      } else {
+        // Várias fotos: grid simples 2 por linha
+        const fpW=(CW-4)/2;
+        const fpH=Math.min(espacoDisp/Math.ceil(fotosArr.length/2)-12,80);
+        for(let i=0;i<fotosArr.length;i+=2){
+          const yp=y;
+          for(let k=0;k<2&&i+k<fotosArr.length;k++){
+            const f=fotosArr[i+k];
+            const fx=k===0?ML:ML+fpW+4;
+            const dims=await getImgDims(f.dataUrl);
+            const sc=Math.min((fpW-4)/dims.w,(fpH-4)/dims.h);
+            const fw=Math.round(dims.w*sc),fh=Math.round(dims.h*sc);
+            const xo=Math.round((fpW-fw)/2),yo=Math.round((fpH-fh)/2);
+            pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(fx,yp,fpW,fpH+8,"S");
+            try{await addImgPDF(pdf,f.dataUrl,fx+xo,yp+yo,fw,fh);}catch(e){erroFotos++;}
+            pdf.line(fx,yp+fpH,fx+fpW,yp+fpH);
+            pdf.setFont("helvetica","bold");pdf.setFontSize(8);
+            pdf.text("Foto "+String(i+k+1).padStart(2,"0"),fx+fpW/2,yp+fpH+3.5,{align:"center"});
+            pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);
+            pdf.text(f.legenda||f.ambiente||"Fachada",fx+fpW/2,yp+fpH+6.5,{align:"center"});
+          }
+          y+=fpH+12;
+        }
+      }
+    } else {
+      pdf.setFont("helvetica","italic");pdf.setFontSize(10);
+      pdf.text("Nenhuma foto registrada nesta tentativa.",ML+CW/2,y+15,{align:"center"});
+      y+=20;
+    }
+    // Assinatura técnico só (sem responsável)
+    const yAssi=Math.max(y+10,PGB-50);
+    pdf.setFontSize(10);pdf.setFont("helvetica","normal");
+    pdf.text("São Paulo, "+(currentVistoria.dataCompleta||currentVistoria.data),ML+CW/2,yAssi,{align:"center"});
+    const sigW=CW*0.4;const sigX=ML+(CW-sigW)/2;const sigYTop=yAssi+8;
+    if(assinaturaTecnico){try{pdf.addImage(assinaturaTecnico,"PNG",sigX,sigYTop,sigW,18);}catch(e){}}
+    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
+    pdf.line(sigX,sigYTop+19,sigX+sigW,sigYTop+19);
+    pdf.setFontSize(9);pdf.setFont("helvetica","normal");
+    pdf.text((currentUserData&&currentUserData.nome)||"Responsavel Tecnico",sigX+sigW/2,sigYTop+23,{align:"center"});
+    pdf.text("Responsável Técnico",sigX+sigW/2,sigYTop+27,{align:"center"});
+    // Rodapé
+    pdfFooter(pdf,PW,PH,ML,MR,MB,prest);
+    // Salvar no Firestore
+    const vDoc={
+      clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,
+      clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,
+      coletorNome:currentVistoria.coletorNome,
+      responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,
+      ocupacao:currentVistoria.ocupacao||"",tipo:currentVistoria.tipo||"",
+      tipoLaudo:currentVistoria.tipoLaudo||"simplificado",
+      estado:"",idade:"",
+      data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,
+      userId:currentUser.uid,
+      checklist:{},ambientesExtras:[],observacoes:"",
+      totalFotos:fotosArr.length,
+      status:"ausente",pendente_retorno:true,
+      visitas:currentVistoria.visitas||1,
+      criadoEm:serverTimestamp(),
+      assinaturaResp:null
+    };
+    const vRef=await addDoc(collection(db,"vistorias"),vDoc);
+    // Fotos local-only no IndexedDB
+    try{
+      const fotosLocais=Object.values(fotosPendentes).map(f=>({dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,legenda:f.legenda||f.tipo,numero:f.numero,combinacoes:f.combinacoes||[]}));
+      await localSalvarFotos(vRef.id,fotosLocais);
+    }catch(e){console.error("Falha local-only ausente:",e);}
+    // Gerar nome do arquivo
+    const dataArq=currentVistoria.data.replace(/\//g,"-");
+    const endArq=(currentVistoria.endereco.rua+" "+currentVistoria.endereco.num+(currentVistoria.endereco.comp?" "+currentVistoria.endereco.comp:"")).replace(/[^a-zA-Z0-9\s]/g,"").trim().replace(/\s+/g,"_");
+    const colArq=(currentVistoria.coletorNome||"vistoria").replace(/[^a-zA-Z0-9\s]/g,"").trim().replace(/\s+/g,"_");
+    const nomeBase=colArq+"-"+endArq+"-"+dataArq+"_ausente";
+    // Restaura fotos originais antes do share (qualidade boa)
+    fotosPendentes=_backupFotosA;
+    await shareOrDownload(pdf.output("blob"),nomeBase+".pdf","application/pdf");
+    showToast("Imóvel registrado como Ausente (passível de retorno).",4000);
+    // Limpar estado e voltar
+    currentVistoria=null;fotosPendentes={};assinaturaData=null;ambientesExtras=[];
+    goTo("s-nova-vistoria");
+  }catch(e){
+    console.error("marcarAusentePassivelRetorno:",e);
+    if(_backupVistoriaA&&!currentVistoria)currentVistoria=_backupVistoriaA;
+    if(_backupFotosA&&Object.keys(fotosPendentes).length===0)fotosPendentes=_backupFotosA;
+    alert("Erro ao registrar ausência: "+(e.message||"desconhecido"));
+  }
 };
 
 async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
