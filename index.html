@@ -155,7 +155,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div class="section-header">Captacao</div>
       <div class="list-item" onclick="goTo('s-novo-imovel')"><div class="avatar" style="background:#fff7ed;color:#c2410c"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg></div><div class="info"><div class="title">Cadastrar Imovel</div><div class="sub">Registrar morador e endereco</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
       <div class="list-item" onclick="goTo('s-fila')"><div class="avatar" style="background:#fff7ed;color:#c2410c"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg></div><div class="info"><div class="title">Imoveis Cadastrados</div><div class="sub" id="dash-fila-count">Carregando...</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
-      <div class="list-item" onclick="goTo('s-pendentes')"><div class="avatar" style="background:#fef2f2;color:#dc2626"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div><div class="info"><div class="title">Ausentes Pendentes</div><div class="sub" id="dash-pendentes-count">Carregando...</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
     </div>
     <div id="dash-cadastrador-section">
       <div class="section-header">Vistorias</div>
@@ -911,7 +910,7 @@ async function loadPrestadorDefault(){try{const q=query(collection(db,"prestador
 window.doLogin=async()=>{const email=document.getElementById("login-email").value.trim();const pass=document.getElementById("login-pass").value;const err=document.getElementById("login-err");if(!email||!pass){err.textContent="Preencha e-mail e senha";err.style.display="block";return;}try{await signInWithEmailAndPassword(auth,email,pass);localStorage.setItem("lastLoginDate",new Date().toDateString());err.style.display="none";}catch(e){err.textContent="E-mail ou senha incorretos";err.style.display="block";}};
 window.doLogout=async()=>await signOut(auth);
 
-function loadDash(){const el=document.getElementById("dash-role");const roleLabel=currentRole==="master"?"Master":currentRole==="comunicador"?"Comunicador":"Cadastrador";const roleCls=currentRole==="master"?"master":currentRole==="comunicador"?"com":"cad";el.textContent=roleLabel;el.className="badge "+roleCls;document.getElementById("dash-master-section").style.display=currentRole==="master"?"block":"none";document.getElementById("dash-comunicador-section").style.display=currentRole==="comunicador"?"block":"none";document.getElementById("dash-cadastrador-section").style.display=(currentRole==="cadastrador"||currentRole==="master")?"block":"none";loadDashCount();loadFilaCount();loadPendentesCount();}
+function loadDash(){const el=document.getElementById("dash-role");const roleLabel=currentRole==="master"?"Master":currentRole==="comunicador"?"Comunicador":"Cadastrador";const roleCls=currentRole==="master"?"master":currentRole==="comunicador"?"com":"cad";el.textContent=roleLabel;el.className="badge "+roleCls;document.getElementById("dash-master-section").style.display=currentRole==="master"?"block":"none";document.getElementById("dash-comunicador-section").style.display=currentRole==="comunicador"?"block":"none";document.getElementById("dash-cadastrador-section").style.display=(currentRole==="cadastrador"||currentRole==="master")?"block":"none";if(currentRole!=="comunicador"){loadDashCount();}loadFilaCount();if(currentRole!=="comunicador"){loadPendentesCount();}}
 async function loadDashCount(){try{const q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));const s=await getDocs(q);document.getElementById("dash-count").textContent=s.size+" vistoria(s)";}catch(e){}}
 
 async function loadFilaCount(){try{const q=query(collection(db,"fila_vistorias"),where("status","==","aguardando"));const s=await getDocs(q);const txt=s.size+" aguardando";const el1=document.getElementById("dash-fila-count");const el2=document.getElementById("dash-fila-count2");if(el1)el1.textContent=txt;if(el2)el2.textContent=txt;}catch(e){}}
@@ -982,6 +981,11 @@ window.salvarNovoImovel=async()=>{
   const clNome=(_cacheClientes&&_cacheClientes.find(c=>c.id===cId))||{nome:""};
   const colArr=_cacheColetores[cId]||[];
   const colNome=(colArr.find(c=>c.id===colId))||{nome:""};
+  // Pré-validação: a regra do Firestore exige role="comunicador" ou "master" para criar
+  // na coleção fila_vistorias. Se o doc users/{uid} estiver sem o campo role, falha.
+  if(!currentRole||(currentRole!=="comunicador"&&currentRole!=="cadastrador"&&currentRole!=="master")){
+    return alert("Seu usuário não está com permissão configurada. Peça ao Master para revisar seu cadastro (role).");
+  }
   try{
     const activeCardNI=document.querySelector("#s-novo-imovel .laudo-tipo-card.active");
     const tipoLaudoNI=(activeCardNI&&activeCardNI.dataset.tipo)||window._tipoLaudoNI||localStorage.getItem("niLastTipoLaudo")||"simplificado";
@@ -1001,7 +1005,16 @@ window.salvarNovoImovel=async()=>{
     localStorage.setItem("niLastComp",comp);
     showToast("Imovel cadastrado na fila!");
     goTo("s-fila");
-  }catch(e){alert("Erro: "+e.message);}
+  }catch(e){
+    console.error("salvarNovoImovel falhou:",e);
+    console.error("Detalhes:",{code:e.code,message:e.message,uid:currentUser&&currentUser.uid,role:currentRole});
+    // Erros de regra do Firestore: mensagem mais útil
+    if(e.code==="permission-denied"||(e.message||"").toLowerCase().includes("missing or insufficient permissions")){
+      alert("Permissão negada pelo servidor.\n\nVerifique no Firebase Console:\n• users/"+currentUser.uid+" existe?\n• Tem campo role com valor exatamente \"comunicador\" (minúsculas)?\n\nRole detectado no app: "+(currentRole||"(vazio)"));
+    } else {
+      alert("Erro: "+e.message+(e.code?" ("+e.code+")":""));
+    }
+  }
 };
 
 // ── FILA DE IMÓVEIS ───────────────────────────────────────────
@@ -2205,8 +2218,14 @@ function abrirEditorSetas(imgDataUrl){
   document.getElementById("arrow-counter").textContent="0 setas";
   const titulo=document.getElementById("arrow-overlay-titulo");
   if(titulo){
+    const tipoLaudoAE=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";
     const n=_fotoSetasAcumuladas.length;
-    titulo.textContent=n===0?"Toque na foto para marcar a patologia":"Marque mais uma patologia (já tem "+n+")";
+    if(tipoLaudoAE==="completo"){
+      titulo.textContent=n===0?"Toque na foto para marcar a patologia":"Marque mais uma patologia (já tem "+n+")";
+    }else{
+      // Simplificado: pode marcar várias de uma vez
+      titulo.textContent=n===0?"Toque na foto para marcar as patologias":"Marque mais patologias (já tem "+n+")";
+    }
   }
   const canvas=document.getElementById("arrow-canvas");
   // Limpar o canvas IMEDIATAMENTE (evita exibir a foto anterior antes de a nova carregar)
@@ -2331,8 +2350,11 @@ window.confirmarSetas=()=>{
   if(arrowPoints.length===0){
     return alert("Toque na foto para marcar onde está a patologia.");
   }
-  if(arrowPoints.length>1){
-    return alert("Marque apenas UMA seta por vez. Você poderá adicionar mais setas depois.");
+  const tipoLaudoCS=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";
+  // No COMPLETO, cada seta exige código próprio (B1, H1;3 etc.), então mantém 1-por-vez.
+  // No SIMPLIFICADO, várias setas podem compartilhar a mesma patologia/elemento — sem alerta.
+  if(tipoLaudoCS==="completo"&&arrowPoints.length>1){
+    return alert("No modo Completo, marque apenas UMA seta por vez. Você poderá adicionar mais depois.");
   }
   document.getElementById("arrow-overlay").style.display="none";
   abrirModalPatologias();
@@ -2523,20 +2545,42 @@ window.confirmarPatologias=()=>{
     document.getElementById("pat-modal").style.display="flex";
     return;
   }
-  // Compactar combinações desta seta em uma só (se usuário marcou várias).
+  // Compactar combinações desta confirmação em uma só (se usuário marcou várias).
   // No modo Completo, deve haver apenas UMA combinação por seta (uma caixa só).
-  // No simplificado pode haver várias combinações para o mesmo ponto, mas geralmente é uma.
   const combinacaoDesta=_patCombinacoes.length===1?_patCombinacoes[0]:{modo:"agrupada",listaInternal:_patCombinacoes.slice()};
+  const combinacoesArrSnapshot=_patCombinacoes.slice();
 
-  // Salvar seta + combinação acumuladas para esta foto
-  if(arrowPoints.length===1){
-    _fotoSetasAcumuladas.push({pontoFracao:arrowPoints[0],combinacao:combinacaoDesta,combinacoesArr:_patCombinacoes.slice()});
+  // SIMPLIFICADO + várias setas: aplicar a mesma combinação a todas, salvar direto
+  // (sem passar pelo overlay "+outra seta/Concluir foto" — Opção A).
+  if(tipoLaudo!=="completo"&&arrowPoints.length>1){
+    arrowPoints.forEach(p=>{
+      _fotoSetasAcumuladas.push({pontoFracao:p,combinacao:combinacaoDesta,combinacoesArr:combinacoesArrSnapshot});
+    });
+    _patCombinacoes=[];_patCatSelecionada=null;
+    // Renderizar e salvar direto, sem overlay de decisão
+    const tipoLaudoFinal=tipoLaudo;
+    const dataUrlFinal=renderizarFotoComAcumuladas(tipoLaudoFinal);
+    fotoAtualBlob=dataUrlFinal;
+    // Coletar combinações achatadas para o checklist
+    const todasCombos=[];
+    _fotoSetasAcumuladas.forEach(s=>{(s.combinacoesArr||[s.combinacao]).forEach(c=>todasCombos.push(c));});
+    const pats=[];
+    todasCombos.forEach(c=>{
+      if(c.pats)c.pats.forEach(p=>pats.push({col:c.col,tipo:c.parte,pat:p,elemento:c.elemento,combo:c}));
+    });
+    salvarFotoFinal(fotoAtualBlob,pats,todasCombos);
+    _fotoSetasAcumuladas=[];
+    _fotoOriginalBlob=null;
+    return;
   }
-  // Reset do estado do modal para próxima seta
+
+  // Caso padrão (Completo com 1 seta, ou Simplificado com 1 seta):
+  // mantém fluxo existente — overlay decide se adiciona outra ou conclui.
+  if(arrowPoints.length===1){
+    _fotoSetasAcumuladas.push({pontoFracao:arrowPoints[0],combinacao:combinacaoDesta,combinacoesArr:combinacoesArrSnapshot});
+  }
   _patCombinacoes=[];
   _patCatSelecionada=null;
-
-  // Renderizar a foto acumulada e abrir overlay de decisão
   abrirOverlayDecisao();
 };
 
@@ -3005,62 +3049,59 @@ window.salvarEdicaoResponsavel=async()=>{
 };
 
 async function regeRarPDF(data){
+  // Regenerar o PDF COMPLETO a partir dos dados do histórico (fotos do IndexedDB + checklist + assinaturas).
+  // Estratégia: setup temporário do estado global usado pelo finalizarVistoria, chamar o gerador,
+  // depois restaurar o estado anterior.
   showToast("Gerando PDF...",5000);
+  // Backup do estado global atual
+  const _bkCurrentVistoria=currentVistoria;
+  const _bkFotosPendentes=fotosPendentes;
+  const _bkAssinaturaData=assinaturaData;
+  const _bkAssinaturaTec=assinaturaTecnico;
+  const _bkAmbientesExtras=ambientesExtras;
   try{
-    const{jsPDF}=window.jspdf;
-    const pdf=new jsPDF("p","mm","a4");
-    const PW=210,PH=297;
-    const ML=12.7,MT=12.7,MR=12.7,MB=12.7;
-    const CW=PW-ML-MR;
-    const HDR=47;
-    const Y0=MT+HDR,PGB=PH-MB;
-    const prest=prestadorDefault||{nome:"CNRP ARQUITETURA E CONSTRU\xc7\xd5ES LTDA.",cnpj:"22.121.094/0001-90",endereco:"Av. Marechal Eurico Gaspar Dutra, n\xba 1292 | Santana | S\xe3o Paulo \u2013 SP | CEP 02239-010",email:"ronaldopinto@rbarquitetura.com"};
-    const logoSrc=prest.logo||LOGO_CONST;
-    const logoPrep=await prepLogoForPDF(logoSrc,45,15);
-
-    // Gerar apenas pagina checklist
-    pdfHeader(pdf,ML,PW,CW,data,"",logoSrc,HDR,MT,logoPrep);
-    let yc=Y0+3;
-    pdf.setFontSize(9);pdf.setFont("helvetica","bold");
-    pdf.text("IDENTIFICA\xc7\xc3O DE PATOLOGIAS",ML+CW/2,yc,{align:"center"});yc+=7;
-    const ambTotal=AMBIENTES;
-    const colsH=["Local","Estrutura","Parede e muro","Cobert. e teto","Porta e esq.","Piso e calc."];
-    const nc=CW/6;const colW=[nc,nc,nc,nc,nc,nc];
-    pdf.setFillColor(220,220,220);let cx=ML;
-    colW.forEach(w=>{pdf.rect(cx,yc,w,7,"F");cx+=w;});
-    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(ML,yc,CW,7,"S");
-    cx=ML;pdf.setFontSize(7);pdf.setFont("helvetica","bold");
-    colsH.forEach((c,i)=>{pdf.text(c,cx+colW[i]/2,yc+4.8,{align:"center"});cx+=colW[i];});yc+=7;
-    ambTotal.forEach((amb,ri)=>{
-      const vals=COLS.map(k=>{const v=(data.checklist&&data.checklist[amb]&&data.checklist[amb][k])||[];return Array.isArray(v)?v:[];});
-      const rowH=20;
-      if(yc+rowH>PGB-15){pdf.addPage();yc=20;}
-      if(ri%2===0){pdf.setFillColor(248,248,248);cx=ML;colW.forEach(w=>{pdf.rect(cx,yc,w,rowH,"F");cx+=w;});}
-      pdf.setDrawColor(160,160,160);pdf.setLineWidth(0.15);pdf.rect(ML,yc,CW,rowH,"S");
-      cx=ML;pdf.setFont("helvetica","bold");pdf.setFontSize(6.5);pdf.text(amb,cx+1.5,yc+4);cx+=colW[0];
-      vals.forEach((arr,ki)=>{
-        pdf.setFont("helvetica","normal");pdf.setFontSize(5.2);
-        const allP=PATOLOGIAS;
-        allP.forEach((pp,pi)=>{
-          const mk=arr.some(a=>a===pp||a.toLowerCase().includes(pp.toLowerCase())||pp.toLowerCase().includes(a.toLowerCase()));
-          pdf.text((mk?"[X]":"[ ]")+" "+pp,cx+1,yc+2+pi*2.2);
-        });
-        cx+=colW[ki+1];
-      });
-      yc+=rowH;
+    // Hidratar estado a partir do histórico
+    currentVistoria={
+      clienteId:data.clienteId,clienteNome:data.clienteNome,clienteRRT:data.clienteRRT,
+      coletorId:data.coletorId,coletorNome:data.coletorNome,
+      responsavel:data.responsavel||{},endereco:data.endereco||{},
+      ocupacao:data.ocupacao||"",tipo:data.tipo||"",
+      tipoLaudo:data.tipoLaudo||"simplificado",
+      estado:data.estado||"Regular",idade:data.idade||"",
+      data:data.data,dataCompleta:data.dataCompleta,
+      checklist:data.checklist||{},observacoes:data.observacoes||"",
+      statusVistoria:data.status||"concluida"
+    };
+    // Reconstruir fotosPendentes a partir das fotos do IndexedDB (passadas via data.fotosBase64)
+    fotosPendentes={};
+    (data.fotosBase64||[]).forEach((f,i)=>{
+      const id="r"+i;
+      fotosPendentes[id]={
+        id,dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,
+        legenda:f.legenda||f.tipo,
+        numero:f.numero||("Foto "+String(i+1).padStart(2,"0")),
+        combinacoes:f.combinacoes||[]
+      };
     });
-    yc+=8;if(data.observacoes){
-      pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text("Observa\xe7\xf5es:",ML,yc);yc+=5;
-      pdf.setFont("helvetica","normal");const lines=pdf.splitTextToSize(data.observacoes,CW);
-      pdf.text(lines,ML,yc);yc+=lines.length*5+6;
-    }
-    yc+=8;pdf.setFontSize(9);pdf.setFont("helvetica","normal");
-    pdf.text("S\xe3o Paulo, "+(data.dataCompleta||data.data||""),ML,yc);
-    pdfFooter(pdf,PW,PH,ML,MR,MB,prest);
-    const nomeArq=(data.coletorNome||"vistoria").replace(/[^a-zA-Z0-9]/g,"_")+"-"+(data.data||"").replace(/\//g,"-")+".pdf";
-    await shareOrDownload(pdf.output("blob"),nomeArq,"application/pdf");
-    showToast("PDF gerado!");
-  }catch(e){alert("Erro PDF: "+e.message);}
+    // Assinaturas: a do responsável vem do Firestore; a do técnico vem do perfil
+    assinaturaData=data.assinaturaResp||null;
+    assinaturaTecnico=(currentUserData&&currentUserData.assinatura)||data.assinaturaTecnico||null;
+    ambientesExtras=data.ambientesExtras||[];
+    // Marca para que o finalizarVistoria saiba que está em modo "regerar" e NÃO grave no Firestore nem suba comprovante
+    window._modoRegerar=true;
+    await window.finalizarVistoria();
+  }catch(e){
+    console.error("regeRarPDF:",e);
+    alert("Erro ao regerar PDF: "+(e.message||e));
+  }finally{
+    // Restaurar estado
+    window._modoRegerar=false;
+    currentVistoria=_bkCurrentVistoria;
+    fotosPendentes=_bkFotosPendentes;
+    assinaturaData=_bkAssinaturaData;
+    assinaturaTecnico=_bkAssinaturaTec;
+    ambientesExtras=_bkAmbientesExtras;
+  }
 }
 
 // ===== COMPROVANTE: PDF compacto (checklist + assinatura) para responsável =====
@@ -3303,22 +3344,30 @@ window.finalizarVistoria=async()=>{
   if(!currentVistoria){
     return alert("Sessão da vistoria foi perdida. Volte para a tela anterior e reinicie.");
   }
-  const idadeVal=document.getElementById("fin-idade").value;
-  if(!idadeVal||isNaN(parseInt(idadeVal)))return alert("Informe a Idade Aparente do Imóvel (obrigatório)");
-  const statusVal=document.getElementById("fin-status-vistoria").value;
-  if(!statusVal)return alert("Selecione o Status da Vistoria (obrigatório)");
-  if(!assinaturaData)return alert("Confirme a assinatura do responsavel");
-  if(!assinaturaTecnico)return alert("Cadastre sua assinatura em Perfil");
+  const idadeEl=document.getElementById("fin-idade");
+  const idadeVal=idadeEl?idadeEl.value:"";
+  // No modo regerar, validações de Idade/Status/assinaturas são puladas — usa dados do histórico
+  if(!window._modoRegerar){
+    if(!idadeVal||isNaN(parseInt(idadeVal)))return alert("Informe a Idade Aparente do Imóvel (obrigatório)");
+    const statusVal=document.getElementById("fin-status-vistoria").value;
+    if(!statusVal)return alert("Selecione o Status da Vistoria (obrigatório)");
+    if(!assinaturaData)return alert("Confirme a assinatura do responsavel");
+    if(!assinaturaTecnico)return alert("Cadastre sua assinatura em Perfil");
+  }
   const btn=document.getElementById("btn-finalizar");
-  const setStatus=t=>{if(btn)btn.textContent=t;};
-  setStatus("Preparando...");btn.disabled=true;
+  const setStatus=t=>{if(btn&&!window._modoRegerar)btn.textContent=t;};
+  if(btn&&!window._modoRegerar){setStatus("Preparando...");btn.disabled=true;}
   // Snapshot defensivo: caso algo falhe, ainda temos cópia para retomar
   const _backupVistoria={...currentVistoria};
-  const _backupFotos={...fotosPendentes};
-  currentVistoria.estado=document.getElementById("fin-estado").value;
-  currentVistoria.idade=document.getElementById("fin-idade").value;
-  currentVistoria.statusVistoria=document.getElementById("fin-status-vistoria").value||"concluida";
-  const isPendente=currentVistoria.statusVistoria==="ausente"&&document.getElementById("fin-pendente")&&document.getElementById("fin-pendente").value==="sim";
+  // Usar let — o backup é reatribuído após o reagrupamento por ambiente, para que o ZIP
+  // saia com a mesma ordem/numeração do PDF.
+  let _backupFotos={...fotosPendentes};
+  if(!window._modoRegerar){
+    currentVistoria.estado=document.getElementById("fin-estado").value;
+    currentVistoria.idade=document.getElementById("fin-idade").value;
+    currentVistoria.statusVistoria=document.getElementById("fin-status-vistoria").value||"concluida";
+  }
+  const isPendente=!window._modoRegerar&&currentVistoria.statusVistoria==="ausente"&&document.getElementById("fin-pendente")&&document.getElementById("fin-pendente").value==="sim";
   currentVistoria.pendente_retorno=isPendente;
   ultimoResponsavel={...currentVistoria.responsavel};
   let erroFotos=0;
@@ -3621,6 +3670,24 @@ window.finalizarVistoria=async()=>{
     pdf.text("Responsável Técnico",sigXR+sigW/2,yf+9.5,{align:"center"});
     pdfFooter(pdf,FLPW,FLPH,FLML,FLMR,FLMB,prest);
 
+    // === MODO REGERAR: apenas gerar e baixar o PDF. Sem gravar Firestore, sem ZIP,
+    // sem comprovante, sem mexer em fila/localStorage. Restaura fotos originais e termina.
+    if(window._modoRegerar){
+      const dataArqR=currentVistoria.data.replace(/\//g,"-");
+      const endArqR=(currentVistoria.endereco.rua+" "+currentVistoria.endereco.num+(currentVistoria.endereco.comp?" "+currentVistoria.endereco.comp:"")).replace(/[^a-zA-Z0-9\s]/g,"").trim().replace(/\s+/g,"_");
+      const colArqR=(currentVistoria.coletorNome||"vistoria").replace(/[^a-zA-Z0-9\s]/g,"").trim().replace(/\s+/g,"_");
+      const nomeBaseR=colArqR+"-"+endArqR+"-"+dataArqR+"_regerado";
+      if(erroFotos>0){
+        const seguirR=confirm(erroFotos+" foto(s) falharam ao serem inseridas no PDF.\n\nGerar mesmo assim?");
+        if(!seguirR)throw new Error("Geração abortada pelo usuário.");
+      }
+      setStatus("Gerando PDF...");
+      await yieldThread();
+      await shareOrDownload(pdf.output("blob"),nomeBaseR+".pdf","application/pdf");
+      fotosPendentes=_backupFotos;
+      showToast("PDF regerado!",3000);
+      return; // não cai no finally do botão porque é regerar — finally do regeRarPDF restaura estado
+    }
     // Salvar Firebase (sem fotos — fotos vão para IndexedDB local-only) + download
     // OBS: assinaturaResp gravada no Firestore (necessária para regerar comprovante depois).
     const vDoc={clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,coletorNome:currentVistoria.coletorNome,responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,ocupacao:currentVistoria.ocupacao,tipo:currentVistoria.tipo,tipoLaudo:currentVistoria.tipoLaudo||"simplificado",estado:currentVistoria.estado,idade:currentVistoria.idade,data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,userId:currentUser.uid,checklist:currentVistoria.checklist,ambientesExtras:ambientesExtras||[],observacoes:currentVistoria.observacoes,totalFotos:Object.keys(fotosPendentes).length,status:currentVistoria.statusVistoria||"concluida",pendente_retorno:isPendente,visitas:1,criadoEm:serverTimestamp(),assinaturaResp:assinaturaData||null};
