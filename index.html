@@ -156,6 +156,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div class="list-item" onclick="goTo('s-nova-vistoria')"><div class="avatar" style="background:#fef3c7;color:#92400e"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div><div class="info"><div class="title">Nova Vistoria</div><div class="sub">Iniciar nova vistoria</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
       <div class="list-item" onclick="goTo('s-pendentes')"><div class="avatar" style="background:#fef2f2;color:#dc2626"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div><div class="info"><div class="title">Ausentes Pendentes</div><div class="sub" id="dash-pendentes-count2">Carregando...</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
       <div class="list-item" onclick="goTo('s-historico')"><div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg></div><div class="info"><div class="title">Minhas Vistorias</div><div class="sub" id="dash-count">Carregando...</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
+      <div class="list-item" onclick="goTo('s-ambientes-custom')"><div class="avatar" style="background:#e0f2fe;color:#0369a1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg></div><div class="info"><div class="title">Cômodos personalizados</div><div class="sub">Criar, editar e excluir</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
     </div>
   </div>
 </div>
@@ -164,14 +165,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Ausentes Pendentes</h1></div>
   <div class="content">
     <div id="lista-pendentes"></div>
-  </div>
-</div>
-
-<div id="s-retorno" class="screen">
-  <div class="topbar"><button class="back" onclick="goTo('s-pendentes')">&#8249; Voltar</button><h1 id="retorno-titulo">Retorno</h1></div>
-  <div class="content">
-    <div id="retorno-info" class="card" style="margin-bottom:12px"></div>
-    <div id="s-vistoria-retorno"></div>
   </div>
 </div>
 
@@ -202,15 +195,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div id="perfil-arm-resumo" style="font-size:13px;color:#555;margin-bottom:10px">Carregando...</div>
       <button class="btn" onclick="goTo('s-armazenamento')">Gerenciar fotos locais</button>
     </div>
-    <div class="card"><h2>Cômodos personalizados</h2>
-      <p style="font-size:13px;color:#888;margin-bottom:10px">Cômodos criados por você ou pela equipe. Disponíveis para todos os cadastradores.</p>
-      <button class="btn" onclick="goTo('s-ambientes-custom')">Gerenciar cômodos</button>
-    </div>
   </div>
 </div>
 
 <div id="s-ambientes-custom" class="screen">
-  <div class="topbar"><button class="back" onclick="goTo('s-perfil')">&#8249; Voltar</button><h1>Cômodos Personalizados</h1>
+  <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Cômodos Personalizados</h1>
     <button class="btn small primary" onclick="abrirNovoAmbienteCustom()" style="margin-right:4px">+ Novo</button>
   </div>
   <div class="content" id="lista-ambientes-custom"></div>
@@ -254,9 +243,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div class="field"><label>Coletor</label><select id="nv-coletor"><option value="">Selecione o cliente primeiro...</option></select></div>
     </div>
     <div class="card"><h2>Dados do responsavel</h2>
-      <div id="nv-reaproveitar-box" style="display:none;margin-bottom:12px">
-        <div class="info-box">Reaproveitar dados do responsavel anterior?</div>
-        <div class="grid2"><button class="btn small" onclick="reaproveitarResponsavel()">Sim</button><button class="btn small" onclick="document.getElementById('nv-reaproveitar-box').style.display='none'">Nao</button></div>
+      <div id="nv-reaproveitar-box" style="display:none;margin-bottom:12px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px">
+        <div style="font-size:13px;color:#15803d;font-weight:500;margin-bottom:6px">Reaproveitar dados do morador anterior?</div>
+        <div id="nv-reaproveitar-preview" style="font-size:12px;color:#166534;background:#fff;border-radius:6px;padding:8px;margin-bottom:10px;line-height:1.5"></div>
+        <div class="grid2"><button class="btn small" onclick="reaproveitarResponsavel()" style="background:#16a34a;color:#fff;border-color:#16a34a">Sim, usar estes dados</button><button class="btn small" onclick="document.getElementById('nv-reaproveitar-box').style.display='none'">Não, preencher manualmente</button></div>
       </div>
       <div class="field"><label>Nome do morador</label><input type="text" id="nv-nome" placeholder="Opcional se for ausente — obrigatório nos demais casos" oninput="capitalizarInput(this)"></div>
       <div class="field" style="display:flex;gap:8px;align-items:flex-end">
@@ -275,7 +265,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       </div>
       <div class="field"><label>Rua *</label><input type="text" id="nv-rua" placeholder="Nome da rua" oninput="capitalizarInput(this)"></div>
       <div class="grid2">
-        <div class="field"><label>Numero *</label><input type="text" id="nv-num" placeholder="Num" inputmode="numeric"></div>
+        <div class="field"><label>Numero *</label><input type="text" id="nv-num" placeholder='Nº ou "SN"' style="text-transform:uppercase"></div>
         <div class="field"><label>Complemento</label><input type="text" id="nv-comp" placeholder="Casa 1, Ap 23..." oninput="capitalizarInput(this)"></div>
       </div>
     </div>
@@ -296,11 +286,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div class="field"><label>Tipo de construcao</label><select id="nv-tipo"><option value="">Selecione...</option><option>Terrea</option><option>Sobrado</option><option>Galpao</option><option>Soleira Negativa</option><option>Outros</option></select></div>
     </div>
     <button class="btn primary" onclick="criarVistoria()">Iniciar Vistoria</button>
+    <div style="margin-top:18px;padding-top:14px;border-top:1px dashed #d4d4d8">
+      <p style="font-size:12px;color:#888;text-align:center;margin-bottom:6px">Imóvel sem ninguém presente?</p>
+      <button class="btn" onclick="iniciarComoAusente()" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;width:100%">⏳ Iniciar como Ausente — Passível de Retorno</button>
+    </div>
   </div>
 </div>
 
 <div id="s-vistoria" class="screen">
-  <div class="topbar"><button class="back" onclick="confirmarSairVistoria()">&#8249; Sair</button><h1 id="v-titulo">Vistoria</h1><button class="btn small" onclick="goTo('s-checklist')" style="color:#007aff;border-color:#007aff">Checklist</button></div>
+  <div class="topbar"><button class="back" onclick="confirmarSairVistoria()">&#8249; Sair</button><h1 id="v-titulo">Vistoria</h1></div>
   <div class="content">
     <div class="card"><h2>Resumo</h2><div id="v-info" style="font-size:13px;color:#555;line-height:1.8"></div></div>
     <div id="gps-status" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:8px 12px;font-size:12px;color:#0369a1">Aguardando GPS...</div>
@@ -313,7 +307,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       </div>
     </div>
     <div id="fotos-por-ambiente"></div>
-    <button class="btn success" onclick="goTo('s-checklist')">Ir para Checklist</button>
+    <div class="card"><h2>Observações</h2>
+      <div class="field"><textarea id="v-obs" rows="3" placeholder="Anotações livres sobre a vistoria (opcional)" oninput="if(currentVistoria)currentVistoria.observacoes=this.value" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical"></textarea></div>
+    </div>
+    <button class="btn success" onclick="irParaFinalizacao()">Finalizar Vistoria</button>
     <div style="margin-top:18px;padding-top:14px;border-top:1px dashed #d4d4d8">
       <p style="font-size:12px;color:#888;text-align:center;margin-bottom:6px">Imóvel sem ninguém presente?</p>
       <button class="btn" onclick="marcarAusentePassivelRetorno()" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;width:100%">⏳ Ausente — Passível de Retorno</button>
@@ -322,35 +319,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleFileUpload(event)">
 </div>
 
-<div id="s-checklist" class="screen">
-  <div class="topbar"><button class="back" onclick="goTo('s-vistoria')">&#8249; Fotos</button><h1>Checklist</h1><button class="btn small" onclick="goTo('s-finalizacao')" style="color:#007aff;border-color:#007aff">Finalizar</button></div>
-  <div class="content">
-    <div class="card"><h2>Observacoes gerais</h2><div class="field"><textarea id="cl-obs" placeholder="Descreva observacoes gerais..."></textarea></div></div>
-    <div class="card"><h2>Patologias por ambiente</h2>
-      <p style="font-size:12px;color:#888;margin-bottom:10px">Role horizontalmente para ver todas as colunas.</p>
-      <div class="checklist-wrapper">
-        <table class="checklist-table">
-          <thead><tr>
-            <th style="min-width:80px;position:sticky;left:0;background:#f0f0f0;z-index:1">Local</th>
-            <th style="min-width:95px">Estrutura</th><th style="min-width:95px">Parede e muro</th>
-            <th style="min-width:95px">Cobertura e teto</th><th style="min-width:90px">Porta e esquadria</th>
-            <th style="min-width:90px">Piso e calcamento</th>
-          </tr></thead>
-          <tbody id="checklist-body"></tbody>
-        </table>
-      </div>
-      <div style="margin-top:10px"><button class="btn small" onclick="addAmbienteExtra()" style="color:#007aff;border-color:#007aff">+ Adicionar ambiente</button></div>
-    </div>
-    <button class="btn primary" onclick="salvarChecklist()">Salvar e continuar</button>
-  </div>
-</div>
-
 <div id="s-finalizacao" class="screen">
-  <div class="topbar"><button class="back" onclick="goTo('s-checklist')">&#8249; Checklist</button><h1>Finalizacao</h1></div>
+  <div class="topbar"><button class="back" onclick="goTo('s-vistoria')">&#8249; Voltar</button><h1>Finalizacao</h1></div>
   <div class="content">
     <div class="card"><h2>Estado de conservacao</h2>
       <div class="field"><label>Status da Vistoria <span style="color:#dc2626">*</span></label><select id="fin-status-vistoria" onchange="togglePendente(this.value)"><option value="">Selecione o status...</option><option value="concluida">Finalizado</option><option value="parcial">Parcial</option><option value="recusa">Recusa</option><option value="ausente">Ausente</option></select></div>
-      <div class="field" id="field-pendente" style="display:none"><label>Pendente de retorno?</label><select id="fin-pendente"><option value="nao">Não — encerrar</option><option value="sim">Sim — retornar</option></select></div>
+      <div class="field" id="field-pendente" style="display:none"><label>Pendente de retorno?</label><select id="fin-pendente"><option value="nao" selected>Não — encerrar</option><option value="sim">Sim — retornar</option></select></div>
       <div class="field"><label>Estado de Conservacao</label><select id="fin-estado"><option>Bom</option><option selected>Regular</option><option>Ruim</option><option>Péssimo</option></select></div>
       <div class="field"><label>Idade Aparente do Imóvel (anos) *</label><input type="number" id="fin-idade" placeholder="Ex: 30" min="0" max="200" inputmode="numeric" required></div>
     </div>
@@ -604,7 +578,7 @@ const PATOLOGIAS=["Fissura","Trinca","Rachadura","Umidade","Infiltração","Desp
 // Grupos do checklist PDF (agrupado para economizar espaço)
 const PATOLOGIAS_CK=["Fissura/Trinca/Rachadura","Umidade/Infiltração","Desplacamento","Armadura Exposta","Danificado"];
 const PATOLOGIAS_CK_MAP={"Fissura/Trinca/Rachadura":["Fissura","Trinca","Rachadura"],"Umidade/Infiltração":["Umidade","Infiltração"],"Desplacamento":["Desplacamento"],"Armadura Exposta":["Armadura Exposta"],"Danificado":["Danificado"]};
-const ELEMENTOS=["Estrutura","Parede","Teto","Piso","Calçada","Porta","Esquadria"];
+const ELEMENTOS=["Estrutura","Parede","Teto","Piso","Calçada","Porta","Janela","Esquadria"];
 // Mapeia elemento construtivo (passo 3 do modal simplificado, agora único) para a coluna do checklist
 const ELEMENTO_TO_COL={
   "Estrutura":"estrutura",
@@ -613,6 +587,7 @@ const ELEMENTO_TO_COL={
   "Piso":"piso",
   "Calçada":"piso",
   "Porta":"portas",
+  "Janela":"portas",
   "Esquadria":"portas"
 };
 
@@ -845,7 +820,7 @@ window.goTo=(id)=>{
   }
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   document.getElementById(id).classList.add("active");window.scrollTo(0,0);
-  const m={"s-dash":loadDash,"s-prestadores":loadPrestadores,"s-clientes":loadClientes,"s-coletores":loadColetores,"s-usuarios":loadUsuarios,"s-nova-vistoria":loadNovVistoriaForm,"s-historico":loadHistorico,"s-checklist":renderChecklist,"s-finalizacao":renderFinalizacao,"s-perfil":renderPerfil,"s-vistoria":iniciarGPS,"s-pendentes":loadPendentes,"s-editor-fotos":renderEditorFotos,"s-armazenamento":loadArmazenamento,"s-ambientes-custom":loadAmbientesCustomList};
+  const m={"s-dash":loadDash,"s-prestadores":loadPrestadores,"s-clientes":loadClientes,"s-coletores":loadColetores,"s-usuarios":loadUsuarios,"s-nova-vistoria":loadNovVistoriaForm,"s-historico":loadHistorico,"s-finalizacao":renderFinalizacao,"s-perfil":renderPerfil,"s-vistoria":iniciarGPS,"s-pendentes":loadPendentes,"s-editor-fotos":renderEditorFotos,"s-armazenamento":loadArmazenamento,"s-ambientes-custom":loadAmbientesCustomList};
   if(m[id])m[id]();
 };
 window.showModal=(id)=>{if(id==="modal-coletor")populateClienteSelect("mcol-cliente");document.getElementById(id).style.display="flex";};
@@ -867,7 +842,14 @@ onAuthStateChanged(auth,async user=>{
     const snap=await getDoc(doc(db,"users",user.uid));
     if(snap.exists()){currentUserData=snap.data();currentRole=currentUserData.role;assinaturaTecnico=currentUserData.assinatura||null;}
     else{currentRole="master";currentUserData={nome:"Admin",email:user.email,role:"master"};await setDoc(doc(db,"users",user.uid),{...currentUserData,criadoEm:serverTimestamp()});}
-    await loadPrestadorDefault();await loadAmbientesCustom();goTo("s-dash");
+    await loadPrestadorDefault();await loadAmbientesCustom();
+    // Recupera último morador do dia (para sugerir reaproveitamento na próxima vistoria)
+    try{
+      const hojeStr=new Date().toISOString().slice(0,10);
+      const saved=localStorage.getItem("lastResponsavel"+hojeStr);
+      if(saved)ultimoResponsavel=JSON.parse(saved);
+    }catch(e){}
+    goTo("s-dash");
   }else{goTo("s-login");}
 });
 
@@ -1383,7 +1365,7 @@ function salvarFotoFinalEditor(dataUrl,patologias,combinacoes){
   if(tipoLaudo==="completo"){
     legendaCalc=tipo; // sempre Vista/Detalhe; código vai sobre a imagem
   } else {
-    legendaCalc=temPat?combinacoes.map(c=>gerarLegendaCombo(c)).join(" e "):"Vista";
+    legendaCalc=temPat?combinacoes.map(c=>gerarLegendaCombo(c)).join(" / "):"Vista";
   }
   if(_efCameraMode==="adicionar"){
     _efFotos.push({dataUrl,ambiente:_efAmbienteAlvo,tipo,legenda:legendaCalc,combinacoes:combinacoes||[]});
@@ -1538,25 +1520,55 @@ let _retornoId=null,_retornoData=null;
 window.abrirRetorno=async(id,v)=>{
   _retornoId=id;_retornoData=v;
   const visitas=v.visitas||1;
-  document.getElementById("retorno-titulo").textContent=(visitas+1)+"ª Visita — Retorno";
-  const info=document.getElementById("retorno-info");
-  info.innerHTML='<h2>'+(v.responsavel&&v.responsavel.nome||"--")+'</h2>'
-    +'<p style="color:#555;font-size:13px">'+(v.endereco&&v.endereco.rua||"")+" "+(v.endereco&&v.endereco.num||"")+'</p>'
-    +'<p style="color:#555;font-size:13px">Coletor: '+(v.coletorNome||"")+" | Visita "+(visitas+1)+"/3</p>"
-    +'<div class="field" style="margin-top:12px"><label>Novo status</label><select id="retorno-status" onchange="togglePendenteRetorno(this.value)">'
-    +'<option value="ausente">Ausente</option>'
-    +'<option value="concluida">Finalizado</option>'
-    +'<option value="parcial">Parcial</option>'
-    +'<option value="recusa">Recusa</option>'
-    +'</select></div>'
-    +(visitas+1<3?'<div class="field" id="field-pendente-retorno"><label>Pendente de retorno?</label><select id="retorno-pendente"><option value="nao">Não — encerrar</option><option value="sim">Sim — retornar</option></select></div>':
-    '<p style="color:#dc2626;font-size:12px;margin-top:4px">⚠️ Última tentativa permitida — será encerrado.</p>')
-    +'<button class="btn success" style="margin-top:12px" onclick="confirmarRetorno()">Confirmar e Gerar PDF</button>';
-  // Pré-carregar dados para nova sessão de fotos
-  currentVistoria={...v,id};
+  // Buscar fotos da visita anterior (IndexedDB local)
+  let fotosAntigas=[];
+  try{
+    const arr=await localBuscarFotos(id);
+    if(arr&&arr.length)fotosAntigas=arr;
+  }catch(e){console.warn("Falha ao buscar fotos antigas:",e);}
+  if(!confirm((visitas+1)+"ª Visita — Retorno\n\n"
+    +"Morador: "+(v.responsavel&&v.responsavel.nome||"(não informado)")+"\n"
+    +"Endereço: "+(v.endereco&&v.endereco.rua||"")+" "+(v.endereco&&v.endereco.num||"")+"\n"
+    +"Fotos da visita anterior: "+fotosAntigas.length+"\n\n"
+    +"Deseja retomar a vistoria neste imóvel agora?\n"
+    +"As fotos anteriores serão carregadas e você pode adicionar mais."))return;
+  // Restaurar estado para continuar a vistoria
+  currentVistoria={
+    ...v,
+    _retornoId:id, // marca que veio de pendente — usado na finalização para atualizar o doc original
+    visitas:visitas+1,
+    statusVistoria:null, // será definido na finalização
+    pendente_retorno:false // reset; pode voltar pra true se ausente de novo
+  };
   fotosPendentes={};
+  // Reconstroi fotosPendentes a partir das fotos antigas
+  fotosAntigas.forEach((f,i)=>{
+    const fid="r"+i+"_"+Date.now();
+    fotosPendentes[fid]={
+      id:fid,dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,
+      legenda:f.legenda||f.tipo,
+      numero:f.numero||("Foto "+String(i+1).padStart(2,"0")),
+      combinacoes:f.combinacoes||[]
+    };
+  });
   ambientesExtras=v.ambientesExtras||[];
-  goTo("s-retorno");
+  // Configura UI da tela de vistoria
+  document.getElementById("v-titulo").textContent=(v.responsavel&&v.responsavel.nome||"Retorno").split(" ")[0];
+  const tipoLaudo=v.tipoLaudo||"simplificado";
+  const badgeTipo=tipoLaudo==="completo"?'<span class="badge laudo" style="display:inline-block;margin-bottom:4px">Laudo Completo</span><br>':'';
+  const nomeHtml=v.responsavel&&v.responsavel.nome?("<b>"+v.responsavel.nome+"</b>"):'<span style="color:#888;font-style:italic">Morador não identificado</span>';
+  const enderecoTxt=(v.endereco&&v.endereco.rua||"")+", "+(v.endereco&&v.endereco.num||"")+(v.endereco&&v.endereco.comp?" - "+v.endereco.comp:"");
+  document.getElementById("v-info").innerHTML=[
+    badgeTipo+nomeHtml,
+    v.responsavel&&v.responsavel.doc?"Doc: "+v.responsavel.doc:"",
+    v.responsavel&&v.responsavel.tel?"Tel: "+v.responsavel.tel:"",
+    enderecoTxt,
+    "<span style='color:#dc2626;font-size:12px;font-weight:600'>↻ Retomada — Visita "+(visitas+1)+"</span>"
+  ].filter(Boolean).join("<br>");
+  const sel=document.getElementById("v-ambiente");
+  popularSeletorAmbiente(sel);
+  const obsEl=document.getElementById("v-obs");if(obsEl)obsEl.value=v.observacoes||"";
+  goTo("s-vistoria");renderFotos();
 };
 
 window.togglePendenteRetorno=v=>{
@@ -1564,49 +1576,10 @@ window.togglePendenteRetorno=v=>{
   if(el)el.style.display=v==="ausente"?"block":"none";
 };
 
-window.confirmarRetorno=async()=>{
-  const novoStatus=document.getElementById("retorno-status").value;
-  const elPend=document.getElementById("retorno-pendente");
-  const pendente=elPend?elPend.value==="sim":false;
-  const visitas=(_retornoData.visitas||1)+1;
-  const novasPendente=novoStatus==="ausente"&&pendente&&visitas<3;
-  // Merge fotos antigas (IndexedDB local primeiro, fallback Firestore antigo) + novas
-  let fotosAntigas=null;
-  try{fotosAntigas=await localBuscarFotos(_retornoId);}catch(e){}
-  if(!fotosAntigas||!fotosAntigas.length)fotosAntigas=_retornoData.fotosBase64||[];
-  const fotosNovas=Object.values(fotosPendentes).map(f=>({dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,legenda:f.legenda||f.tipo,numero:f.numero,combinacoes:f.combinacoes||[]}));
-  const todasFotos=[...fotosAntigas,...fotosNovas];
-  try{
-    // Salvar metadados no Firestore (sem fotos — vão para IndexedDB local-only)
-    await updateDoc(doc(db,"vistorias",_retornoId),{
-      status:novoStatus,
-      pendente_retorno:novasPendente,
-      visitas,
-      totalFotos:todasFotos.length,
-      ultimaVisita:serverTimestamp()
-    });
-    // Atualizar fotos no IndexedDB local
-    try{await localSalvarFotos(_retornoId,todasFotos);}catch(e){console.error(e);}
-    // Gerar PDF com todas as fotos
-    const vAtual={..._retornoData,status:novoStatus,fotosBase64:todasFotos,visitas};
-    await gerarPDFRetorno(vAtual);
-    showToast(novasPendente?"Retorno salvo! Imóvel permanece pendente.":"Vistoria encerrada!");
-    goTo("s-pendentes");
-  }catch(e){alert("Erro: "+e.message);}
+window.togglePendenteRetorno=v=>{
+  const el=document.getElementById("field-pendente-retorno");
+  if(el)el.style.display=v==="ausente"?"block":"none";
 };
-
-async function gerarPDFRetorno(v){
-  // Reconstrói fotosPendentes a partir do array salvo para usar o gerador de PDF existente
-  const saved=fotosPendentes;
-  fotosPendentes={};
-  (v.fotosBase64||[]).forEach((f,i)=>{
-    const id="r"+i;
-    fotosPendentes[id]={id,dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,legenda:f.legenda||f.tipo,numero:f.numero||("Foto "+String(i+1).padStart(2,"0")),combinacoes:f.combinacoes||[]};
-  });
-  currentVistoria={...v};
-  try{await window.gerarPDFCompleto(v);}catch(e){console.error(e);}
-  fotosPendentes=saved;
-}
 
 async function loadNovVistoriaForm(){
   await populateClienteSelect("nv-cliente");
@@ -1644,10 +1617,31 @@ async function loadNovVistoriaForm(){
     ruaEl.value="";
     document.getElementById("nv-reaproveitar-rua-box").style.display="none";
   }
-  document.getElementById("nv-reaproveitar-box").style.display=ultimoResponsavel?"block":"none";
+  // Caixa "Reaproveitar morador" só aparece se houver dados E há informação útil (não só vazio).
+  const boxReap=document.getElementById("nv-reaproveitar-box");
+  if(ultimoResponsavel&&(ultimoResponsavel.nome||ultimoResponsavel.doc||ultimoResponsavel.tel)){
+    const prev=document.getElementById("nv-reaproveitar-preview");
+    if(prev){
+      const linhas=[];
+      if(ultimoResponsavel.nome)linhas.push("<b>"+ultimoResponsavel.nome+"</b>");
+      if(ultimoResponsavel.doc)linhas.push("Doc: "+ultimoResponsavel.doc);
+      if(ultimoResponsavel.tel)linhas.push("Tel: "+ultimoResponsavel.tel);
+      prev.innerHTML=linhas.join("<br>");
+    }
+    boxReap.style.display="block";
+  } else {
+    boxReap.style.display="none";
+  }
   setTipoLaudo(localStorage.getItem("lastTipoLaudo")||"simplificado");
 }
-window.reaproveitarResponsavel=()=>{if(!ultimoResponsavel)return;document.getElementById("nv-nome").value=ultimoResponsavel.nome||"";document.getElementById("nv-doc").value=ultimoResponsavel.doc||"";document.getElementById("nv-tel").value=ultimoResponsavel.tel||"";document.getElementById("nv-reaproveitar-box").style.display="none";};
+window.reaproveitarResponsavel=()=>{
+  if(!ultimoResponsavel)return;
+  document.getElementById("nv-nome").value=ultimoResponsavel.nome||"";
+  document.getElementById("nv-doc").value=ultimoResponsavel.doc||"";
+  document.getElementById("nv-tel").value=ultimoResponsavel.tel||"";
+  document.getElementById("nv-reaproveitar-box").style.display="none";
+  showToast("Dados do morador reaproveitados",2500);
+};
 window.setTipoLaudo=(tipo)=>{
   document.querySelectorAll("#s-nova-vistoria .laudo-tipo-card").forEach(c=>{
     c.classList.toggle("active",c.dataset.tipo===tipo);
@@ -1668,6 +1662,24 @@ window.loadColetoresByCliente=async()=>{
   }
   sel.innerHTML='<option value="">Selecione...</option>';
   _cacheColetores[cId].forEach(d=>{const o=document.createElement("option");o.value=d.id;o.textContent=d.nome;sel.appendChild(o);});
+};
+
+// Inicia uma vistoria diretamente como Ausente Passível de Retorno: marca uma flag,
+// chama criarVistoria normalmente (com nome opcional), e vai direto pra tela de vistoria
+// onde o cadastrador tira a foto da fachada e finaliza no botão "Ausente — Passível de Retorno".
+window.iniciarComoAusente=async()=>{
+  const cId=document.getElementById("nv-cliente").value;const colId=document.getElementById("nv-coletor").value;
+  const rua=document.getElementById("nv-rua").value.trim();const num=document.getElementById("nv-num").value.trim();
+  if(!cId||!colId)return alert("Selecione cliente e coletor");
+  if(!rua||!num)return alert("Preencha rua e numero do imóvel");
+  if(!confirm("Iniciar como vistoria AUSENTE — Passível de Retorno?\n\nVocê poderá tirar fotos da fachada e finalizar rapidamente.\nO imóvel ficará na lista de Ausentes Pendentes para retorno futuro."))return;
+  window._iniciandoComoAusente=true;
+  await window.criarVistoria();
+  // Após criar a vistoria, ajustar UI da tela de vistoria pra indicar o modo
+  if(currentVistoria){
+    currentVistoria._modoAusente=true;
+    showToast("Modo ausente ativado. Tire a foto da fachada e toque em \"Ausente — Passível de Retorno\".",5000);
+  }
 };
 
 window.criarVistoria=async()=>{
@@ -1693,6 +1705,8 @@ window.criarVistoria=async()=>{
   document.getElementById("v-info").innerHTML=[badgeTipo+nomeHtml,docR?"Doc: "+docR:"",tel?"Tel: "+tel:"",rua+", "+num+(comp?" - "+comp:""),"<span style='color:#aaa;font-size:12px'>Coletor: "+colD.nome+" | RRT: "+clD.rrt+"</span>"].filter(Boolean).join("<br>");
   const sel=document.getElementById("v-ambiente");
   popularSeletorAmbiente(sel);
+  // Limpar campo de observações no início (não persiste de uma vistoria pra outra)
+  const obsEl=document.getElementById("v-obs");if(obsEl)obsEl.value=currentVistoria.observacoes||"";
   goTo("s-vistoria");renderFotos();
 };
 
@@ -2458,10 +2472,12 @@ function renderCombinacoes(){
 function gerarLegendaCombo(c){
   if(c.modo==="completo"){
     const cat=PATOLOGIAS_AL_MAP[c.categoria];
-    const subStr=c.subs.map(n=>{const s=cat.subs.find(x=>x.n===n);return s?s.t:"?";}).join(" e ");
+    const subStr=c.subs.map(n=>{const s=cat.subs.find(x=>x.n===n);return s?s.t:"?";}).join(" / ");
     return c.codigo+" — "+subStr;
   }
-  const patsStr=c.pats.join(" e ");
+  // Simplificado: patologias separadas por " / " (com espaço antes e depois)
+  // Ex: "Parede: Fissura / Umidade / Trinca"
+  const patsStr=c.pats.join(" / ");
   return c.elemento+": "+patsStr;
 }
 
@@ -2499,14 +2515,20 @@ window.confirmarPatologias=()=>{
   const combinacaoDesta=_patCombinacoes.length===1?_patCombinacoes[0]:{modo:"agrupada",listaInternal:_patCombinacoes.slice()};
   const combinacoesArrSnapshot=_patCombinacoes.slice();
 
-  // SIMPLIFICADO + várias setas: aplicar a mesma combinação a todas, salvar direto
-  // (sem passar pelo overlay "+outra seta/Concluir foto" — Opção A).
-  if(tipoLaudo!=="completo"&&arrowPoints.length>1){
+  // SIMPLIFICADO (1 OU várias setas): aplicar mesma combinação a todas e salvar direto,
+  // sem passar pelo overlay "+outra seta/Concluir foto". As setas extras compartilham a
+  // mesma patologia/elemento (decisão do projeto). Se o cadastrador quiser uma patologia
+  // diferente, ele tira outra foto.
+  if(tipoLaudo!=="completo"){
+    if(arrowPoints.length===0){
+      // Caso extremo: não há seta ainda. Salva só com seleção pendente (deve ser raro).
+      _patCombinacoes=[];_patCatSelecionada=null;
+      return;
+    }
     arrowPoints.forEach(p=>{
       _fotoSetasAcumuladas.push({pontoFracao:p,combinacao:combinacaoDesta,combinacoesArr:combinacoesArrSnapshot});
     });
     _patCombinacoes=[];_patCatSelecionada=null;
-    // Renderizar e salvar direto, sem overlay de decisão
     const tipoLaudoFinal=tipoLaudo;
     const dataUrlFinal=renderizarFotoComAcumuladas(tipoLaudoFinal);
     fotoAtualBlob=dataUrlFinal;
@@ -2523,8 +2545,8 @@ window.confirmarPatologias=()=>{
     return;
   }
 
-  // Caso padrão (Completo com 1 seta, ou Simplificado com 1 seta):
-  // mantém fluxo existente — overlay decide se adiciona outra ou conclui.
+  // Caso COMPLETO com 1 seta: mantém overlay para permitir múltiplas patologias diferentes
+  // por foto (cada uma com seu código CNRP — B1, H1;3 etc.).
   if(arrowPoints.length===1){
     _fotoSetasAcumuladas.push({pontoFracao:arrowPoints[0],combinacao:combinacaoDesta,combinacoesArr:combinacoesArrSnapshot});
   }
@@ -2728,7 +2750,7 @@ function salvarFotoFinal(dataUrl,patologias,combinacoes){
   let legenda=fotoAtualTipo;
   if(combinacoes&&combinacoes.length&&tipoLaudo!=="completo"){
     // No simplificado: legenda detalhada por combinação
-    legenda=combinacoes.map(c=>gerarLegendaCombo(c)).join(" e ");
+    legenda=combinacoes.map(c=>gerarLegendaCombo(c)).join(" / ");
   }
   // No modo completo: legenda da foto = "Vista" (sem patologia) ou "Detalhe" (com); código já está marcado na imagem.
   // Corrigir orientação EXIF (iOS) e depois comprimir
@@ -2743,11 +2765,15 @@ function salvarFotoFinal(dataUrl,patologias,combinacoes){
   });
 }
 
-window.addAmbienteExtra=()=>{const nome=prompt("Nome do ambiente:");if(!nome||!nome.trim())return;ambientesExtras.push(nome.trim());renderChecklist();const sel=document.getElementById("v-ambiente");const o=document.createElement("option");o.value=nome.trim();o.textContent=nome.trim();sel.appendChild(o);};
+window.addAmbienteExtra=()=>{const nome=prompt("Nome do ambiente:");if(!nome||!nome.trim())return;ambientesExtras.push(nome.trim());const sel=document.getElementById("v-ambiente");if(sel){const o=document.createElement("option");o.value=nome.trim();o.textContent=nome.trim();sel.appendChild(o);}};
 
+// renderChecklist permanece como função interna para popular currentVistoria.checklist
+// quando a foto é salva. Não é mais uma TELA — a UI foi removida.
 function renderChecklist(){
+  const tbody=document.getElementById("checklist-body");
+  if(!tbody)return; // tela foi removida — função não faz nada
   const ambientes=[...AMBIENTES,...ambientesExtras];
-  const tbody=document.getElementById("checklist-body");tbody.innerHTML="";
+  tbody.innerHTML="";
   ambientes.forEach(amb=>{
     const tr=document.createElement("tr");
     const saved=(currentVistoria&&currentVistoria.checklist&&currentVistoria.checklist[amb])||{};
@@ -2759,10 +2785,10 @@ function renderChecklist(){
     });
     tbody.appendChild(tr);
   });
-  if(currentVistoria)document.getElementById("cl-obs").value=currentVistoria.observacoes||"";
+  const obsEl=document.getElementById("cl-obs");if(obsEl&&currentVistoria)obsEl.value=currentVistoria.observacoes||"";
 }
 window.togglePatologia=(amb,col,pat,checked)=>{if(!currentVistoria.checklist)currentVistoria.checklist={};if(!currentVistoria.checklist[amb])currentVistoria.checklist[amb]={};const arr=currentVistoria.checklist[amb][col]||[];if(checked){if(!arr.includes(pat))arr.push(pat);}else{const i=arr.indexOf(pat);if(i>=0)arr.splice(i,1);}currentVistoria.checklist[amb][col]=arr;};
-window.salvarChecklist=()=>{if(currentVistoria)currentVistoria.observacoes=document.getElementById("cl-obs").value;goTo("s-finalizacao");};
+window.salvarChecklist=()=>{if(currentVistoria){const obsEl=document.getElementById("cl-obs");if(obsEl)currentVistoria.observacoes=obsEl.value;}goTo("s-finalizacao");};
 
 function renderFinalizacao(){
   // Limpar campos da vistoria anterior e aplicar defaults
@@ -2789,6 +2815,16 @@ function renderFinalizacao(){
 window.limparAssinatura=()=>{if(!sigCtx)return;sigCtx.fillStyle="#fff";sigCtx.fillRect(0,0,sigCanvas.width,sigCanvas.height);assinaturaData=null;document.getElementById("sig-confirmado").style.display="none";document.getElementById("btn-finalizar").disabled=true;document.getElementById("btn-finalizar").style.opacity=".4";};
 window.salvarAssinatura=()=>{assinaturaData=sigCanvas.toDataURL("image/png");document.getElementById("sig-confirmado").style.display="block";document.getElementById("btn-finalizar").disabled=false;document.getElementById("btn-finalizar").style.opacity="1";};
 window.confirmarSairVistoria=()=>{if(confirm("Sair? Dados nao salvos serao perdidos."))goTo("s-dash");};
+
+// Ir direto pra finalização sem passar pela tela de checklist (removida).
+// Apenas valida que ao menos uma foto foi tirada (caso contrário sugere finalizar como Ausente).
+window.irParaFinalizacao=()=>{
+  const total=Object.keys(fotosPendentes||{}).length;
+  if(total===0){
+    if(!confirm("Nenhuma foto registrada nesta vistoria.\n\nDeseja prosseguir para a Finalização mesmo assim?\n\nSe foi uma vistoria ausente, use o botão laranja \"Ausente — Passível de Retorno\" no fim da tela."))return;
+  }
+  goTo("s-finalizacao");
+};
 
 // ===== HISTORICO COM DETALHE/EDITAR/EXCLUIR =====
 // Estado da seleção múltipla
@@ -3223,19 +3259,36 @@ let _ultimaUrlComprovante="";
 window.mostrarModalQRComprovante=(url)=>{
   _ultimaUrlComprovante=url;
   const cont=document.getElementById("qr-container");
-  cont.innerHTML="";
+  cont.innerHTML='<p style="text-align:center;color:#888;padding:30px">Gerando QR Code...</p>';
+  // Estratégia em duas camadas:
+  // 1) Tenta a lib local qrcode-generator (offline)
+  // 2) Fallback: API pública QR Server (https://api.qrserver.com), funciona em qualquer navegador
+  // sem JS quebrável. Imagem PNG.
+  let qrFeito=false;
   try{
-    // qrcode-generator: typeNumber=0 (auto), errorCorrection L
-    const qr=window.qrcode(0,"M");
-    qr.addData(url);
-    qr.make();
-    // imgTag(cellSize, margin) -> string HTML <img>
-    cont.innerHTML=qr.createSvgTag({cellSize:5,margin:2,scalable:true});
-    // Garante tamanho do SVG renderizado
-    const svg=cont.querySelector("svg");
-    if(svg){svg.style.width="260px";svg.style.height="260px";}
-  }catch(e){
-    cont.innerHTML='<p style="color:#dc2626;text-align:center;padding:20px">Erro ao gerar QR Code: '+e.message+'</p>';
+    if(window.qrcode){
+      const qr=window.qrcode(0,"M");
+      qr.addData(url);
+      qr.make();
+      const svgTag=qr.createSvgTag({cellSize:5,margin:2,scalable:true});
+      cont.innerHTML=svgTag;
+      const svg=cont.querySelector("svg");
+      if(svg){
+        svg.setAttribute("width","260");
+        svg.setAttribute("height","260");
+        svg.style.width="260px";
+        svg.style.height="260px";
+        svg.style.display="block";
+        svg.style.margin="0 auto";
+        qrFeito=true;
+      }
+    }
+  }catch(e){console.warn("qrcode-generator falhou:",e);}
+  if(!qrFeito){
+    // Fallback: QR Server API. encodeURIComponent para URLs longas.
+    const apiUrl="https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data="+encodeURIComponent(url);
+    cont.innerHTML='<img src="'+apiUrl+'" alt="QR Code" style="display:block;margin:0 auto;width:260px;height:260px;border:1px solid #e5e7eb;border-radius:8px" '
+      +'onerror="this.parentNode.innerHTML=\'<p style=&quot;color:#dc2626;text-align:center;padding:20px&quot;>Não foi possível gerar o QR Code agora. Use o link abaixo.</p>\'">';
   }
   const elLink=document.getElementById("qr-link-curto");
   if(elLink)elLink.textContent=url.length>60?url.slice(0,60)+"...":url;
@@ -3315,9 +3368,19 @@ window.finalizarVistoria=async()=>{
     // Nome do morador: obrigatório SALVO se status="ausente" (vistoria de ausente pode não ter nome conhecido)
     const nomeResp=currentVistoria&&currentVistoria.responsavel&&currentVistoria.responsavel.nome||"";
     if(statusVal!=="ausente"&&!nomeResp.trim()){
-      return alert("Informe o nome do morador (obrigatório para vistorias não-ausentes).\n\nVolte para o início da vistoria para preencher o nome.");
+      // Em vez de obrigar sair, oferece prompt para preencher AGORA sem perder dados.
+      const novoNome=prompt("Nome do morador é obrigatório para vistorias não-ausentes.\n\nDigite o nome do morador (ou cancele para voltar e ajustar):");
+      if(novoNome===null||!novoNome.trim()){
+        return alert('Operação cancelada. Para finalizar:\n• Volte e informe o nome do morador, OU\n• Mude o Status para "Ausente".');
+      }
+      currentVistoria.responsavel=currentVistoria.responsavel||{};
+      currentVistoria.responsavel.nome=novoNome.trim();
     }
-    if(!assinaturaData)return alert("Confirme a assinatura do responsavel");
+    // Assinatura do responsável: dispensada para Ausente e Recusa (responsável não disponível/recusa-se)
+    const statusDispensaAssinatura=(statusVal==="ausente"||statusVal==="recusa");
+    if(!statusDispensaAssinatura&&!assinaturaData){
+      return alert("Confirme a assinatura do responsável.\n\nSe não foi possível obtê-la, mude o Status para \"Ausente\" ou \"Recusa\".");
+    }
     if(!assinaturaTecnico)return alert("Cadastre sua assinatura em Perfil");
   }
   const btn=document.getElementById("btn-finalizar");
@@ -3336,6 +3399,8 @@ window.finalizarVistoria=async()=>{
   const isPendente=!window._modoRegerar&&currentVistoria.statusVistoria==="ausente"&&document.getElementById("fin-pendente")&&document.getElementById("fin-pendente").value==="sim";
   currentVistoria.pendente_retorno=isPendente;
   ultimoResponsavel={...currentVistoria.responsavel};
+  // Persiste o último morador (do dia) no localStorage para sobreviver a recarregamentos
+  try{localStorage.setItem("lastResponsavel"+(new Date().toISOString().slice(0,10)),JSON.stringify(ultimoResponsavel));}catch(e){}
   let erroFotos=0;
   try{
     // Recompressão prévia: reduz cada foto para no máximo 1600px no eixo maior + qualidade 0.85.
@@ -3669,8 +3734,20 @@ window.finalizarVistoria=async()=>{
     }
     // Salvar Firebase (sem fotos — fotos vão para IndexedDB local-only) + download
     // OBS: assinaturaResp gravada no Firestore (necessária para regerar comprovante depois).
-    const vDoc={clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,coletorNome:currentVistoria.coletorNome,responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,ocupacao:currentVistoria.ocupacao,tipo:currentVistoria.tipo,tipoLaudo:currentVistoria.tipoLaudo||"simplificado",estado:currentVistoria.estado,idade:currentVistoria.idade,data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,userId:currentUser.uid,checklist:currentVistoria.checklist,ambientesExtras:ambientesExtras||[],observacoes:currentVistoria.observacoes,totalFotos:Object.keys(fotosPendentes).length,status:currentVistoria.statusVistoria||"concluida",pendente_retorno:isPendente,visitas:1,criadoEm:serverTimestamp(),assinaturaResp:assinaturaData||null};
-    const vRef=await addDoc(collection(db,"vistorias"),vDoc);
+    const vDoc={clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,coletorNome:currentVistoria.coletorNome,responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,ocupacao:currentVistoria.ocupacao,tipo:currentVistoria.tipo,tipoLaudo:currentVistoria.tipoLaudo||"simplificado",estado:currentVistoria.estado,idade:currentVistoria.idade,data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,userId:currentUser.uid,checklist:currentVistoria.checklist,ambientesExtras:ambientesExtras||[],observacoes:currentVistoria.observacoes,totalFotos:Object.keys(fotosPendentes).length,status:currentVistoria.statusVistoria||"concluida",pendente_retorno:isPendente,visitas:currentVistoria.visitas||1,criadoEm:serverTimestamp(),assinaturaResp:assinaturaData||null};
+    let vRef;
+    // RETOMADA DE PENDENTE: se a vistoria veio de um pendente_retorno (currentVistoria._retornoId),
+    // atualizamos o doc original em vez de criar um novo. Isso preserva o histórico de visitas.
+    if(currentVistoria._retornoId){
+      const docRef=doc(db,"vistorias",currentVistoria._retornoId);
+      // Não sobrescrever criadoEm
+      const{criadoEm,...vDocUpd}=vDoc;
+      vDocUpd.atualizadoEm=serverTimestamp();
+      await updateDoc(docRef,vDocUpd);
+      vRef={id:currentVistoria._retornoId};
+    } else {
+      vRef=await addDoc(collection(db,"vistorias"),vDoc);
+    }
     // Salvar fotos local-only (IndexedDB) usando o ID gerado pelo Firestore
     try{
       const fotosLocais=Object.values(fotosPendentes).map(f=>({dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,legenda:f.legenda||f.tipo,numero:f.numero,combinacoes:f.combinacoes||[]}));
@@ -3705,30 +3782,10 @@ window.finalizarVistoria=async()=>{
         showToast("Fotos salvas com sucesso!",3000);
       }catch(e){console.error("ZIP:",e);}
     }
-    // === COMPROVANTE: gerar PDF compacto (2 págs) + download local + upload Storage + QR ===
-    try{
-      setStatus("Gerando comprovante...");
-      await yieldThread();
-      const conclusao=gerarTextoConclusao();
-      // Lista de ambientes que foram efetivamente fotografados (na ordem de aparição)
-      const ambientesComFotoCompr=[];
-      Object.values(fotosPendentes).forEach(f=>{
-        if(f&&f.ambiente&&!ambientesComFotoCompr.includes(f.ambiente))ambientesComFotoCompr.push(f.ambiente);
-      });
-      const comprovanteBlob=await gerarComprovanteBlob(currentVistoria,conclusao,assinaturaData,assinaturaTecnico,ambientesExtras||[],ambientesComFotoCompr);
-      // Download local junto com o resto (para reenvio futuro sem regerar)
-      await shareOrDownload(comprovanteBlob,nomeBase+"_comprovante.pdf","application/pdf");
-      // Upload para Storage (não bloqueia se falhar)
-      try{
-        setStatus("Enviando comprovante...");
-        const url=await uploadComprovante(comprovanteBlob,vRef.id);
-        // Mostrar QR para o responsável escanear na hora
-        mostrarModalQRComprovante(url);
-      }catch(eUp){
-        console.error("Falha upload comprovante:",eUp);
-        showToast("Comprovante salvo localmente. Falha ao subir para nuvem.",4000);
-      }
-    }catch(eC){console.error("Falha ao gerar comprovante:",eC);}
+    // === COMPROVANTE: NÃO é mais gerado automaticamente. O cadastrador pode
+    // acionar manualmente pelo botão "Enviar Comprovante" no histórico (s-detalhe-vistoria).
+    // Isso evita o travamento que acontecia no fim da finalização ao tentar fazer upload
+    // pro Storage. ===
     // Salvar defaults ANTES de limpar
     if(currentVistoria){
       localStorage.setItem("lastClienteId",currentVistoria.clienteId||"");
@@ -3749,173 +3806,80 @@ window.finalizarVistoria=async()=>{
 };
 
 // ===== FLUXO RÁPIDO: AUSENTE PASSÍVEL DE RETORNO =====
-// Para imóveis sem ninguém presente. Vistoriador tira só fotos da fachada (ou nenhuma),
-// pula checklist/patologias/assinatura do responsável, gera PDF curto e finaliza.
-// Pode ser chamado MUITO no mesmo dia — fluxo precisa ser bem rápido.
+// Para imóveis sem ninguém presente na 1ª visita. Salva os dados + fotos no banco e
+// retorna pra Pendentes. NÃO gera PDF. Na próxima visita o cadastrador retoma de onde parou.
+// Quando o ausente vira definitivo (sem mais retorno), aí sim a finalizarVistoria gera o PDF.
 window.marcarAusentePassivelRetorno=async()=>{
   if(!currentVistoria){
     return alert("Sessão da vistoria foi perdida. Volte para a tela anterior e reinicie.");
   }
-  if(!assinaturaTecnico){
-    return alert("Cadastre sua assinatura em Perfil antes de finalizar.");
-  }
   const totalFotos=Object.keys(fotosPendentes).length;
   if(totalFotos===0){
-    if(!confirm("Nenhuma foto foi tirada ainda.\n\nRecomendado: tire ao menos 1 foto da fachada como prova da tentativa.\n\nFinalizar mesmo assim?"))return;
+    if(!confirm("Nenhuma foto foi tirada ainda.\n\nRecomendado: tire ao menos 1 foto da fachada como prova da tentativa.\n\nRegistrar mesmo assim?"))return;
   }
-  if(!confirm("Marcar este imóvel como AUSENTE — passível de retorno?\n\nO PDF será gerado com as fotos atuais (sem checklist nem patologias).\nA assinatura do responsável NÃO é necessária.\nEle permanecerá na lista de Pendentes para nova visita."))return;
-  // Snapshot defensivo
-  const _backupVistoriaA={...currentVistoria};
-  let _backupFotosA={...fotosPendentes};
-  currentVistoria.estado=currentVistoria.estado||"Regular";
-  currentVistoria.idade=currentVistoria.idade||"-";
-  currentVistoria.statusVistoria="ausente";
-  currentVistoria.pendente_retorno=true;
-  ultimoResponsavel={...currentVistoria.responsavel};
-  let erroFotos=0;
+  if(!confirm("Registrar este imóvel como AUSENTE — passível de retorno?\n\n• Dados e fotos serão salvos para a próxima visita.\n• NÃO será gerado PDF agora.\n• Vai para a lista \"Ausentes Pendentes\"."))return;
+  ultimoResponsavel=currentVistoria.responsavel?{...currentVistoria.responsavel}:null;
+  if(ultimoResponsavel){
+    try{localStorage.setItem("lastResponsavel"+(new Date().toISOString().slice(0,10)),JSON.stringify(ultimoResponsavel));}catch(e){}
+  }
+  let btnSalvarAusente=null;
+  // Botão da tela vai mostrar progresso para o usuário não tocar duas vezes
   try{
-    // Reaproveita a recompressão + agrupamento existentes via "modo ausente": como o fluxo é simples,
-    // gera PDF inline aqui mesmo, com header padrão + as fotos (se houver) + página final curta.
-    showToast("Gerando PDF de ausência...",4000);
-    await yieldThread();
-    // Recompressão (se houver fotos)
-    if(totalFotos>0){
-      const fotosRecomp={};
-      const fotosArr=Object.entries(fotosPendentes);
-      for(let i=0;i<fotosArr.length;i++){
-        const[id,f]=fotosArr[i];
-        try{
-          const optimized=await recomprimirParaPDF(f.dataUrl,1600,0.85);
-          fotosRecomp[id]={...f,dataUrl:optimized};
-        }catch(eOpt){fotosRecomp[id]=f;}
-        await yieldThread();
-      }
-      fotosPendentes=fotosRecomp;
-    }
-    const{jsPDF}=window.jspdf;
-    const pdf=new jsPDF("p","mm","a4");
-    const PW=210,PH=297,ML=12.7,MT=12.7,MR=12.7,MB=12.7;
-    const CW=PW-ML-MR;
-    const HDR=47;
-    const Y0=MT+HDR;
-    const PGB=PH-MB-14;
-    const prest=prestadorDefault||{nome:"CNRP ARQUITETURA E CONSTRUÇÕES LTDA.",cnpj:"22.121.094/0001-90",endereco:"Av. Marechal Eurico Gaspar Dutra, nº 1292 | Santana | São Paulo – SP | CEP 02239-010",email:"ronaldopinto@rbarquitetura.com"};
-    const logoSrc=prest.logo||LOGO_CONST;
-    const logoPrep=await prepLogoForPDF(logoSrc,45,15);
-    const fotosArr=Object.values(fotosPendentes);
-    // === PÁGINA 1: HEADER + AVISO DE AUSÊNCIA + FOTOS (se houver) ===
-    pdfHeader(pdf,ML,PW,CW,currentVistoria,"Fachada",logoSrc,HDR,MT,logoPrep);
-    let y=Y0;
-    // Banner explicativo
-    pdf.setFillColor(255,243,205);pdf.rect(ML,y,CW,12,"F");
-    pdf.setDrawColor(245,158,11);pdf.setLineWidth(0.4);pdf.rect(ML,y,CW,12,"S");
-    pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.setTextColor(146,64,14);
-    pdf.text("IMÓVEL AUSENTE — PASSÍVEL DE RETORNO",ML+CW/2,y+5,{align:"center"});
-    pdf.setFont("helvetica","normal");pdf.setFontSize(8);
-    pdf.text("Tentativa "+( currentVistoria.visitas||1)+" — Não foi possível realizar a vistoria interna. Imóvel permanece pendente para nova visita.",ML+CW/2,y+9.5,{align:"center"});
-    pdf.setTextColor(0,0,0);
-    y+=16;
-    // Fotos (1 ou mais)
-    if(fotosArr.length>0){
-      const espacoDisp=PGB-y-20;
-      if(fotosArr.length===1){
-        const f=fotosArr[0];
-        const dims=await getImgDims(f.dataUrl);
-        const maxFH=espacoDisp;
-        const sc=Math.min((CW-4)/dims.w,(maxFH-4)/dims.h);
-        const fw=Math.round(dims.w*sc),fh=Math.round(dims.h*sc);
-        const xo=Math.round((CW-fw)/2);
-        pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(ML,y,CW,fh+10,"S");
-        try{await addImgPDF(pdf,f.dataUrl,ML+xo,y+2,fw,fh);}catch(e){erroFotos++;}
-        pdf.line(ML,y+fh+2,ML+CW,y+fh+2);
-        pdf.setFont("helvetica","bold");pdf.setFontSize(9);
-        pdf.text("Foto 01",ML+CW/2,y+fh+5,{align:"center"});
-        pdf.setFont("helvetica","normal");pdf.setFontSize(8);
-        pdf.text(f.legenda||f.ambiente||"Fachada",ML+CW/2,y+fh+8.5,{align:"center"});
-        y+=fh+14;
-      } else {
-        // Várias fotos: grid simples 2 por linha
-        const fpW=(CW-4)/2;
-        const fpH=Math.min(espacoDisp/Math.ceil(fotosArr.length/2)-12,80);
-        for(let i=0;i<fotosArr.length;i+=2){
-          const yp=y;
-          for(let k=0;k<2&&i+k<fotosArr.length;k++){
-            const f=fotosArr[i+k];
-            const fx=k===0?ML:ML+fpW+4;
-            const dims=await getImgDims(f.dataUrl);
-            const sc=Math.min((fpW-4)/dims.w,(fpH-4)/dims.h);
-            const fw=Math.round(dims.w*sc),fh=Math.round(dims.h*sc);
-            const xo=Math.round((fpW-fw)/2),yo=Math.round((fpH-fh)/2);
-            pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(fx,yp,fpW,fpH+8,"S");
-            try{await addImgPDF(pdf,f.dataUrl,fx+xo,yp+yo,fw,fh);}catch(e){erroFotos++;}
-            pdf.line(fx,yp+fpH,fx+fpW,yp+fpH);
-            pdf.setFont("helvetica","bold");pdf.setFontSize(8);
-            pdf.text("Foto "+String(i+k+1).padStart(2,"0"),fx+fpW/2,yp+fpH+3.5,{align:"center"});
-            pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);
-            pdf.text(f.legenda||f.ambiente||"Fachada",fx+fpW/2,yp+fpH+6.5,{align:"center"});
-          }
-          y+=fpH+12;
-        }
-      }
-    } else {
-      pdf.setFont("helvetica","italic");pdf.setFontSize(10);
-      pdf.text("Nenhuma foto registrada nesta tentativa.",ML+CW/2,y+15,{align:"center"});
-      y+=20;
-    }
-    // Assinatura técnico só (sem responsável)
-    const yAssi=Math.max(y+10,PGB-50);
-    pdf.setFontSize(10);pdf.setFont("helvetica","normal");
-    pdf.text("São Paulo, "+(currentVistoria.dataCompleta||currentVistoria.data),ML+CW/2,yAssi,{align:"center"});
-    const sigW=CW*0.4;const sigX=ML+(CW-sigW)/2;const sigYTop=yAssi+8;
-    if(assinaturaTecnico){try{pdf.addImage(assinaturaTecnico,"PNG",sigX,sigYTop,sigW,18);}catch(e){}}
-    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
-    pdf.line(sigX,sigYTop+19,sigX+sigW,sigYTop+19);
-    pdf.setFontSize(9);pdf.setFont("helvetica","normal");
-    pdf.text((currentUserData&&currentUserData.nome)||"Responsavel Tecnico",sigX+sigW/2,sigYTop+23,{align:"center"});
-    pdf.text("Responsável Técnico",sigX+sigW/2,sigYTop+27,{align:"center"});
-    // Rodapé
-    pdfFooter(pdf,PW,PH,ML,MR,MB,prest);
-    // Salvar no Firestore
+    btnSalvarAusente=document.querySelector("button[onclick=\"marcarAusentePassivelRetorno()\"]");
+    if(btnSalvarAusente){btnSalvarAusente.disabled=true;btnSalvarAusente.textContent="Salvando...";}
+  }catch(e){}
+  try{
+    // Salvar no Firestore SEM PDF, SEM checklist completo, SEM comprovante.
     const vDoc={
       clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,
       clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,
       coletorNome:currentVistoria.coletorNome,
-      responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,
+      responsavel:currentVistoria.responsavel||{nome:"",doc:"",tel:""},
+      endereco:currentVistoria.endereco,
       ocupacao:currentVistoria.ocupacao||"",tipo:currentVistoria.tipo||"",
       tipoLaudo:currentVistoria.tipoLaudo||"simplificado",
       estado:"",idade:"",
       data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,
       userId:currentUser.uid,
-      checklist:{},ambientesExtras:[],observacoes:"",
-      totalFotos:fotosArr.length,
-      status:"ausente",pendente_retorno:true,
+      checklist:currentVistoria.checklist||{},
+      ambientesExtras:ambientesExtras||[],
+      observacoes:currentVistoria.observacoes||"",
+      totalFotos:totalFotos,
+      status:"ausente",
+      pendente_retorno:true, // <-- vai pra lista de pendentes
       visitas:currentVistoria.visitas||1,
       criadoEm:serverTimestamp(),
       assinaturaResp:null
     };
-    const vRef=await addDoc(collection(db,"vistorias"),vDoc);
-    // Fotos local-only no IndexedDB
+    const vRef=await(async()=>{
+      // Se veio de retomada, atualiza o doc existente (preserva criadoEm e histórico)
+      if(currentVistoria._retornoId){
+        const docRef=doc(db,"vistorias",currentVistoria._retornoId);
+        const{criadoEm,...vDocUpd}=vDoc;
+        vDocUpd.atualizadoEm=serverTimestamp();
+        await updateDoc(docRef,vDocUpd);
+        return{id:currentVistoria._retornoId};
+      }
+      return await addDoc(collection(db,"vistorias"),vDoc);
+    })();
+    // Fotos local-only no IndexedDB (chave = ID da vistoria) para retomar na próxima visita
     try{
-      const fotosLocais=Object.values(fotosPendentes).map(f=>({dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,legenda:f.legenda||f.tipo,numero:f.numero,combinacoes:f.combinacoes||[]}));
-      await localSalvarFotos(vRef.id,fotosLocais);
-    }catch(e){console.error("Falha local-only ausente:",e);}
-    // Gerar nome do arquivo
-    const dataArq=currentVistoria.data.replace(/\//g,"-");
-    const endArq=(currentVistoria.endereco.rua+" "+currentVistoria.endereco.num+(currentVistoria.endereco.comp?" "+currentVistoria.endereco.comp:"")).replace(/[^a-zA-Z0-9\s]/g,"").trim().replace(/\s+/g,"_");
-    const colArq=(currentVistoria.coletorNome||"vistoria").replace(/[^a-zA-Z0-9\s]/g,"").trim().replace(/\s+/g,"_");
-    const nomeBase=colArq+"-"+endArq+"-"+dataArq+"_ausente";
-    // Restaura fotos originais antes do share (qualidade boa)
-    fotosPendentes=_backupFotosA;
-    await shareOrDownload(pdf.output("blob"),nomeBase+".pdf","application/pdf");
-    showToast("Imóvel registrado como Ausente (passível de retorno).",4000);
+      const fotosLocais=Object.values(fotosPendentes).map(f=>({
+        dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,
+        legenda:f.legenda||f.tipo,numero:f.numero,
+        combinacoes:f.combinacoes||[]
+      }));
+      if(fotosLocais.length>0)await localSalvarFotos(vRef.id,fotosLocais);
+    }catch(eLocal){console.error("Falha ao salvar fotos local-only do ausente:",eLocal);}
+    showToast("Ausente registrado! Disponível em \"Ausentes Pendentes\" para retorno.",4500);
     // Limpar estado e voltar
     currentVistoria=null;fotosPendentes={};assinaturaData=null;ambientesExtras=[];
-    goTo("s-nova-vistoria");
+    goTo("s-pendentes");
   }catch(e){
     console.error("marcarAusentePassivelRetorno:",e);
-    if(_backupVistoriaA&&!currentVistoria)currentVistoria=_backupVistoriaA;
-    if(_backupFotosA&&Object.keys(fotosPendentes).length===0)fotosPendentes=_backupFotosA;
     alert("Erro ao registrar ausência: "+(e.message||"desconhecido"));
+  } finally {
+    if(btnSalvarAusente){btnSalvarAusente.disabled=false;btnSalvarAusente.textContent="⏳ Ausente — Passível de Retorno";}
   }
 };
 
