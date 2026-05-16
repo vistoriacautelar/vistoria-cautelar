@@ -407,10 +407,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   </div>
 </div>
 <div id="arrow-overlay" class="canvas-overlay" style="display:none">
-  <div style="background:#111;padding:12px 16px;color:#fff;font-size:14px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
-    <span style="font-weight:600" id="arrow-overlay-titulo">Toque para marcar a patologia</span>
-    <span id="arrow-counter" style="font-size:12px;color:#aaa;background:rgba(255,255,255,.1);padding:4px 10px;border-radius:20px">0 setas</span>
-  </div>
   <canvas id="arrow-canvas"></canvas>
   <div class="canvas-controls">
     <button class="btn-cam" onclick="desfazerSeta()" type="button">Desfazer</button>
@@ -857,6 +853,14 @@ onAuthStateChanged(auth,async user=>{
     if(snap.exists()){currentUserData=snap.data();currentRole=currentUserData.role;assinaturaTecnico=currentUserData.assinatura||null;}
     else{currentRole="master";currentUserData={nome:"Admin",email:user.email,role:"master"};await setDoc(doc(db,"users",user.uid),{...currentUserData,criadoEm:serverTimestamp()});}
     await loadPrestadorDefault();await loadAmbientesCustom();
+    // Solicita persistência do storage para evitar que o navegador limpe o IndexedDB
+    // (importante para que as fotos das vistorias permaneçam disponíveis para edição).
+    if(navigator.storage&&navigator.storage.persist){
+      try{
+        const persisted=await navigator.storage.persisted();
+        if(!persisted)await navigator.storage.persist().catch(()=>{});
+      }catch(e){console.warn("storage persist:",e);}
+    }
     // Recupera último morador do dia (para sugerir reaproveitamento na próxima vistoria)
     try{
       const hojeStr=new Date().toISOString().slice(0,10);
@@ -1306,13 +1310,22 @@ window.abrirEditorFotos=async(id,data)=>{
   _efId=id;_efData=data;
   // Tenta IndexedDB primeiro (novo armazenamento local-only); fallback p/ fotosBase64 antigo
   let fotos=null;
-  try{fotos=await localBuscarFotos(id);}catch(e){}
-  if(!fotos||!fotos.length)fotos=data.fotosBase64||[];
+  try{fotos=await localBuscarFotos(id);}catch(e){console.error("localBuscarFotos:",e);}
   if(!fotos||!fotos.length){
-    alert("Esta vistoria não tem fotos disponíveis para edição neste dispositivo.\n\nA edição de fotos só fica disponível no dispositivo em que a vistoria foi originalmente gerada.");
-    return;
+    // Tenta também o fallback do Firestore (vistorias antigas que salvavam fotos no doc)
+    if(data&&data.fotosBase64&&data.fotosBase64.length)fotos=data.fotosBase64;
   }
-  _efFotos=fotos.map((f,i)=>({...f,_idx:i}));
+  if(!fotos||!fotos.length){
+    alert("Não há fotos disponíveis para edição.\n\nPossíveis causas:\n"
+      +"• Vistoria foi feita ANTES da atualização que salva fotos localmente (vistorias antigas).\n"
+      +"• O navegador limpou os dados locais (cache, modo anônimo, ou \"Limpar dados\").\n"
+      +"• Fotos foram apagadas pelo usuário em \"Gerenciar fotos locais\".\n\n"
+      +"Você pode tirar fotos novas tocando em \"+ Adicionar foto\" abaixo.");
+    // Mesmo sem fotos, abre o editor com lista vazia — permitir acrescentar novas
+    _efFotos=[];
+  } else {
+    _efFotos=fotos.map((f,i)=>({...f,_idx:i}));
+  }
   goTo("s-editor-fotos");
 };
 
@@ -1379,7 +1392,7 @@ function salvarFotoFinalEditor(dataUrl,patologias,combinacoes){
   if(tipoLaudo==="completo"){
     legendaCalc=tipo; // sempre Vista/Detalhe; código vai sobre a imagem
   } else {
-    legendaCalc=temPat?combinacoes.map(c=>gerarLegendaCombo(c)).join(" / "):"Vista";
+    legendaCalc=temPat?unificarLegendasCombos(combinacoes):"Vista";
   }
   if(_efCameraMode==="adicionar"){
     _efFotos.push({dataUrl,ambiente:_efAmbienteAlvo,tipo,legenda:legendaCalc,combinacoes:combinacoes||[]});
@@ -1718,7 +1731,9 @@ window.criarVistoria=async()=>{
   const nomeHtml=nome?("<b>"+nome+"</b>"):'<span style="color:#888;font-style:italic">Morador não identificado</span>';
   document.getElementById("v-info").innerHTML=[badgeTipo+nomeHtml,docR?"Doc: "+docR:"",tel?"Tel: "+tel:"",rua+", "+num+(comp?" - "+comp:""),"<span style='color:#aaa;font-size:12px'>Coletor: "+colD.nome+" | RRT: "+clD.rrt+"</span>"].filter(Boolean).join("<br>");
   const sel=document.getElementById("v-ambiente");
-  popularSeletorAmbiente(sel);
+  popularSeletorAmbiente(sel,true);
+  const selTipo=document.getElementById("v-tipo-foto");
+  if(selTipo)selTipo.value="Vista";
   // Limpar campo de observações no início (não persiste de uma vistoria pra outra)
   const obsEl=document.getElementById("v-obs");if(obsEl)obsEl.value=currentVistoria.observacoes||"";
   goTo("s-vistoria");renderFotos();
@@ -1726,11 +1741,12 @@ window.criarVistoria=async()=>{
 
 // Popula o select de ambiente com base + custom + extras temporários + opção "Novo cômodo".
 // Reusable para garantir consistência ao adicionar um novo cômodo no meio da vistoria.
-function popularSeletorAmbiente(sel){
+// forcarReset: se true, limpa valor selecionado (usado ao iniciar nova vistoria).
+function popularSeletorAmbiente(sel,forcarReset){
   if(!sel)sel=document.getElementById("v-ambiente");
   if(!sel)return;
-  const valorAtual=sel.value;
-  sel.innerHTML='<option value="">Selecione o ambiente...</option>';
+  const valorAtual=forcarReset?"":sel.value;
+  sel.innerHTML='<option value="" selected>Selecione o ambiente...</option>';
   AMBIENTES.forEach(a=>{const o=document.createElement("option");o.value=a;o.textContent=a;sel.appendChild(o);});
   // Extras temporários (legado, mantidos por compat)
   ambientesExtras.forEach(a=>{
@@ -1743,8 +1759,9 @@ function popularSeletorAmbiente(sel){
   novoOpt.textContent="+ Novo cômodo...";
   novoOpt.style.color="#007aff";novoOpt.style.fontWeight="600";
   sel.appendChild(novoOpt);
-  // Restaura seleção prévia, se ainda existe
+  // Restaura seleção prévia somente se NÃO foi pedido reset
   if(valorAtual&&[...sel.options].some(o=>o.value===valorAtual))sel.value=valorAtual;
+  else sel.value="";
 }
 
 // Handler do change do seletor: detecta opção "+ Novo cômodo..." e dispara prompt
@@ -1923,6 +1940,22 @@ window.abrirCamera=async()=>{
         audio:false
       });
     }
+    // Forçar foco contínuo via applyConstraints com "advanced" (alguns navegadores
+    // ignoram quando setado direto no getUserMedia mas aceitam via applyConstraints).
+    // É feito best-effort, sem bloquear o fluxo se falhar.
+    try{
+      const trk=cameraStream.getVideoTracks()[0];
+      if(trk){
+        const cap=trk.getCapabilities?.()||{};
+        const adv=[];
+        if(cap.focusMode&&cap.focusMode.includes("continuous"))adv.push({focusMode:"continuous"});
+        if(cap.exposureMode&&cap.exposureMode.includes("continuous"))adv.push({exposureMode:"continuous"});
+        if(cap.whiteBalanceMode&&cap.whiteBalanceMode.includes("continuous"))adv.push({whiteBalanceMode:"continuous"});
+        if(adv.length){
+          await trk.applyConstraints({advanced:adv}).catch(e=>console.warn("autofocus apply:",e));
+        }
+      }
+    }catch(eAuto){console.warn("autofocus setup:",eAuto);}
     // Atribuir stream e aguardar estar pronto
     v.srcObject=null; // reset limpo
     await new Promise(r=>setTimeout(r,50)); // micro-delay
@@ -2082,31 +2115,15 @@ window.tirarFoto=async()=>{
   }
 
   if(!photoBlob){
-    // Fallback: capturar do video com deteccao de orientacao
-    let screenAngle=0;
-    try{
-      if(screen.orientation&&typeof screen.orientation.angle==="number"){
-        screenAngle=screen.orientation.angle;
-      } else if(typeof window.orientation==="number"){
-        screenAngle=window.orientation;
-      }
-    }catch(e){}
-    const normAngle=((screenAngle%360)+360)%360;
-    const isPortraitScreen=normAngle===0||normAngle===180;
-    const isLandscapeFrame=vW>vH;
-    const mustRotate=isPortraitScreen&&isLandscapeFrame;
-    const rotDir=(normAngle===90||normAngle===0&&vW<vH)?1:-1;
-    const SS=2;vW2=(mustRotate?vH:vW)*SS;vH2=(mustRotate?vW:vH)*SS;
+    // Fallback: capturar do video SEM rotação automática.
+    // Em muitos aparelhos, o videoWidth/videoHeight já reflete a orientação correta.
+    // Rotacionar com base em screen.orientation causa o bug "paisagem virando retrato"
+    // em aparelhos onde o video já está orientado certo. Confiamos no que o browser deu.
+    const SS=2;vW2=vW*SS;vH2=vH*SS;
     canvas=document.createElement("canvas");canvas.width=vW2;canvas.height=vH2;
     ctx=canvas.getContext("2d");
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
-    if(mustRotate){
-      ctx.save();ctx.translate(vW2/2,vH2/2);
-      ctx.rotate(rotDir*Math.PI/2);
-      // Desenhar na escala 2x
-      ctx.drawImage(video,-(vH2)/2,-(vW2)/2,vH2,vW2);
-      ctx.restore();
-    }else{ctx.drawImage(video,0,0,vW2,vH2);}
+    ctx.drawImage(video,0,0,vW2,vH2);
   }
   const outW=vW2,outH=vH2;
   // Carimbo - tamanho proporcional ao MENOR eixo (estável em qualquer aspect ratio, inclusive ultra wide)
@@ -2192,18 +2209,6 @@ window.handleFileUpload=e=>{const file=e.target.files[0];if(!file)return;const r
 
 function abrirEditorSetas(imgDataUrl){
   arrowPoints=[];
-  document.getElementById("arrow-counter").textContent="0 setas";
-  const titulo=document.getElementById("arrow-overlay-titulo");
-  if(titulo){
-    const tipoLaudoAE=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";
-    const n=_fotoSetasAcumuladas.length;
-    if(tipoLaudoAE==="completo"){
-      titulo.textContent=n===0?"Toque na foto para marcar a patologia":"Marque mais uma patologia (já tem "+n+")";
-    }else{
-      // Simplificado: pode marcar várias de uma vez
-      titulo.textContent=n===0?"Toque na foto para marcar as patologias":"Marque mais patologias (já tem "+n+")";
-    }
-  }
   const canvas=document.getElementById("arrow-canvas");
   // Limpar o canvas IMEDIATAMENTE (evita exibir a foto anterior antes de a nova carregar)
   if(canvas.width&&canvas.height){
@@ -2215,26 +2220,35 @@ function abrirEditorSetas(imgDataUrl){
   const img=new Image();
   img.onload=()=>{
     arrowImage=img;
-    // Canvas de EXIBIÇÃO: tamanho da tela para interação fluida
+    // Canvas de EXIBIÇÃO: tamanho da tela para interação fluida.
+    // Usa devicePixelRatio para garantir nitidez em telas Retina/HiDPI — o canvas tem mais
+    // pixels do que o tamanho CSS, mas via CSS aparece no tamanho normal. Isso preserva nitidez
+    // sem custar muito (5x mais pixels em telas 3x).
     const isLandscape=window.innerWidth>window.innerHeight;
     const ctrlH=isLandscape?0:70;
     const ctrlW=isLandscape?80:0;
     const maxW=window.innerWidth-ctrlW;
     const maxH=window.innerHeight-ctrlH;
     const scaleDisplay=Math.min(maxW/img.naturalWidth,maxH/img.naturalHeight,1);
-    canvas.width=Math.round(img.naturalWidth*scaleDisplay);
-    canvas.height=Math.round(img.naturalHeight*scaleDisplay);
+    const dpr=Math.min(window.devicePixelRatio||1,3); // cap em 3x para não estourar memória
+    const cssW=Math.round(img.naturalWidth*scaleDisplay);
+    const cssH=Math.round(img.naturalHeight*scaleDisplay);
+    canvas.width=Math.round(cssW*dpr);
+    canvas.height=Math.round(cssH*dpr);
+    canvas.style.width=cssW+"px";
+    canvas.style.height=cssH+"px";
     canvas.style.maxWidth="100%";
     canvas.style.maxHeight="100%";
     // Guardar escala de exibição para usar ao exportar
     canvas.dataset.displayScale=scaleDisplay;
     canvas.dataset.origW=img.naturalWidth;
     canvas.dataset.origH=img.naturalHeight;
+    canvas.dataset.dpr=dpr;
     desenharSetas();
   };
   img.src=imgDataUrl;
-  canvas.ontouchend=e=>{e.preventDefault();const r=canvas.getBoundingClientRect();const s=e.changedTouches[0];arrowPoints.push({x:(s.clientX-r.left)/r.width,y:(s.clientY-r.top)/r.height});document.getElementById("arrow-counter").textContent=arrowPoints.length+" seta(s)";desenharSetas();};
-  canvas.onclick=e=>{const r=canvas.getBoundingClientRect();arrowPoints.push({x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height});document.getElementById("arrow-counter").textContent=arrowPoints.length+" seta(s)";desenharSetas();};
+  canvas.ontouchend=e=>{e.preventDefault();const r=canvas.getBoundingClientRect();const s=e.changedTouches[0];arrowPoints.push({x:(s.clientX-r.left)/r.width,y:(s.clientY-r.top)/r.height});desenharSetas();};
+  canvas.onclick=e=>{const r=canvas.getBoundingClientRect();arrowPoints.push({x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height});desenharSetas();};
 }
 
 // Função para desenhar seta em qualquer canvas (coordenadas absolutas)
@@ -2321,8 +2335,8 @@ function desenharSetas(){
   if(arrowImage)ctx.drawImage(arrowImage,0,0,canvas.width,canvas.height);
   arrowPoints.forEach(p=>desenharSetaEmCanvas(ctx,p.x*canvas.width,p.y*canvas.height,canvas.width));
 }
-window.desfazerSeta=()=>{arrowPoints.pop();document.getElementById("arrow-counter").textContent=arrowPoints.length+" seta(s)";desenharSetas();};
-window.limparSetas=()=>{arrowPoints=[];document.getElementById("arrow-counter").textContent="0 setas";desenharSetas();};
+window.desfazerSeta=()=>{arrowPoints.pop();desenharSetas();};
+window.limparSetas=()=>{arrowPoints=[];desenharSetas();};
 window.confirmarSetas=()=>{
   if(arrowPoints.length===0){
     return alert("Toque na foto para marcar onde está a patologia.");
@@ -2493,6 +2507,37 @@ function gerarLegendaCombo(c){
   // Ex: "Parede: Fissura / Umidade / Trinca"
   const patsStr=c.pats.join(" / ");
   return c.elemento+": "+patsStr;
+}
+
+// Unifica várias combinações da MESMA foto numa legenda só, agrupando por elemento
+// e deduplicando patologias. Ex: [{Parede,[Trinca]}, {Teto,[Trinca]}, {Parede,[Trinca]}]
+// → "Parede: Trinca / Teto: Trinca" (sem repetição).
+// Aplica-se apenas ao modo Simplificado — Completo mantém código CNRP por seta.
+function unificarLegendasCombos(combinacoes){
+  if(!combinacoes||!combinacoes.length)return "";
+  // Modo completo: cada seta tem seu código próprio, não unifica
+  const temCompleto=combinacoes.some(c=>c.modo==="completo");
+  if(temCompleto){
+    return combinacoes.map(c=>gerarLegendaCombo(c)).join(" / ");
+  }
+  // Simplificado: agrupar por elemento, deduplicar patologias, preservar ordem
+  const ordemElem=[];
+  const grupos={};
+  combinacoes.forEach(c=>{
+    if(c.modo==="agrupada"&&c.listaInternal){
+      // Caso agrupada: achatar
+      c.listaInternal.forEach(sub=>{
+        if(!sub.elemento||!sub.pats)return;
+        if(!grupos[sub.elemento]){grupos[sub.elemento]={pats:[],set:new Set()};ordemElem.push(sub.elemento);}
+        sub.pats.forEach(p=>{if(!grupos[sub.elemento].set.has(p)){grupos[sub.elemento].set.add(p);grupos[sub.elemento].pats.push(p);}});
+      });
+      return;
+    }
+    if(!c.elemento||!c.pats)return;
+    if(!grupos[c.elemento]){grupos[c.elemento]={pats:[],set:new Set()};ordemElem.push(c.elemento);}
+    c.pats.forEach(p=>{if(!grupos[c.elemento].set.has(p)){grupos[c.elemento].set.add(p);grupos[c.elemento].pats.push(p);}});
+  });
+  return ordemElem.map(el=>el+": "+grupos[el].pats.join(" / ")).join(" / ");
 }
 
 window.removerCombinacao=i=>{_patCombinacoes.splice(i,1);renderCombinacoes();};
@@ -2764,7 +2809,7 @@ function salvarFotoFinal(dataUrl,patologias,combinacoes){
   let legenda=fotoAtualTipo;
   if(combinacoes&&combinacoes.length&&tipoLaudo!=="completo"){
     // No simplificado: legenda detalhada por combinação
-    legenda=combinacoes.map(c=>gerarLegendaCombo(c)).join(" / ");
+    legenda=unificarLegendasCombos(combinacoes);
   }
   // No modo completo: legenda da foto = "Vista" (sem patologia) ou "Detalhe" (com); código já está marcado na imagem.
   // Corrigir orientação EXIF (iOS) e depois comprimir
@@ -3173,6 +3218,38 @@ async function gerarComprovanteBlob(data,conclusaoLinhas,assinaturaResp,assinatu
   pdf.setFont("helvetica","normal");const endVc=(data.endereco&&data.endereco.rua||"")+" "+(data.endereco&&data.endereco.num||"");
   pdf.text(endVc,CKML+CKCW/2+1.5+pdf.getTextWidth(endLc),yc+4.5);
   pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(CKML,yc,CKCW,7,"S");yc+=9;
+  // === TEXTO CONTEXTUAL: comprovante de vistoria realizada ===
+  // Bloco explicativo com endereço, data e hora — facilita identificação por quem recebe.
+  {
+    const enderecoFull=((data.endereco&&data.endereco.rua||"")
+      +(data.endereco&&data.endereco.num?", nº "+data.endereco.num:"")
+      +(data.endereco&&data.endereco.comp?", "+data.endereco.comp:"")).trim()
+      ||"endereço não informado";
+    let dataTxt=data.dataCompleta||data.data||"";
+    let horaTxt="";
+    try{
+      if(data.criadoEm&&typeof data.criadoEm.seconds==="number"){
+        const dt=new Date(data.criadoEm.seconds*1000);
+        horaTxt=dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+      } else {
+        horaTxt=new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+      }
+    }catch(e){}
+    const textoExplicativo="Este comprovante atesta a realização de vistoria cautelar no imóvel localizado em "
+      +enderecoFull+(dataTxt?" no dia "+dataTxt:"")
+      +(horaTxt?", às "+horaTxt:"")+".";
+    pdf.setFont("helvetica","normal");pdf.setFontSize(8.5);
+    const lines=pdf.splitTextToSize(textoExplicativo,CKCW-6);
+    const blocoH=lines.length*4.2+5;
+    pdf.setFillColor(248,250,252);
+    pdf.rect(CKML,yc,CKCW,blocoH,"F");
+    pdf.setDrawColor(200,210,225);pdf.setLineWidth(0.2);
+    pdf.rect(CKML,yc,CKCW,blocoH,"S");
+    pdf.setTextColor(45,55,72);
+    pdf.text(lines,CKML+3,yc+3.5);
+    pdf.setTextColor(0,0,0);
+    yc+=blocoH+3;
+  }
   // Se a vistoria informou os ambientes utilizados, usa só eles (na ordem informada).
   // Caso contrário, mostra todos (fallback legado).
   const ambTotal=(ambientesUtilizadosArr&&ambientesUtilizadosArr.length)
@@ -3402,31 +3479,43 @@ window.enviarComprovanteVistoria=async(vistoriaId,vData,ev)=>{
       const seguir=confirm("Esta vistoria não tem a assinatura do responsável (pode ser ausente/recusa).\n\nGerar comprovante mesmo assim?");
       if(!seguir){if(btn){btn.disabled=false;btn.textContent=origTxt;}return;}
     }
-    // Reconstruir ambientes utilizados a partir das fotos do IndexedDB (se disponíveis)
+    // Reconstruir ambientes utilizados COM PATOLOGIA IDENTIFICADA a partir das fotos do IndexedDB
     const conclusaoLinhas=[];
     let ambUtilizados=[];
     try{
       const fotosLocais=await localBuscarFotos(vistoriaId);
       if(fotosLocais&&fotosLocais.length){
-        fotosLocais.forEach(f=>{if(f&&f.ambiente&&!ambUtilizados.includes(f.ambiente))ambUtilizados.push(f.ambiente);});
+        const ambComPat=new Set();
+        fotosLocais.forEach(f=>{
+          if(!f||!f.ambiente||!f.combinacoes||!f.combinacoes.length)return;
+          const temPat=f.combinacoes.some(c=>{
+            if(c.modo==="completo")return !!(c.codigo&&c.subs&&c.subs.length);
+            if(c.modo==="agrupada"&&c.listaInternal)return c.listaInternal.some(s=>s.pats&&s.pats.length);
+            return !!(c.pats&&c.pats.length);
+          });
+          if(temPat)ambComPat.add(f.ambiente);
+        });
+        fotosLocais.forEach(f=>{if(f&&f.ambiente&&ambComPat.has(f.ambiente)&&!ambUtilizados.includes(f.ambiente))ambUtilizados.push(f.ambiente);});
       }
     }catch(e){}
     if(btn)btn.textContent="Gerando PDF...";
     blobGerado=await gerarComprovanteBlob(vData,conclusaoLinhas,assinaturaResp,assinaturaTec,vData.ambientesExtras||[],ambUtilizados);
-    // Tentar upload pro Storage com timeout
+    // SEMPRE baixar o PDF local PRIMEIRO — assim o cadastrador tem o arquivo no celular
+    // para enviar manualmente, mesmo se o upload pra nuvem falhar.
+    const nomeArq=(vData.coletorNome||"vistoria").replace(/[^a-zA-Z0-9]/g,"_")+"_"
+      +((vData.endereco&&vData.endereco.rua||"").replace(/[^a-zA-Z0-9]/g,"_"))
+      +"_comprovante.pdf";
+    try{
+      await shareOrDownload(blobGerado,nomeArq,"application/pdf");
+    }catch(eDL){console.warn("Falha download local comprovante:",eDL);}
+    // Em paralelo, tentar upload pro Storage para gerar o QR Code
     if(btn)btn.textContent="Enviando...";
     try{
       const url=await uploadComprovante(blobGerado,vistoriaId);
       mostrarModalQRComprovante(url);
     }catch(eUp){
       console.error("Falha upload Storage:",eUp);
-      // Fallback: oferecer download/share local do PDF
-      const nomeArq="comprovante_"+(vData.responsavel&&vData.responsavel.nome||"vistoria").replace(/[^a-zA-Z0-9]/g,"_")+".pdf";
-      const usarLocal=confirm("Não foi possível enviar para a nuvem (geração de QR Code).\n\nMotivo provável: Firebase Storage não está habilitado ou as Regras do Storage bloqueiam o upload.\n\nDeseja BAIXAR o comprovante para enviar manualmente pelo WhatsApp/Email?\n\nDetalhes: "+(eUp.message||"desconhecido"));
-      if(usarLocal){
-        await shareOrDownload(blobGerado,nomeArq,"application/pdf");
-        showToast("Comprovante baixado. Envie manualmente.",3500);
-      }
+      showToast("Comprovante baixado no celular. Não foi possível gerar QR Code.",4000);
     }
   }catch(e){
     console.error("enviarComprovanteVistoria:",e);
@@ -3648,13 +3737,25 @@ window.finalizarVistoria=async()=>{
     pdf.text(endVc,CKML+CKCW/2+1.5+pdf.getTextWidth(endLc),yc+4.5);
     pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(CKML,yc,CKCW,7,"S");yc+=9;
 
-    // Checklist: SÓ os cômodos que foram efetivamente fotografados nesta vistoria,
-    // na ordem em que apareceram pela primeira vez. Cômodos sem foto não entram
-    // no PDF para o checklist ficar mais limpo e direto. A ordem aqui já está alinhada
-    // ao agrupamento feito acima em fotosPendentes, então iteramos por Object.values.
+    // Checklist: SÓ os cômodos que tiveram PATOLOGIA identificada (não basta ter foto).
+    // Um cômodo só com foto "Vista" sem patologia não aparece no checklist.
+    // Ordenado pela 1ª aparição da foto da vistoria.
+    const ambientesComPatologia=new Set();
+    Object.values(fotosPendentes).forEach(f=>{
+      if(!f||!f.ambiente)return;
+      if(!f.combinacoes||!f.combinacoes.length)return;
+      // Considera patologia identificada quando há combinação com elemento+pats (simplificado)
+      // ou código (completo)
+      const temPat=f.combinacoes.some(c=>{
+        if(c.modo==="completo")return !!(c.codigo&&c.subs&&c.subs.length);
+        if(c.modo==="agrupada"&&c.listaInternal)return c.listaInternal.some(s=>s.pats&&s.pats.length);
+        return !!(c.pats&&c.pats.length);
+      });
+      if(temPat)ambientesComPatologia.add(f.ambiente);
+    });
     const ambientesComFoto=[];
     Object.values(fotosPendentes).forEach(f=>{
-      if(f&&f.ambiente&&!ambientesComFoto.includes(f.ambiente))ambientesComFoto.push(f.ambiente);
+      if(f&&f.ambiente&&ambientesComPatologia.has(f.ambiente)&&!ambientesComFoto.includes(f.ambiente))ambientesComFoto.push(f.ambiente);
     });
     // Se nenhuma foto, mostra ao menos os ambientes extras manualmente cadastrados (fallback)
     const ambTotal=ambientesComFoto.length?ambientesComFoto:[...ambientesExtras];
@@ -3703,13 +3804,13 @@ window.finalizarVistoria=async()=>{
       const vals=COLS.map(k=>{const v=(currentVistoria.checklist&&currentVistoria.checklist[amb]&&currentVistoria.checklist[amb][k])||[];return Array.isArray(v)?v:[];});
       const hasAny=vals.some(a=>a.length>0);
       const isLastRow=(ri===ambTotal.length-1);
-      if(hasAny){pdf.setFillColor(255,248,210);}
-      else if(ri%2===0){pdf.setFillColor(248,248,248);}
+      // Sem destaque amarelo — apenas alternância sutil para legibilidade
+      if(ri%2===0){pdf.setFillColor(248,248,248);}
       else{pdf.setFillColor(255,255,255);}
       // Fundo
       cx=CKML;colWN.forEach(w=>{pdf.rect(cx,yc,w,rowH,"F");cx+=w;});
       // Bordas: apenas linha superior (evita dupla linha entre rows)
-      pdf.setDrawColor(0,0,0);pdf.setLineWidth(hasAny?0.3:0.15);
+      pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.15);
       pdf.line(CKML,yc,CKML+CKCW,yc); // linha superior
       if(isLastRow)pdf.line(CKML,yc+rowH,CKML+CKCW,yc+rowH); // linha inferior só na última
       pdf.line(CKML,yc,CKML,yc+rowH); // borda esquerda
@@ -3831,9 +3932,13 @@ window.finalizarVistoria=async()=>{
     } else {
       vRef=await addDoc(collection(db,"vistorias"),vDoc);
     }
-    // Salvar fotos local-only (IndexedDB) usando o ID gerado pelo Firestore
+    // Salvar fotos local-only (IndexedDB) usando o ID gerado pelo Firestore.
+    // Usa o _backupFotos (qualidade original, antes da recompressão para PDF) para que
+    // a edição posterior tenha fotos com boa qualidade. Aplica a mesma numeração/ordem
+    // que foi usada no PDF (já alinhada acima quando atualizamos _backupFotos).
     try{
-      const fotosLocais=Object.values(fotosPendentes).map(f=>({dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,legenda:f.legenda||f.tipo,numero:f.numero,combinacoes:f.combinacoes||[]}));
+      const fonteFotos=(_backupFotos&&Object.keys(_backupFotos).length)?_backupFotos:fotosPendentes;
+      const fotosLocais=Object.values(fonteFotos).map(f=>({dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,legenda:f.legenda||f.tipo,numero:f.numero,combinacoes:f.combinacoes||[]}));
       await localSalvarFotos(vRef.id,fotosLocais);
     }catch(eLocal){console.error("Falha ao salvar fotos local-only:",eLocal);}
 
@@ -4159,7 +4264,9 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
   pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.doc||"",ML+1.5+pdf.getTextWidth(cpfL),cy(lY4,h6));
   pdf.setFont("helvetica","bold");pdf.text(ctL,ML+CW*(4/12)+1.5,cy(lY4,h6));
   pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.tel||"",ML+CW*(4/12)+1.5+pdf.getTextWidth(ctL),cy(lY4,h6));
-  pdf.setLineWidth(0.2);pdf.line(ML+CW*(4/12),lY3,ML+CW*(4/12),lY5);
+  // Linha vertical SÓ na célula CPF/Contato (lY4..lY5). Antes ia de lY3..lY5 e invadia a célula
+  // do Nome — que é uma única coluna unificada e não deve ter divisão interna.
+  pdf.setLineWidth(0.2);pdf.line(ML+CW*(4/12),lY4,ML+CW*(4/12),lY5);
   pdf.line(ML,lY5,ML+CW,lY5);
 
   // === R7: Endereço | Nº | Compl. ===
