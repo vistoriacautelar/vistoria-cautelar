@@ -365,7 +365,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
     <!-- Blocos normais da Finalização: ocultados quando o banner aparece -->
     <div id="fin-blocos-normais">
     <div class="card"><h2>Estado de conservacao</h2>
-      <div class="field"><label>Status da Vistoria <span style="color:#dc2626">*</span></label><select id="fin-status-vistoria" onchange="togglePendente(this.value)"><option value="">Selecione o status...</option><option value="concluida">Finalizado</option><option value="parcial">Parcial</option><option value="recusa">Recusa</option><option value="ausente">Ausente</option></select></div>
+      <div class="field"><label>Status da Vistoria <span style="color:#dc2626">*</span></label><select id="fin-status-vistoria" onchange="togglePendente(this.value)"><option value="">Selecione o status...</option><option value="concluida">Finalizado</option><option value="parcial">Parcial</option><option value="externa">Externa</option><option value="ausente">Ausente</option><option value="recusa">Recusa</option></select></div>
       <div class="field" id="field-pendente" style="display:none"><label>Pendente de retorno?</label><select id="fin-pendente"><option value="nao" selected>Não — encerrar</option><option value="sim">Sim — retornar</option></select></div>
       <div class="field"><label>Estado de Conservacao</label><select id="fin-estado"><option>Bom</option><option selected>Regular</option><option>Ruim</option><option>Péssimo</option></select></div>
       <div class="field"><label>Idade Aparente do Imóvel (anos) *</label><input type="number" id="fin-idade" placeholder="Ex: 30" min="0" max="200" inputmode="numeric" required></div>
@@ -438,9 +438,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 <div id="arrow-overlay" class="canvas-overlay" style="display:none">
   <canvas id="arrow-canvas"></canvas>
   <div class="canvas-controls">
-    <button class="btn-cam" onclick="desfazerSeta()" type="button">Desfazer</button>
-    <button class="btn-cam" onclick="limparSetas()" type="button">Limpar</button>
-    <button class="btn-cam" style="background:#10b981;border-color:#10b981;margin-left:auto;font-weight:600" onclick="confirmarSetas()" type="button">Confirmar</button>
+    <button class="btn-cam" onclick="desfazerSeta()" type="button" id="btn-desfazer-seta">Desfazer</button>
+    <button class="btn-cam" onclick="limparSetas()" type="button" id="btn-limpar-setas">Limpar</button>
+    <button class="btn-cam" onclick="toggleAjusteSetas()" type="button" id="btn-ajustar-setas" style="background:#1d4ed8;border-color:#1d4ed8;color:#fff;font-weight:600">Ajustar posição</button>
+    <button class="btn-cam" style="background:#10b981;border-color:#10b981;margin-left:auto;font-weight:600" onclick="confirmarSetas()" type="button" id="btn-confirmar-setas">Confirmar</button>
   </div>
 </div>
 
@@ -1141,31 +1142,31 @@ function renderResumo(docs,deStr,ateStr){
   }
   // Agrupar por cadastrador (userId/userNome) e contar por status
   // userId pode não ter o nome; vamos buscar via _cacheUsuarios se houver
-  const statusKeys=["concluida","parcial","recusa","ausente"];
-  const statusLabels={concluida:"Finalizado",parcial:"Parcial",recusa:"Recusa",ausente:"Ausente"};
+  const statusKeys=["concluida","parcial","externa","recusa","ausente"];
+  const statusLabels={concluida:"Finalizado",parcial:"Parcial",externa:"Externa",recusa:"Recusa",ausente:"Ausente"};
   const porCad={}; // {userId: {nome, counts:{...}, total}}
   docs.forEach(v=>{
     const uid=v.userId||"-";
     if(!porCad[uid]){
-      porCad[uid]={nome:nomeUsuario(uid),counts:{concluida:0,parcial:0,recusa:0,ausente:0},total:0};
+      porCad[uid]={nome:nomeUsuario(uid),counts:{concluida:0,parcial:0,externa:0,recusa:0,ausente:0},total:0};
     }
     const st=v.status||"concluida";
     if(porCad[uid].counts[st]!==undefined)porCad[uid].counts[st]++;
     porCad[uid].total++;
   });
   // Contagem por dia (para o gráfico do mês)
-  const porDia={}; // {YYYY-MM-DD: {concluida, parcial, recusa, ausente, total}}
+  const porDia={};
   docs.forEach(v=>{
     const ts=v.criadoEm&&v.criadoEm.seconds?v.criadoEm.seconds*1000:0;
     if(!ts)return;
     const dt=new Date(ts).toISOString().slice(0,10);
-    if(!porDia[dt])porDia[dt]={concluida:0,parcial:0,recusa:0,ausente:0,total:0};
+    if(!porDia[dt])porDia[dt]={concluida:0,parcial:0,externa:0,recusa:0,ausente:0,total:0};
     const st=v.status||"concluida";
     if(porDia[dt][st]!==undefined)porDia[dt][st]++;
     porDia[dt].total++;
   });
   // Totais gerais
-  const totGeral={concluida:0,parcial:0,recusa:0,ausente:0,total:0};
+  const totGeral={concluida:0,parcial:0,externa:0,recusa:0,ausente:0,total:0};
   docs.forEach(v=>{
     const st=v.status||"concluida";
     if(totGeral[st]!==undefined)totGeral[st]++;
@@ -1179,8 +1180,9 @@ function renderResumo(docs,deStr,ateStr){
   html+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">';
   html+='<div style="background:#d1fae5;padding:10px;border-radius:8px;text-align:center"><div style="font-size:22px;font-weight:700;color:#065f46">'+totGeral.concluida+'</div><div style="font-size:12px;color:#065f46">Finalizado</div></div>';
   html+='<div style="background:#fef3c7;padding:10px;border-radius:8px;text-align:center"><div style="font-size:22px;font-weight:700;color:#92400e">'+totGeral.parcial+'</div><div style="font-size:12px;color:#92400e">Parcial</div></div>';
-  html+='<div style="background:#fee2e2;padding:10px;border-radius:8px;text-align:center"><div style="font-size:22px;font-weight:700;color:#991b1b">'+totGeral.recusa+'</div><div style="font-size:12px;color:#991b1b">Recusa</div></div>';
+  html+='<div style="background:#dbeafe;padding:10px;border-radius:8px;text-align:center"><div style="font-size:22px;font-weight:700;color:#1d4ed8">'+totGeral.externa+'</div><div style="font-size:12px;color:#1d4ed8">Externa</div></div>';
   html+='<div style="background:#fef2f2;padding:10px;border-radius:8px;text-align:center"><div style="font-size:22px;font-weight:700;color:#dc2626">'+totGeral.ausente+'</div><div style="font-size:12px;color:#dc2626">Ausente</div></div>';
+  html+='<div style="background:#fee2e2;padding:10px;border-radius:8px;text-align:center;grid-column:span 2"><div style="font-size:22px;font-weight:700;color:#991b1b">'+totGeral.recusa+'</div><div style="font-size:12px;color:#991b1b">Recusa</div></div>';
   html+='</div>';
   html+='<div style="margin-top:14px;padding-top:14px;border-top:1px solid #e5e7eb;text-align:center"><span style="font-size:13px;color:#666">Total geral:</span> <span style="font-size:24px;font-weight:700;color:#111">'+totGeral.total+'</span></div>';
   html+='</div>';
@@ -1188,14 +1190,15 @@ function renderResumo(docs,deStr,ateStr){
   const uids=Object.keys(porCad).sort((a,b)=>porCad[b].total-porCad[a].total);
   html+='<div class="card"><h2>Por Cadastrador</h2>';
   html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">';
-  html+='<thead><tr style="background:#f3f4f6"><th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb">Cadastrador</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Fin.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Parc.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Rec.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Aus.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:700">Total</th></tr></thead><tbody>';
+  html+='<thead><tr style="background:#f3f4f6"><th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb">Cadastrador</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Fin.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Parc.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Ext.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Aus.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Rec.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:700">Total</th></tr></thead><tbody>';
   uids.forEach(uid=>{
     const r=porCad[uid];
     html+='<tr><td style="padding:8px;border-bottom:1px solid #f3f4f6">'+r.nome+'</td>';
     html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#065f46">'+r.counts.concluida+'</td>';
     html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#92400e">'+r.counts.parcial+'</td>';
-    html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#991b1b">'+r.counts.recusa+'</td>';
+    html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#1d4ed8">'+r.counts.externa+'</td>';
     html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#dc2626">'+r.counts.ausente+'</td>';
+    html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#991b1b">'+r.counts.recusa+'</td>';
     html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;font-weight:700">'+r.total+'</td></tr>';
   });
   html+='</tbody></table></div></div>';
@@ -1204,15 +1207,16 @@ function renderResumo(docs,deStr,ateStr){
   if(diasOrdenados.length>1){
     html+='<div class="card"><h2>Por Dia</h2>';
     html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">';
-    html+='<thead><tr style="background:#f3f4f6"><th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb">Data</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Fin.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Parc.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Rec.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Aus.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:700">Total</th></tr></thead><tbody>';
+    html+='<thead><tr style="background:#f3f4f6"><th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb">Data</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Fin.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Parc.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Ext.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Aus.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Rec.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:700">Total</th></tr></thead><tbody>';
     diasOrdenados.forEach(d=>{
       const r=porDia[d];
       const dataFmt=d.split("-").reverse().join("/");
       html+='<tr><td style="padding:8px;border-bottom:1px solid #f3f4f6">'+dataFmt+'</td>';
       html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#065f46">'+r.concluida+'</td>';
       html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#92400e">'+r.parcial+'</td>';
-      html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#991b1b">'+r.recusa+'</td>';
+      html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#1d4ed8">'+r.externa+'</td>';
       html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#dc2626">'+r.ausente+'</td>';
+      html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#991b1b">'+r.recusa+'</td>';
       html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;font-weight:700">'+r.total+'</td></tr>';
     });
     html+='</tbody></table></div></div>';
@@ -1251,17 +1255,19 @@ async function buscarNomeUsuario(uid){
 // Determina se uma vistoria foi Interna, Externa ou Ambos com base nos cômodos vistoriados
 // (usa o checklist gravado, que tem cômodos como chaves)
 function classificarInternaExterna(vistoria){
+  // Se o status for "externa", marcação direta: só externa.
+  if(vistoria.status==="externa"){
+    return{interna:false,externa:true};
+  }
   const checklist=vistoria.checklist||{};
   let temInterno=false,temExterno=false;
   Object.keys(checklist).forEach(amb=>{
     const dadosAmb=checklist[amb]||{};
-    // Considera o cômodo "vistoriado" se tem QUALQUER chave (mesmo sem patologia)
     const teveAtividade=Object.keys(dadosAmb).length>0;
     if(!teveAtividade)return;
     if(AMBIENTES_EXTERNOS.has(amb))temExterno=true;
     else temInterno=true;
   });
-  // Vistorias sem checklist (ex: ausentes): considera só externa (fachada)
   if(!temInterno&&!temExterno){
     return{interna:false,externa:true};
   }
@@ -1289,7 +1295,7 @@ window.exportarPlanilhaCliente=async()=>{
     return((a.endereco&&a.endereco.rua)||"").localeCompare((b.endereco&&b.endereco.rua)||"","pt-BR");
   });
   // Mapear status para texto
-  const statusLabels={concluida:"Finalizado",parcial:"Parcial",recusa:"Recusa",ausente:"Ausente"};
+  const statusLabels={concluida:"Finalizado",parcial:"Parcial",externa:"Externa",recusa:"Recusa",ausente:"Ausente"};
   // Construir linhas
   const header=[
     "Ordem","Frente de Serviço / Coletor","Endereço","Número","Complemento",
@@ -2445,16 +2451,59 @@ window.tirarFoto=async()=>{
     }else{photoBlob=null;}
   }
 
+  // === LOG DE DEBUG (captura) — visível no DevTools Console ===
+  // Esses dados ajudam a identificar de quem é a culpa quando uma foto sai com
+  // orientação errada. Cole o log inteiro ao reportar um bug de orientação.
+  let screenAngle=0;
+  try{
+    if(screen.orientation&&typeof screen.orientation.angle==="number")screenAngle=screen.orientation.angle;
+    else if(typeof window.orientation==="number")screenAngle=window.orientation;
+  }catch(e){}
+  const normAngle=((screenAngle%360)+360)%360;
+  console.log("[CAM-DEBUG]",{
+    videoIntrinsic:vW+"x"+vH,
+    screenAngle:normAngle,
+    isPortraitScreen:(normAngle===0||normAngle===180),
+    isLandscapeFrame:vW>vH,
+    usedImageCapture:!!photoBlob,
+    blobDimensions:photoBlob?(vW2+"x"+vH2):"n/a",
+    userAgent:navigator.userAgent.slice(0,100)
+  });
+
   if(!photoBlob){
-    // Fallback: capturar do video SEM rotação automática.
-    // Em muitos aparelhos, o videoWidth/videoHeight já reflete a orientação correta.
-    // Rotacionar com base em screen.orientation causa o bug "paisagem virando retrato"
-    // em aparelhos onde o video já está orientado certo. Confiamos no que o browser deu.
-    const SS=2;vW2=vW*SS;vH2=vH*SS;
-    canvas=document.createElement("canvas");canvas.width=vW2;canvas.height=vH2;
+    // === FALLBACK: captura do <video> com ROTAÇÃO BILATERAL ===
+    // Detecta automaticamente se precisa rotacionar baseado em:
+    //   - Orientação atual da tela (retrato/paisagem)
+    //   - Dimensões do video stream (paisagem ou retrato)
+    // Se a tela está em retrato MAS o frame veio em paisagem (situação típica do Chrome
+    // Android onde o stream vem da câmera "deitada"), rotacionamos 90° para que a foto
+    // final fique na orientação que o usuário visualizou.
+    // Se ambos coincidem (tela paisagem + frame paisagem, OU tela retrato + frame retrato),
+    // NÃO rotaciona — o video já está correto.
+    const isPortraitScreen=(normAngle===0||normAngle===180);
+    const isLandscapeFrame=vW>vH;
+    const mustRotate=isPortraitScreen&&isLandscapeFrame;
+    // Direção da rotação: depende do ângulo específico da tela
+    const rotDir=(normAngle===0||normAngle===90)?1:-1;
+    const SS=2;
+    const finalW=mustRotate?vH*SS:vW*SS;
+    const finalH=mustRotate?vW*SS:vH*SS;
+    vW2=finalW;vH2=finalH;
+    canvas=document.createElement("canvas");canvas.width=finalW;canvas.height=finalH;
     ctx=canvas.getContext("2d");
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
-    ctx.drawImage(video,0,0,vW2,vH2);
+    if(mustRotate){
+      ctx.save();
+      ctx.translate(finalW/2,finalH/2);
+      ctx.rotate(rotDir*Math.PI/2);
+      // Quando rotacionado 90°, a "largura" do destino é a altura original do video
+      ctx.drawImage(video,-finalH/2,-finalW/2,finalH,finalW);
+      ctx.restore();
+      console.log("[CAM-DEBUG] Aplicou rotação",rotDir*90,"° (canvas final "+finalW+"x"+finalH+")");
+    } else {
+      ctx.drawImage(video,0,0,finalW,finalH);
+      console.log("[CAM-DEBUG] Sem rotação (canvas final "+finalW+"x"+finalH+")");
+    }
   }
   const outW=vW2,outH=vH2;
   // Carimbo - tamanho proporcional ao MENOR eixo (estável em qualquer aspect ratio, inclusive ultra wide)
@@ -2578,17 +2627,195 @@ function abrirEditorSetas(imgDataUrl){
     desenharSetas();
   };
   img.src=imgDataUrl;
-  canvas.ontouchend=e=>{e.preventDefault();const r=canvas.getBoundingClientRect();const s=e.changedTouches[0];arrowPoints.push({x:(s.clientX-r.left)/r.width,y:(s.clientY-r.top)/r.height});desenharSetas();};
-  canvas.onclick=e=>{const r=canvas.getBoundingClientRect();arrowPoints.push({x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height});desenharSetas();};
+  // ============= HANDLERS DO CANVAS =============
+  // Modo ADICIONAR: toque adiciona seta no ponto tocado.
+  // Modo AJUSTAR: toque na alça (ponta=move, cauda=rotaciona) e arrasta. Toque fora desseleciona.
+  // Reset variáveis de estado a cada abertura
+  _modoAjusteSetas=false;_setaSelecionada=-1;_dragInfo=null;
+  // Em modo ADICIONAR, usamos ontouchend/onclick. Em modo AJUSTAR, usamos
+  // ontouchstart/ontouchmove/ontouchend para arrastar.
+  canvas.ontouchstart=onTouchStartSetas;
+  canvas.ontouchmove=onTouchMoveSetas;
+  canvas.ontouchend=onTouchEndSetas;
+  canvas.onmousedown=onMouseDownSetas;
+  canvas.onmousemove=onMouseMoveSetas;
+  canvas.onmouseup=onMouseUpSetas;
+  // Touch handler default usado quando NÃO está em modo ajuste — adiciona seta
+  // Lógica completa nos handlers abaixo.
 }
 
+// ===== ESTADO DA EDIÇÃO DE SETAS =====
+let _modoAjusteSetas=false;
+let _setaSelecionada=-1;
+let _dragInfo=null; // {idx, type:"ponta"|"cauda", offsetX, offsetY}
+
+function _getTouchPos(e,canvas){
+  const r=canvas.getBoundingClientRect();
+  const t=e.changedTouches?e.changedTouches[0]:(e.touches?e.touches[0]:e);
+  return{x:(t.clientX-r.left)/r.width,y:(t.clientY-r.top)/r.height};
+}
+
+// Calcula geometria de uma seta no canvas atual (mesma lógica de desenharSetaEmCanvas)
+function _setaGeoCanvas(idx){
+  const canvas=document.getElementById("arrow-canvas");
+  if(!canvas||!arrowPoints[idx])return null;
+  const cw=canvas.width,ch=canvas.height;
+  const baseRef=Math.min(cw,ch);
+  const sz=Math.max(40,Math.round(baseRef*0.10));
+  const p=arrowPoints[idx];
+  const tipX=p.x*cw,tipY=p.y*ch;
+  const angle=(typeof p.angle==="number")?p.angle:Math.PI*0.75;
+  const bodyLen=sz*1.2;
+  const tailX=tipX-bodyLen*Math.cos(angle);
+  const tailY=tipY-bodyLen*Math.sin(angle);
+  return{tipX,tipY,tailX,tailY,sz,cw,ch,angle};
+}
+
+// Detecta em qual alça está o toque (com tolerância mín 28x28 px CSS).
+// Retorna {idx, type}, ou null se o toque foi fora.
+function _hitTestAlcas(xFrac,yFrac){
+  const canvas=document.getElementById("arrow-canvas");
+  if(!canvas)return null;
+  const cw=canvas.width,ch=canvas.height;
+  const dpr=parseFloat(canvas.dataset.dpr||"1");
+  // Tolerância: 28px CSS = 28*dpr no buffer do canvas. Garante alça com no mín 28x28 toque.
+  const tol=Math.max(28*dpr,Math.min(cw,ch)*0.035);
+  const tx=xFrac*cw,ty=yFrac*ch;
+  for(let i=0;i<arrowPoints.length;i++){
+    const g=_setaGeoCanvas(i);
+    if(!g)continue;
+    const dTip=Math.hypot(tx-g.tipX,ty-g.tipY);
+    const dTail=Math.hypot(tx-g.tailX,ty-g.tailY);
+    // Ponta tem prioridade sobre cauda em caso de empate
+    if(dTip<tol||dTail<tol){
+      return{idx:i,type:dTip<=dTail?"ponta":"cauda"};
+    }
+  }
+  return null;
+}
+
+function onTouchStartSetas(e){
+  if(!_modoAjusteSetas)return; // adiciona seta acontece no ontouchend, não start
+  e.preventDefault();
+  const canvas=document.getElementById("arrow-canvas");
+  const pos=_getTouchPos(e,canvas);
+  const hit=_hitTestAlcas(pos.x,pos.y);
+  if(hit){
+    _setaSelecionada=hit.idx;
+    _dragInfo={idx:hit.idx,type:hit.type};
+    desenharSetas();
+  } else {
+    _setaSelecionada=-1;_dragInfo=null;
+    desenharSetas();
+  }
+}
+
+function onTouchMoveSetas(e){
+  if(!_modoAjusteSetas||!_dragInfo)return;
+  e.preventDefault();
+  const canvas=document.getElementById("arrow-canvas");
+  const pos=_getTouchPos(e,canvas);
+  const p=arrowPoints[_dragInfo.idx];
+  if(!p)return;
+  if(_dragInfo.type==="ponta"){
+    p.x=Math.max(0,Math.min(1,pos.x));
+    p.y=Math.max(0,Math.min(1,pos.y));
+  } else {
+    // Cauda: recalcula o ângulo (a ponta fica fixa)
+    const cw=canvas.width,ch=canvas.height;
+    const tipX=p.x*cw,tipY=p.y*ch;
+    const tx=pos.x*cw,ty=pos.y*ch;
+    // angle é "cauda→ponta": invertemos para que o vetor dx,dy da cauda à ponta dê o ângulo
+    const dx=tipX-tx,dy=tipY-ty;
+    p.angle=Math.atan2(dy,dx);
+  }
+  desenharSetas();
+}
+
+function onTouchEndSetas(e){
+  if(!_modoAjusteSetas){
+    // Modo adicionar: tap adiciona uma seta nova
+    e.preventDefault();
+    const canvas=document.getElementById("arrow-canvas");
+    const pos=_getTouchPos(e,canvas);
+    arrowPoints.push({x:pos.x,y:pos.y});
+    desenharSetas();
+    return;
+  }
+  // Modo ajuste: solta drag
+  _dragInfo=null;
+}
+
+// Mesma lógica para mouse (desktop / dev)
+function onMouseDownSetas(e){
+  if(!_modoAjusteSetas){return;}
+  const canvas=document.getElementById("arrow-canvas");
+  const r=canvas.getBoundingClientRect();
+  const pos={x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height};
+  const hit=_hitTestAlcas(pos.x,pos.y);
+  if(hit){_setaSelecionada=hit.idx;_dragInfo={idx:hit.idx,type:hit.type};}
+  else{_setaSelecionada=-1;_dragInfo=null;}
+  desenharSetas();
+}
+function onMouseMoveSetas(e){
+  if(!_modoAjusteSetas||!_dragInfo)return;
+  const canvas=document.getElementById("arrow-canvas");
+  const r=canvas.getBoundingClientRect();
+  const pos={x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height};
+  const p=arrowPoints[_dragInfo.idx];
+  if(!p)return;
+  if(_dragInfo.type==="ponta"){
+    p.x=Math.max(0,Math.min(1,pos.x));p.y=Math.max(0,Math.min(1,pos.y));
+  } else {
+    const cw=canvas.width,ch=canvas.height;
+    const tipX=p.x*cw,tipY=p.y*ch;
+    const tx=pos.x*cw,ty=pos.y*ch;
+    p.angle=Math.atan2(tipY-ty,tipX-tx);
+  }
+  desenharSetas();
+}
+function onMouseUpSetas(){_dragInfo=null;}
+
+// onclick para mouse no modo adicionar (mantido pra compat de desktop)
+function _onClickAddSeta(e){
+  if(_modoAjusteSetas)return;
+  const canvas=document.getElementById("arrow-canvas");
+  const r=canvas.getBoundingClientRect();
+  arrowPoints.push({x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height});
+  desenharSetas();
+}
+
+window.toggleAjusteSetas=()=>{
+  if(arrowPoints.length===0){
+    return alert("Adicione setas primeiro tocando na foto. Depois você pode ajustar a posição.");
+  }
+  _modoAjusteSetas=!_modoAjusteSetas;
+  _setaSelecionada=-1;_dragInfo=null;
+  const btn=document.getElementById("btn-ajustar-setas");
+  const btnDesf=document.getElementById("btn-desfazer-seta");
+  const btnLimpar=document.getElementById("btn-limpar-setas");
+  if(_modoAjusteSetas){
+    btn.textContent="Concluir ajuste";
+    btn.style.background="#f59e0b";btn.style.borderColor="#f59e0b";
+    if(btnDesf)btnDesf.style.display="none";
+    if(btnLimpar)btnLimpar.style.display="none";
+  } else {
+    btn.textContent="Ajustar posição";
+    btn.style.background="#1d4ed8";btn.style.borderColor="#1d4ed8";
+    if(btnDesf)btnDesf.style.display="";
+    if(btnLimpar)btnLimpar.style.display="";
+  }
+  desenharSetas();
+};
+
 // Função para desenhar seta em qualquer canvas (coordenadas absolutas)
-function desenharSetaEmCanvas(ctx,tipX,tipY,canvasW){
+function desenharSetaEmCanvas(ctx,tipX,tipY,canvasW,angleOverride){
+  // angleOverride: ângulo em radianos (cauda → ponta). Se omitido, usa 0.75π (default).
   // Base proporcional ao MENOR eixo (estável em ultra wide)
   const canvasH=ctx.canvas.height;
   const baseRef=Math.min(canvasW,canvasH);
   const sz=Math.max(40,Math.round(baseRef*0.10));// 10% do menor eixo
-  const angle=Math.PI*0.75;
+  const angle=(typeof angleOverride==="number")?angleOverride:Math.PI*0.75;
   const bodyLen=sz*1.2;
   const tailX=tipX-bodyLen*Math.cos(angle);
   const tailY=tipY-bodyLen*Math.sin(angle);
@@ -2597,7 +2824,6 @@ function desenharSetaEmCanvas(ctx,tipX,tipY,canvasW){
   const bodyEndY=tipY-headLen*Math.sin(angle);
   const lw=Math.max(3,Math.round(sz*0.10));
   ctx.save();
-  // Sombra para contraste em qualquer fundo
   ctx.shadowColor="rgba(0,0,0,0.7)";
   ctx.shadowBlur=Math.round(lw*1.5);
   ctx.strokeStyle="#FF0000";ctx.lineWidth=lw;ctx.lineCap="round";
@@ -2610,6 +2836,8 @@ function desenharSetaEmCanvas(ctx,tipX,tipY,canvasW){
   ctx.beginPath();ctx.moveTo(p1x,p1y);ctx.lineTo(p2x,p2y);ctx.lineTo(p3x,p3y);
   ctx.closePath();ctx.fill();
   ctx.restore();
+  // Retorna geometria para uso no modo de edição
+  return{tipX,tipY,tailX,tailY,angle,sz};
 }
 
 function desenharSeta(ctx,tipX,tipY,canvasW){
@@ -2664,11 +2892,45 @@ function desenharSetas(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
   if(arrowImage)ctx.drawImage(arrowImage,0,0,canvas.width,canvas.height);
-  arrowPoints.forEach(p=>desenharSetaEmCanvas(ctx,p.x*canvas.width,p.y*canvas.height,canvas.width));
+  const cw=canvas.width;const ch=canvas.height;
+  arrowPoints.forEach((p,idx)=>{
+    const tipX=p.x*cw;
+    const tipY=p.y*ch;
+    const geo=desenharSetaEmCanvas(ctx,tipX,tipY,cw,p.angle);
+    // Se em modo edição, desenha alças (ponta e cauda)
+    if(_modoAjusteSetas){
+      const isSel=(idx===_setaSelecionada);
+      const baseRef=Math.min(cw,ch);
+      const rDisplay=Math.max(14,Math.round(baseRef*0.022)); // tamanho visual
+      const dpr=parseFloat(canvas.dataset.dpr||"1");
+      // Alça da PONTA (move tudo) — círculo azul
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(tipX,tipY,rDisplay*dpr,0,Math.PI*2);
+      ctx.fillStyle=isSel?"rgba(59,130,246,0.9)":"rgba(59,130,246,0.6)";
+      ctx.fill();
+      ctx.strokeStyle="#fff";ctx.lineWidth=2*dpr;ctx.stroke();
+      ctx.restore();
+      // Alça da CAUDA (rotaciona) — círculo verde
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(geo.tailX,geo.tailY,rDisplay*dpr,0,Math.PI*2);
+      ctx.fillStyle=isSel?"rgba(16,185,129,0.9)":"rgba(16,185,129,0.6)";
+      ctx.fill();
+      ctx.strokeStyle="#fff";ctx.lineWidth=2*dpr;ctx.stroke();
+      ctx.restore();
+    }
+  });
 }
 window.desfazerSeta=()=>{arrowPoints.pop();desenharSetas();};
 window.limparSetas=()=>{arrowPoints=[];desenharSetas();};
 window.confirmarSetas=()=>{
+  // Sair do modo ajuste se estiver ativo
+  if(_modoAjusteSetas){
+    _modoAjusteSetas=false;_setaSelecionada=-1;_dragInfo=null;
+    const btn=document.getElementById("btn-ajustar-setas");
+    if(btn){btn.textContent="Ajustar posição";btn.style.background="#1d4ed8";btn.style.borderColor="#1d4ed8";}
+  }
   if(arrowPoints.length===0){
     return alert("Toque na foto para marcar onde está a patologia.");
   }
@@ -3016,9 +3278,10 @@ function renderizarFotoComAcumuladas(tipoLaudo){
   _fotoSetasAcumuladas.forEach(s=>{
     const tipX=s.pontoFracao.x*origW;
     const tipY=s.pontoFracao.y*origH;
-    desenharSetaEmCanvas(ctx,tipX,tipY,origW);
+    // Se a seta foi rotacionada na edição, p.angle estará definido
+    const ang=(typeof s.pontoFracao.angle==="number")?s.pontoFracao.angle:undefined;
+    desenharSetaEmCanvas(ctx,tipX,tipY,origW,ang);
     if(tipoLaudo==="completo"){
-      // Pegar primeiro código (modo completo só tem 1 por seta)
       const c=s.combinacao;
       const codigo=c&&c.modo==="completo"?c.codigo:(c&&c.codigo);
       if(codigo)desenharCodigoCNRP(ctx,tipX,tipY,codigo,origW);
@@ -3324,7 +3587,7 @@ async function loadHistorico(){
     docs.forEach(v=>{
       const div=document.createElement("div");div.className="list-item";div.style.cursor="pointer";
       const tipoBadge=v.tipoLaudo==="completo"?'<span class="badge laudo" style="margin-right:6px">Completo</span>':'';
-      const corpoItem='<div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></div><div class="info"><div class="title">'+(v.responsavel&&v.responsavel.nome||"--")+'</div><div class="sub">'+(v.endereco&&v.endereco.rua||"")+" "+( v.endereco&&v.endereco.num||"")+" | "+(v.totalFotos||0)+" fotos | "+(v.data||"")+'</div></div><div class="hist-actions">'+tipoBadge+'<span class="badge '+({concluida:"ok",parcial:"cad",recusa:"master",ausente:"com"}[v.status]||"ok")+'">'+({"concluida":"Finalizado","parcial":"Parcial","recusa":"Recusa","ausente":"Ausente"}[v.status]||"Finalizado")+"</span></div>";
+      const corpoItem='<div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></div><div class="info"><div class="title">'+(v.responsavel&&v.responsavel.nome||"--")+'</div><div class="sub">'+(v.endereco&&v.endereco.rua||"")+" "+( v.endereco&&v.endereco.num||"")+" | "+(v.totalFotos||0)+" fotos | "+(v.data||"")+'</div></div><div class="hist-actions">'+tipoBadge+'<span class="badge '+({concluida:"ok",parcial:"cad",externa:"cad",recusa:"master",ausente:"com"}[v.status]||"ok")+'">'+({"concluida":"Finalizado","parcial":"Parcial","externa":"Externa","recusa":"Recusa","ausente":"Ausente"}[v.status]||"Finalizado")+"</span></div>";
       if(_histModoSelecao){
         const isChecked=_histSelecionadas.has(v.id);
         div.innerHTML='<input type="checkbox" class="hist-check" data-id="'+v.id+'" '+(isChecked?"checked":"")+' style="width:20px;height:20px;margin-right:6px;flex-shrink:0;accent-color:#dc2626">'+corpoItem;
@@ -3355,8 +3618,8 @@ function abrirDetalheVistoria(id,data){
   document.getElementById("dv-titulo").textContent=data.responsavel&&data.responsavel.nome||"Vistoria";
   const c=document.getElementById("dv-content");c.innerHTML="";
   // Badge de status no topo
-  const statusLabel={"concluida":"Finalizado","parcial":"Parcial","recusa":"Recusa","ausente":"Ausente"};
-  const statusColor={"concluida":"#10b981","parcial":"#3b82f6","recusa":"#dc2626","ausente":"#f59e0b"};
+  const statusLabel={"concluida":"Finalizado","parcial":"Parcial","externa":"Externa","recusa":"Recusa","ausente":"Ausente"};
+  const statusColor={"concluida":"#10b981","parcial":"#3b82f6","externa":"#1d4ed8","recusa":"#dc2626","ausente":"#f59e0b"};
   const st=data.status||"concluida";
   const badgeDiv=document.createElement("div");
   badgeDiv.style.cssText="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px 14px;border-radius:10px;background:#f9f9f9;font-size:14px;font-weight:500";
@@ -3880,6 +4143,7 @@ window.finalizarVistoria=async()=>{
       currentVistoria.responsavel.nome=novoNome.trim();
     }
     // Assinatura do responsável: dispensada para Ausente e Recusa (responsável não disponível/recusa-se)
+    // Assinatura: Ausente e Recusa dispensam. Externa exige assinatura normal (responsável esteve presente, só não autorizou interna).
     const statusDispensaAssinatura=(statusVal==="ausente"||statusVal==="recusa");
     if(!statusDispensaAssinatura&&!assinaturaData){
       return alert("Confirme a assinatura do responsável.\n\nSe não foi possível obtê-la, mude o Status para \"Ausente\" ou \"Recusa\".");
@@ -3924,11 +4188,12 @@ window.finalizarVistoria=async()=>{
       await yieldThread();
     }
     fotosPendentes=fotosRecomp;
-    // === AGRUPAR FOTOS POR AMBIENTE (mantendo ordem de primeira aparição) + RENUMERAR ===
-    // Garante que, mesmo se o cadastrador tirar fotos fora de ordem (ex: fachada → calçada → fachada),
-    // o PDF apresenta todas as fotos da fachada juntas, depois calçada, depois etc.
-    // A numeração "Foto 01, 02..." é reaplicada na nova ordem — e a MESMA ordem é aplicada ao
-    // _backupFotos (versão original de alta qualidade) para que o ZIP tenha os nomes alinhados ao PDF.
+    // === AGRUPAR FOTOS POR AMBIENTE + FACHADA SEMPRE PRIMEIRO + RENUMERAR ===
+    // Regra de ordenação:
+    //   1. Fachada (Vista vem primeiro como Foto 01, depois Detalhes da Fachada)
+    //      Se não houver Vista da Fachada, o primeiro Detalhe da Fachada vira Foto 01.
+    //   2. Demais ambientes na ordem de primeira aparição original.
+    // Mesmo reagrupamento aplicado ao _backupFotos (para ZIP alinhado ao PDF).
     {
       const fotosArrOrig=Object.values(fotosPendentes);
       const ordemAmb=[];
@@ -3938,18 +4203,32 @@ window.finalizarVistoria=async()=>{
         if(!grupos[amb]){grupos[amb]=[];ordemAmb.push(amb);}
         grupos[amb].push(f);
       });
+      // Tira "Fachada" da ordem (se existir) e coloca no início.
+      const idxFachada=ordemAmb.findIndex(a=>a&&a.toLowerCase()==="fachada");
+      if(idxFachada>=0){
+        const[fac]=ordemAmb.splice(idxFachada,1);
+        ordemAmb.unshift(fac);
+        // Dentro da Fachada, Vista vem antes do Detalhe (e Vista[0] vira a Foto 01).
+        const fotosFachada=grupos[fac];
+        const vistas=fotosFachada.filter(f=>f.tipo==="Vista");
+        const detalhes=fotosFachada.filter(f=>f.tipo!=="Vista");
+        grupos[fac]=[...vistas,...detalhes];
+      }
       const reordenadas=[];
       ordemAmb.forEach(amb=>{reordenadas.push(...grupos[amb]);});
-      // Reconstrói fotosPendentes na nova ordem com numeração refeita.
-      // Iterar Object.values respeita insertion order, então a ordem do PDF e do ZIP segue daqui.
       const novo={};
       const novoBackup={};
       reordenadas.forEach((f,i)=>{
         const novoNum="Foto "+String(i+1).padStart(2,"0");
-        novo[f.id]={...f,numero:novoNum};
-        // Mesma reordenação no backup, preservando dataUrl original de alta qualidade
+        // Se for a Foto 01 da Fachada e não houver legenda definida, força "Fachada"
+        let novaLegenda=f.legenda;
+        if(i===0&&f.ambiente&&f.ambiente.toLowerCase()==="fachada"){
+          // Se a foto é Vista, a legenda no PDF será "Fachada" (mais limpa que "Vista")
+          if(f.tipo==="Vista")novaLegenda="Fachada";
+        }
+        novo[f.id]={...f,numero:novoNum,legenda:novaLegenda||f.legenda};
         const orig=_backupFotos[f.id];
-        if(orig)novoBackup[f.id]={...orig,numero:novoNum,ambiente:f.ambiente};
+        if(orig)novoBackup[f.id]={...orig,numero:novoNum,ambiente:f.ambiente,legenda:novaLegenda||orig.legenda};
       });
       fotosPendentes=novo;
       _backupFotos=novoBackup;
