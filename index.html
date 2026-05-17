@@ -2062,7 +2062,16 @@ window.criarVistoria=async()=>{
   const tipoLaudo=(activeCard&&activeCard.dataset.tipo)||window._tipoLaudoAtual||localStorage.getItem("lastTipoLaudo")||"simplificado";
   localStorage.setItem("lastTipoLaudo",tipoLaudo);
   currentVistoria={clienteId:cId,coletorId:colId,clienteNome:clD.nome,clienteRRT:clD.rrt,coletorNome:colD.nome,responsavel:{nome,doc:docR,tel},endereco:{rua,num,comp},ocupacao:document.getElementById("nv-ocupacao").value,tipo:document.getElementById("nv-tipo").value,tipoLaudo,data:now.toLocaleDateString("pt-BR"),dataCompleta:now.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}),userId:currentUser.uid,checklist:{},observacoes:"",estado:"",idade:"",status:"em_andamento"};
+  // RESET DEFENSIVO: limpa TODAS as variáveis globais que poderiam vazar de uma vistoria
+  // anterior. Crítico após "Gerar PDF Novamente" ou banner pós-finalização — caminhos onde
+  // _bkFotosPendentes do regeRarPDF poderia ter deixado lixo se houvesse erro.
   fotosPendentes={};assinaturaData=null;ambientesExtras=[];
+  fotoAtualBlob=null;fotoAtualTipo=null;fotoAtualAmbiente=null;
+  arrowImage=null;arrowPoints=[];
+  _fotoSetasAcumuladas=[];_fotoOriginalBlob=null;
+  _patCombinacoes=[];_patCatSelecionada=null;
+  _modoAjusteSetas=false;_setaSelecionada=-1;_dragInfo=null;
+  window._ultimaVistoriaFinalizada=null; // evita banner antigo aparecer ao voltar pra Finalização
   document.getElementById("v-titulo").textContent=nome?nome.split(" ")[0]:"Vistoria";
   const badgeTipo=tipoLaudo==="completo"?'<span class="badge laudo" style="display:inline-block;margin-bottom:4px">Laudo Completo</span><br>':'';
   const nomeHtml=nome?("<b>"+nome+"</b>"):'<span style="color:#888;font-style:italic">Morador não identificado</span>';
@@ -2277,22 +2286,21 @@ window.abrirCamera=async()=>{
         audio:false
       });
     }
-    // Forçar foco contínuo via applyConstraints com "advanced" (alguns navegadores
-    // ignoram quando setado direto no getUserMedia mas aceitam via applyConstraints).
-    // É feito best-effort, sem bloquear o fluxo se falhar.
-    try{
-      const trk=cameraStream.getVideoTracks()[0];
-      if(trk){
-        const cap=trk.getCapabilities?.()||{};
-        const adv=[];
-        if(cap.focusMode&&cap.focusMode.includes("continuous"))adv.push({focusMode:"continuous"});
-        if(cap.exposureMode&&cap.exposureMode.includes("continuous"))adv.push({exposureMode:"continuous"});
-        if(cap.whiteBalanceMode&&cap.whiteBalanceMode.includes("continuous"))adv.push({whiteBalanceMode:"continuous"});
-        if(adv.length){
-          await trk.applyConstraints({advanced:adv}).catch(e=>console.warn("autofocus apply:",e));
+    // Forçar foco contínuo via applyConstraints (best-effort, sem bloquear o fluxo).
+    // IMPORTANTE: aplicamos APENAS focusMode. Tentar exposureMode/whiteBalanceMode no mesmo
+    // applyConstraints pode causar lentidão ou tela preta em alguns aparelhos Xiaomi.
+    // Usamos setTimeout pra desacoplar do startup — o stream já está rodando quando isso acontece.
+    setTimeout(()=>{
+      try{
+        const trk=cameraStream&&cameraStream.getVideoTracks?.()[0];
+        if(trk&&trk.getCapabilities){
+          const cap=trk.getCapabilities();
+          if(cap.focusMode&&cap.focusMode.includes("continuous")){
+            trk.applyConstraints({advanced:[{focusMode:"continuous"}]}).catch(()=>{});
+          }
         }
-      }
-    }catch(eAuto){console.warn("autofocus setup:",eAuto);}
+      }catch(eAuto){}
+    },500);
     // Atribuir stream e aguardar estar pronto
     v.srcObject=null; // reset limpo
     await new Promise(r=>setTimeout(r,50)); // micro-delay
@@ -2315,7 +2323,10 @@ window.abrirCamera=async()=>{
         throw e; // outro erro = fatal
       }
     }
-    // Configurar zoom slider baseado nas capacidades reais da camera
+    // Configurar zoom slider baseado nas capacidades reais da camera.
+    // IMPORTANTE: NÃO aplicamos applyConstraints(zoom) automaticamente no startup —
+    // isso causa lentidão e tela preta em aparelhos que precisam trocar de lente
+    // (ultra-wide). O slider mostra o range certo, o usuário arrasta quando quiser.
     try{
       const t=cameraStream.getVideoTracks()[0];
       const sl=document.getElementById("zoom-slider");
@@ -2326,9 +2337,11 @@ window.abrirCamera=async()=>{
           const zMin=Math.round(c.zoom.min*10)/10;
           const zMax=Math.min(10,Math.round(c.zoom.max*10)/10);
           sl.min=zMin;sl.max=zMax;sl.step=0.1;
-          sl.value=zMin;
-          lbl.textContent=(zMin%1===0?zMin:zMin.toFixed(1))+"x";
-          await t.applyConstraints({advanced:[{zoom:zMin}]}).catch(()=>{});
+          // Inicia em 1.0 se for um valor válido no range, senão no mínimo
+          const zStart=(zMin<=1&&1<=zMax)?1:zMin;
+          sl.value=zStart;
+          lbl.textContent=(zStart%1===0?zStart:zStart.toFixed(1))+"x";
+          // NÃO chamamos applyConstraints aqui — deixa a câmera abrir na lente padrão
         } else {sl.min=1;sl.max=10;sl.value=1;lbl.textContent="1x";}
       } else {sl.min=1;sl.max=10;sl.value=1;document.getElementById("zoom-label").textContent="1x";}
     }catch(e){
@@ -2440,15 +2453,34 @@ window.tirarFoto=async()=>{
 
   let canvas,ctx;
   if(photoBlob){
-    // Decodificar o blob para obter dimensoes reais
-    const blobUrl=URL.createObjectURL(photoBlob);
-    const nativeImg=await new Promise(res=>{const i=new Image();i.onload=()=>{URL.revokeObjectURL(blobUrl);res(i);};i.onerror=()=>{URL.revokeObjectURL(blobUrl);res(null);};i.src=blobUrl;});
-    if(nativeImg){
-      vW2=nativeImg.naturalWidth;vH2=nativeImg.naturalHeight;
+    // Decodificar o blob preservando a orientação visual.
+    // PROBLEMA: <img>+drawImage em alguns Chrome (especialmente Xiaomi/MIUI) desenha
+    // pixels brutos do JPEG, ignorando EXIF orientation — resulta em "retrato vira paisagem".
+    // SOLUÇÃO: createImageBitmap com imageOrientation:"from-image" GARANTE aplicação do EXIF
+    // antes de chegar no canvas. Fallback para <img> se o navegador não suportar.
+    let bmp=null;
+    try{
+      if(typeof createImageBitmap==="function"){
+        bmp=await createImageBitmap(photoBlob,{imageOrientation:"from-image"});
+      }
+    }catch(eBmp){console.warn("createImageBitmap falhou:",eBmp);bmp=null;}
+    if(bmp){
+      vW2=bmp.width;vH2=bmp.height;
       canvas=document.createElement("canvas");canvas.width=vW2;canvas.height=vH2;
       ctx=canvas.getContext("2d");
-      ctx.drawImage(nativeImg,0,0,vW2,vH2);
-    }else{photoBlob=null;}
+      ctx.drawImage(bmp,0,0,vW2,vH2);
+      bmp.close&&bmp.close();
+    } else {
+      // Fallback antigo via <img>
+      const blobUrl=URL.createObjectURL(photoBlob);
+      const nativeImg=await new Promise(res=>{const i=new Image();i.onload=()=>{URL.revokeObjectURL(blobUrl);res(i);};i.onerror=()=>{URL.revokeObjectURL(blobUrl);res(null);};i.src=blobUrl;});
+      if(nativeImg){
+        vW2=nativeImg.naturalWidth;vH2=nativeImg.naturalHeight;
+        canvas=document.createElement("canvas");canvas.width=vW2;canvas.height=vH2;
+        ctx=canvas.getContext("2d");
+        ctx.drawImage(nativeImg,0,0,vW2,vH2);
+      }else{photoBlob=null;}
+    }
   }
 
   // === LOG DE DEBUG (captura) — visível no DevTools Console ===
@@ -2673,22 +2705,44 @@ function _setaGeoCanvas(idx){
 
 // Detecta em qual alça está o toque (com tolerância mín 28x28 px CSS).
 // Retorna {idx, type}, ou null se o toque foi fora.
+// Hit-test estilo Word/Excel:
+//   1. Se já há uma seta selecionada, prioriza alças DELA (cauda/ponta) com tolerância 28x28.
+//   2. Se não bateu em alça da selecionada, OU não há selecionada, procura qualquer seta
+//      onde o toque caiu dentro do corpo (linha+ponta). Retorna {idx, type:"corpo"} pra
+//      a seta clicada — vira a selecionada e pode ser arrastada pelo corpo.
+//   3. Se não bateu em nada, retorna null (deseleciona).
 function _hitTestAlcas(xFrac,yFrac){
   const canvas=document.getElementById("arrow-canvas");
   if(!canvas)return null;
   const cw=canvas.width,ch=canvas.height;
   const dpr=parseFloat(canvas.dataset.dpr||"1");
-  // Tolerância: 28px CSS = 28*dpr no buffer do canvas. Garante alça com no mín 28x28 toque.
   const tol=Math.max(28*dpr,Math.min(cw,ch)*0.035);
   const tx=xFrac*cw,ty=yFrac*ch;
+  // 1) Prioridade absoluta: alças da seta atualmente selecionada
+  if(_setaSelecionada>=0&&arrowPoints[_setaSelecionada]){
+    const g=_setaGeoCanvas(_setaSelecionada);
+    if(g){
+      const dTip=Math.hypot(tx-g.tipX,ty-g.tipY);
+      const dTail=Math.hypot(tx-g.tailX,ty-g.tailY);
+      if(dTip<tol||dTail<tol){
+        return{idx:_setaSelecionada,type:dTip<=dTail?"ponta":"cauda"};
+      }
+    }
+  }
+  // 2) Selecionar uma seta tocando no corpo (linha entre cauda e ponta com tolerância)
   for(let i=0;i<arrowPoints.length;i++){
     const g=_setaGeoCanvas(i);
     if(!g)continue;
-    const dTip=Math.hypot(tx-g.tipX,ty-g.tipY);
-    const dTail=Math.hypot(tx-g.tailX,ty-g.tailY);
-    // Ponta tem prioridade sobre cauda em caso de empate
-    if(dTip<tol||dTail<tol){
-      return{idx:i,type:dTip<=dTail?"ponta":"cauda"};
+    // Distância ponto-linha (cauda → ponta)
+    const dx=g.tipX-g.tailX,dy=g.tipY-g.tailY;
+    const len2=dx*dx+dy*dy;
+    if(len2<1)continue;
+    let t=((tx-g.tailX)*dx+(ty-g.tailY)*dy)/len2;
+    t=Math.max(0,Math.min(1,t));
+    const px=g.tailX+t*dx,py=g.tailY+t*dy;
+    const dist=Math.hypot(tx-px,ty-py);
+    if(dist<tol){
+      return{idx:i,type:"corpo"};
     }
   }
   return null;
@@ -2720,14 +2774,21 @@ function onTouchMoveSetas(e){
   if(_dragInfo.type==="ponta"){
     p.x=Math.max(0,Math.min(1,pos.x));
     p.y=Math.max(0,Math.min(1,pos.y));
-  } else {
+  } else if(_dragInfo.type==="cauda"){
     // Cauda: recalcula o ângulo (a ponta fica fixa)
     const cw=canvas.width,ch=canvas.height;
     const tipX=p.x*cw,tipY=p.y*ch;
     const tx=pos.x*cw,ty=pos.y*ch;
-    // angle é "cauda→ponta": invertemos para que o vetor dx,dy da cauda à ponta dê o ângulo
     const dx=tipX-tx,dy=tipY-ty;
     p.angle=Math.atan2(dy,dx);
+  } else if(_dragInfo.type==="corpo"){
+    // Corpo: move toda a seta junto. Aplica o delta entre a posição atual e o último drag.
+    if(_dragInfo.lastX==null){_dragInfo.lastX=pos.x;_dragInfo.lastY=pos.y;}
+    const dx=pos.x-_dragInfo.lastX;
+    const dy=pos.y-_dragInfo.lastY;
+    p.x=Math.max(0,Math.min(1,p.x+dx));
+    p.y=Math.max(0,Math.min(1,p.y+dy));
+    _dragInfo.lastX=pos.x;_dragInfo.lastY=pos.y;
   }
   desenharSetas();
 }
@@ -2766,11 +2827,17 @@ function onMouseMoveSetas(e){
   if(!p)return;
   if(_dragInfo.type==="ponta"){
     p.x=Math.max(0,Math.min(1,pos.x));p.y=Math.max(0,Math.min(1,pos.y));
-  } else {
+  } else if(_dragInfo.type==="cauda"){
     const cw=canvas.width,ch=canvas.height;
     const tipX=p.x*cw,tipY=p.y*ch;
     const tx=pos.x*cw,ty=pos.y*ch;
     p.angle=Math.atan2(tipY-ty,tipX-tx);
+  } else if(_dragInfo.type==="corpo"){
+    if(_dragInfo.lastX==null){_dragInfo.lastX=pos.x;_dragInfo.lastY=pos.y;}
+    const dx=pos.x-_dragInfo.lastX,dy=pos.y-_dragInfo.lastY;
+    p.x=Math.max(0,Math.min(1,p.x+dx));
+    p.y=Math.max(0,Math.min(1,p.y+dy));
+    _dragInfo.lastX=pos.x;_dragInfo.lastY=pos.y;
   }
   desenharSetas();
 }
@@ -2897,27 +2964,44 @@ function desenharSetas(){
     const tipX=p.x*cw;
     const tipY=p.y*ch;
     const geo=desenharSetaEmCanvas(ctx,tipX,tipY,cw,p.angle);
-    // Se em modo edição, desenha alças (ponta e cauda)
-    if(_modoAjusteSetas){
-      const isSel=(idx===_setaSelecionada);
+    // === Estilo Word/Excel: SÓ a seta selecionada mostra alças ===
+    // Quando uma seta está selecionada (em modo edição), aparece:
+    //   - Retângulo tracejado azul ao redor da seta (caixa de seleção)
+    //   - Alça azul na PONTA (move tudo)
+    //   - Alça verde na CAUDA (rotaciona ao redor da ponta)
+    // Setas não selecionadas: aparecem só a seta vermelha normal, sem alças.
+    if(_modoAjusteSetas&&idx===_setaSelecionada){
       const baseRef=Math.min(cw,ch);
-      const rDisplay=Math.max(14,Math.round(baseRef*0.022)); // tamanho visual
+      const rDisplay=Math.max(14,Math.round(baseRef*0.022));
       const dpr=parseFloat(canvas.dataset.dpr||"1");
-      // Alça da PONTA (move tudo) — círculo azul
+      const r=rDisplay*dpr;
+      // Caixa tracejada englobando a seta
+      const xs=[tipX,geo.tailX],ys=[tipY,geo.tailY];
+      const minX=Math.min(...xs)-r*1.5,maxX=Math.max(...xs)+r*1.5;
+      const minY=Math.min(...ys)-r*1.5,maxY=Math.max(...ys)+r*1.5;
       ctx.save();
-      ctx.beginPath();
-      ctx.arc(tipX,tipY,rDisplay*dpr,0,Math.PI*2);
-      ctx.fillStyle=isSel?"rgba(59,130,246,0.9)":"rgba(59,130,246,0.6)";
-      ctx.fill();
+      ctx.setLineDash([6*dpr,4*dpr]);
+      ctx.strokeStyle="rgba(59,130,246,0.85)";
+      ctx.lineWidth=1.5*dpr;
+      ctx.strokeRect(minX,minY,maxX-minX,maxY-minY);
+      ctx.setLineDash([]);
+      ctx.restore();
+      // Alça da PONTA (move tudo) — círculo azul preenchido
+      ctx.save();
+      ctx.beginPath();ctx.arc(tipX,tipY,r,0,Math.PI*2);
+      ctx.fillStyle="rgba(59,130,246,0.95)";ctx.fill();
       ctx.strokeStyle="#fff";ctx.lineWidth=2*dpr;ctx.stroke();
       ctx.restore();
-      // Alça da CAUDA (rotaciona) — círculo verde
+      // Alça da CAUDA (rotaciona) — círculo verde com símbolo de rotação
       ctx.save();
-      ctx.beginPath();
-      ctx.arc(geo.tailX,geo.tailY,rDisplay*dpr,0,Math.PI*2);
-      ctx.fillStyle=isSel?"rgba(16,185,129,0.9)":"rgba(16,185,129,0.6)";
-      ctx.fill();
+      ctx.beginPath();ctx.arc(geo.tailX,geo.tailY,r,0,Math.PI*2);
+      ctx.fillStyle="rgba(16,185,129,0.95)";ctx.fill();
       ctx.strokeStyle="#fff";ctx.lineWidth=2*dpr;ctx.stroke();
+      // Mini ícone de rotação dentro da bolinha verde (arco)
+      ctx.beginPath();
+      ctx.arc(geo.tailX,geo.tailY,r*0.5,Math.PI*0.2,Math.PI*1.6);
+      ctx.strokeStyle="#fff";ctx.lineWidth=1.8*dpr;
+      ctx.stroke();
       ctx.restore();
     }
   });
@@ -3369,29 +3453,46 @@ function comprimirFoto(dataUrl){
 // Reduz drasticamente o consumo de memória ao chamar pdf.addImage no jsPDF (Android).
 function recomprimirParaPDF(dataUrl,maxDim,quality){
   return new Promise((res,rej)=>{
-    const img=new Image();
-    img.onload=()=>{
+    // Função interna que faz o trabalho em cima de uma fonte de imagem (img ou ImageBitmap)
+    const processar=(src,srcW,srcH)=>{
       try{
-        let w=img.naturalWidth,h=img.naturalHeight;
+        let w=srcW,h=srcH;
+        console.log("[PDF-FOTO-DEBUG]","src="+w+"x"+h,"orientation="+(w>h?"paisagem":"retrato"));
         const maior=Math.max(w,h);
-        // Já está pequena? Pula recompressão (economiza memória e tempo).
-        // Pular só se já estiver bem abaixo do limite e a imagem original parece comprimida.
-        if(maior<=maxDim*1.05){
-          return res(dataUrl);
-        }
-        const sc=maxDim/maior;
+        const sc=maior>maxDim?(maxDim/maior):1;
         w=Math.round(w*sc);h=Math.round(h*sc);
         const c=document.createElement("canvas");
         c.width=w;c.height=h;
         const ctx=c.getContext("2d");
         ctx.imageSmoothingEnabled=true;
         ctx.imageSmoothingQuality="high";
-        ctx.drawImage(img,0,0,w,h);
-        res(c.toDataURL("image/jpeg",quality));
+        ctx.drawImage(src,0,0,w,h);
+        const out=c.toDataURL("image/jpeg",quality);
+        console.log("[PDF-FOTO-DEBUG] após normalização: "+w+"x"+h);
+        res(out);
       }catch(e){rej(e);}
     };
-    img.onerror=()=>rej(new Error("Falha ao carregar imagem"));
-    img.src=dataUrl;
+    // Tenta primeiro via createImageBitmap (aplica EXIF corretamente)
+    if(typeof createImageBitmap==="function"&&dataUrl.startsWith("data:")){
+      // Converter dataURL pra blob pra usar createImageBitmap
+      fetch(dataUrl).then(r=>r.blob()).then(blob=>{
+        return createImageBitmap(blob,{imageOrientation:"from-image"});
+      }).then(bmp=>{
+        processar(bmp,bmp.width,bmp.height);
+        bmp.close&&bmp.close();
+      }).catch(()=>{
+        // Fallback via <img>
+        const img=new Image();
+        img.onload=()=>processar(img,img.naturalWidth,img.naturalHeight);
+        img.onerror=()=>rej(new Error("Falha ao carregar imagem"));
+        img.src=dataUrl;
+      });
+    } else {
+      const img=new Image();
+      img.onload=()=>processar(img,img.naturalWidth,img.naturalHeight);
+      img.onerror=()=>rej(new Error("Falha ao carregar imagem"));
+      img.src=dataUrl;
+    }
   });
 }
 
@@ -4804,7 +4905,20 @@ function getImgDims(dataUrl){
 function yieldThread(){return new Promise(res=>setTimeout(res,0));}
 
 function addImgPDF(pdf,dataUrl,x,y,w,h){return new Promise(async res=>{await yieldThread();try{pdf.addImage(dataUrl,"JPEG",x,y,w,h,"","FAST");}catch(e){}res();});}
-async function shareOrDownload(blob,nome,mime){if(navigator.share&&navigator.canShare){try{const f=new File([blob],nome,{type:mime});if(navigator.canShare({files:[f]})){await navigator.share({files:[f],title:nome});return;}}catch(e){if(e.name==="AbortError")return;}}const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=nome;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),2000);}
+async function shareOrDownload(blob,nome,mime){
+  // SEMPRE baixar o arquivo no dispositivo primeiro (download direto), garantindo que
+  // o cadastrador sempre tenha o arquivo localmente. Isso resolve o bug em que cancelar
+  // o "compartilhar" do navegador resultava em arquivo nunca salvo.
+  // O navigator.share NÃO é mais usado automaticamente — usuário usa share nativo do gerenciador
+  // de arquivos depois (toque longo no PDF → Compartilhar).
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download=nome;a.rel="noopener";a.target="_self";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+}
 
 function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
   // showLocalBar=false na página de checklist (remove linha Local/Data)
