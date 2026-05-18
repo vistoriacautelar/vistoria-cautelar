@@ -2208,6 +2208,7 @@ function renderFotos(){
       const legendaExib=f.legenda||f.tipo;
       lbl.innerHTML='<span style="flex:1;overflow:hidden;text-overflow:ellipsis;font-size:11px">'+f.numero+' | '+legendaExib+'</span>'
         +'<button class="del-btn" style="color:#007aff;background:none;border:none;font-size:11px;padding:0 4px" onclick="editarLegendaFoto(\''+f.id+'\')">✎</button>'
+        +'<button class="del-btn" style="color:#9333ea;background:none;border:none;font-size:11px;padding:0 4px;font-weight:600" onclick="baixarFotoRaw(\''+f.id+'\')" title="Diagnóstico: baixa o JPEG sem alterações">📥RAW</button>'
         +'<button class="del-btn" onclick="removerFoto(\''+f.id+'\')">X</button>';
       pc.appendChild(img);pc.appendChild(lbl);gd.appendChild(pc);
     });
@@ -2215,6 +2216,44 @@ function renderFotos(){
   });
 }
 window.removerFoto=id=>{delete fotosPendentes[id];renderFotos();};
+
+// ===== DIAGNÓSTICO TEMPORÁRIO: baixa o JPEG bruto do fotosPendentes sem nenhuma alteração =====
+// Usado pra inspeção do EXIF e dimensões físicas reais que saem da câmera + canvas em cada navegador.
+// REMOVER depois que o bug de rotação for resolvido.
+window.baixarFotoRaw=async(id)=>{
+  const f=fotosPendentes[id];
+  if(!f){alert("Foto não encontrada");return;}
+  try{
+    // Converter dataURL pra Blob (sem nenhuma manipulação no meio)
+    const res=await fetch(f.dataUrl);
+    const blob=await res.blob();
+    // Detectar dimensões reais via Image
+    const dimensoes=await new Promise(resolve=>{
+      const img=new Image();
+      img.onload=()=>resolve({w:img.naturalWidth,h:img.naturalHeight,
+        orient:img.naturalWidth>img.naturalHeight?"paisagem":(img.naturalWidth<img.naturalHeight?"retrato":"quadrado")});
+      img.onerror=()=>resolve({w:0,h:0,orient:"erro"});
+      img.src=f.dataUrl;
+    });
+    // Detectar EXIF orientation se a função existir
+    let exifOri="?";
+    try{if(typeof lerEXIFOrientation==="function")exifOri=lerEXIFOrientation(f.dataUrl);}catch(e){}
+    // Nome do arquivo com metadados embutidos
+    const horaTxt=new Date().toISOString().replace(/[:.]/g,"-").substring(11,19);
+    const nomeArq="raw_"+dimensoes.orient+"_"+dimensoes.w+"x"+dimensoes.h+"_exif"+exifOri+"_"+horaTxt+".jpg";
+    // Download direto (mesma técnica do shareOrDownload mas simplificada)
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download=nomeArq;document.body.appendChild(a);
+    a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    // Mostra info na tela também (pra caso o usuário não ache o arquivo)
+    showToast("Baixado: "+dimensoes.w+"x"+dimensoes.h+" ("+dimensoes.orient+") EXIF="+exifOri,5000);
+  }catch(e){
+    console.error("baixarFotoRaw:",e);
+    alert("Erro ao baixar: "+(e.message||"desconhecido"));
+  }
+};
 
 function gerarTextoConclusao(){
   // Agrupa por (ambiente, elemento) → conjunto único de patologias.
