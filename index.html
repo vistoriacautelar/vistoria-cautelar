@@ -2123,12 +2123,26 @@ window.criarVistoria=async()=>{
   const nome=document.getElementById("nv-nome").value.trim();const docR=document.getElementById("nv-doc").value.trim();const tel=document.getElementById("nv-tel").value.trim();
   const rua=document.getElementById("nv-rua").value.trim();const num=document.getElementById("nv-num").value.trim();const comp=document.getElementById("nv-comp").value.trim();
   if(!cId||!colId)return alert("Selecione cliente e coletor");
-  // Endereço sempre obrigatório. Nome do morador: OPCIONAL ao iniciar — permite registrar ausentes
-  // sem conhecer o morador. Validação de obrigatoriedade do nome acontece somente em finalizarVistoria
-  // (caminho normal, status diferente de Ausente).
   if(!rua||!num)return alert("Preencha rua e numero do imóvel");
-  const[clS,colS]=await Promise.all([getDoc(doc(db,"clientes",cId)),getDoc(doc(db,"coletores",colId))]);
-  const clD=clS.data();const colD=colS.data();const now=new Date();
+  // Usa cache local em vez de buscar do Firestore (era a causa do "Iniciar Vistoria demora").
+  // Fallback para Firestore só se realmente não tiver no cache (caso raro).
+  let clD=_cacheClientes&&_cacheClientes.find(c=>c.id===cId);
+  let colD=_cacheColetores&&_cacheColetores[colId];
+  if(!clD||!colD){
+    // Busca apenas o que faltou (com pequeno timeout pra não travar UI)
+    const promises=[];
+    if(!clD)promises.push(getDoc(doc(db,"clientes",cId)).then(s=>clD=s.data()));
+    if(!colD)promises.push(getDoc(doc(db,"coletores",colId)).then(s=>colD=s.data()));
+    try{
+      await Promise.race([
+        Promise.all(promises),
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error("Timeout")),5000))
+      ]);
+    }catch(e){
+      return alert("Não foi possível carregar dados de cliente/coletor. Verifique sua conexão.");
+    }
+  }
+  const now=new Date();
   // Source of truth: o card que está visualmente .active no DOM no momento do clique
   const activeCard=document.querySelector("#s-nova-vistoria .laudo-tipo-card.active");
   const tipoLaudo=(activeCard&&activeCard.dataset.tipo)||window._tipoLaudoAtual||localStorage.getItem("lastTipoLaudo")||"simplificado";
