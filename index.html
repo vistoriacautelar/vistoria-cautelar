@@ -4896,9 +4896,50 @@ async function prepLogoForPDF(logoSrc, maxW, maxH){
 }
 
 const _dimCache={};
+// Lê dimensões REAIS do JPEG direto do binário (header SOF).
+// IMPORTANTE: NÃO usa img.naturalWidth/Height porque o Safari iOS pode aplicar EXIF
+// e retornar dimensões "rotacionadas visualmente" em vez das físicas do arquivo.
+// O PDF (jsPDF) precisa das dimensões físicas pra calcular a escala correta.
+function lerDimensoesJPEG(dataUrl){
+  try{
+    const base64=dataUrl.split(",")[1];
+    if(!base64)return null;
+    // Decodifica os primeiros ~128KB (header está logo no início)
+    const head=atob(base64.substring(0,Math.min(base64.length,175000)));
+    const len=head.length;
+    if(len<10)return null;
+    if(head.charCodeAt(0)!==0xFF||head.charCodeAt(1)!==0xD8)return null;
+    let offset=2;
+    while(offset<len-9){
+      if(head.charCodeAt(offset)!==0xFF){offset++;continue;}
+      const marker=head.charCodeAt(offset+1);
+      offset+=2;
+      // SOF markers: 0xC0, 0xC1, 0xC2, 0xC3, 0xC5–0xC7, 0xC9–0xCB, 0xCD–0xCF
+      // (0xC4 = DHT e 0xC8 = JPG, não são SOF)
+      if((marker>=0xC0&&marker<=0xCF)&&marker!==0xC4&&marker!==0xC8){
+        // SOF: [segLen 2B][precision 1B][height 2B][width 2B]...
+        const h=head.charCodeAt(offset+3)<<8|head.charCodeAt(offset+4);
+        const w=head.charCodeAt(offset+5)<<8|head.charCodeAt(offset+6);
+        return{w,h};
+      }
+      // Skip outros segmentos
+      const segLen=head.charCodeAt(offset)<<8|head.charCodeAt(offset+1);
+      offset+=segLen;
+    }
+  }catch(e){console.warn("lerDimensoesJPEG:",e);}
+  return null;
+}
+
 function getImgDims(dataUrl){
   const key=dataUrl.substring(0,64);
   if(_dimCache[key])return Promise.resolve(_dimCache[key]);
+  // Primeiro tenta ler do binário (dimensões físicas reais, independente do navegador)
+  const dimsBin=lerDimensoesJPEG(dataUrl);
+  if(dimsBin&&dimsBin.w>0&&dimsBin.h>0){
+    _dimCache[key]=dimsBin;
+    return Promise.resolve(dimsBin);
+  }
+  // Fallback: usar Image (menos confiável em Safari iOS, mas funciona pra outros formatos)
   return new Promise(res=>{
     const img=new Image();
     img.onload=()=>{const d={w:img.naturalWidth||4,h:img.naturalHeight||3};_dimCache[key]=d;res(d);};
