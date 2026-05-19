@@ -774,20 +774,20 @@ let vistoriaDetalheId=null,vistoriaDetalheData=null;
 function showToast(msg,dur){const t=document.getElementById("toast");t.textContent=msg;t.style.display="block";setTimeout(()=>{t.style.display="none";},dur||2500);}
 
 // ===== CAPTURA DE LOGS [PDF-*] PARA DIAGNÓSTICO (temporário) =====
-// Intercepta console.log e guarda mensagens com prefixo [PDF-* numa lista que pode ser
-// visualizada num modal. Remover quando bug de rotação for resolvido.
 window._pdfLogs=[];
 (function(){
   const origLog=console.log;
+  const RE=/\[(PDF-|CAM-DEBUG|CAM-DETECT)/;
   console.log=function(...args){
-    try{
-      const txt=args.map(a=>typeof a==="object"?JSON.stringify(a):String(a)).join(" ");
-      if(txt.includes("[PDF-")||txt.includes("[CAM-DEBUG")||txt.includes("[CAM-DETECT")){
+    // Só processa se primeiro arg é string que combina (otimização)
+    if(args.length&&typeof args[0]==="string"&&RE.test(args[0])){
+      try{
+        const txt=args.map(a=>typeof a==="object"?JSON.stringify(a):String(a)).join(" ");
         const ts=new Date().toISOString().substring(11,19);
         window._pdfLogs.push(ts+" "+txt);
-        if(window._pdfLogs.length>200)window._pdfLogs.shift();
-      }
-    }catch(e){}
+        if(window._pdfLogs.length>100)window._pdfLogs.shift();
+      }catch(e){}
+    }
     return origLog.apply(console,args);
   };
 })();
@@ -1009,17 +1009,20 @@ onAuthStateChanged(auth,async user=>{
       return;
     }
     currentUser=user;
-    const snap=await getDoc(doc(db,"users",user.uid));
-    if(snap.exists()){currentUserData=snap.data();currentRole=currentUserData.role;assinaturaTecnico=currentUserData.assinatura||null;}
+    // Paraleliza as 3 chamadas Firestore: user data + prestador default + ambientes custom.
+    // Antes era sequencial (3 requests em série = lento). Agora dispara as 3 em paralelo.
+    const[snapUser]=await Promise.all([
+      getDoc(doc(db,"users",user.uid)),
+      loadPrestadorDefault(),
+      loadAmbientesCustom()
+    ]);
+    if(snapUser.exists()){currentUserData=snapUser.data();currentRole=currentUserData.role;assinaturaTecnico=currentUserData.assinatura||null;}
     else{currentRole="master";currentUserData={nome:"Admin",email:user.email,role:"master"};await setDoc(doc(db,"users",user.uid),{...currentUserData,criadoEm:serverTimestamp()});}
-    await loadPrestadorDefault();await loadAmbientesCustom();
-    // Solicita persistência do storage para evitar que o navegador limpe o IndexedDB
-    // (importante para que as fotos das vistorias permaneçam disponíveis para edição).
+    // Solicita persistência do storage em BACKGROUND (sem await — não bloqueia login)
     if(navigator.storage&&navigator.storage.persist){
-      try{
-        const persisted=await navigator.storage.persisted();
-        if(!persisted)await navigator.storage.persist().catch(()=>{});
-      }catch(e){console.warn("storage persist:",e);}
+      navigator.storage.persisted().then(persisted=>{
+        if(!persisted)navigator.storage.persist().catch(()=>{});
+      }).catch(()=>{});
     }
     // Recupera último morador do dia (para sugerir reaproveitamento na próxima vistoria)
     try{
@@ -2724,23 +2727,14 @@ window.tirarFoto=async()=>{
   }
 
   // === LOG DE DEBUG (captura) — visível no DevTools Console ===
-  // Esses dados ajudam a identificar de quem é a culpa quando uma foto sai com
-  // orientação errada. Cole o log inteiro ao reportar um bug de orientação.
+  // [CAM-DEBUG] removido depois que bug de rotação foi resolvido.
+  // Calcular screenAngle ainda é necessário pro fallback de captura abaixo.
   let screenAngle=0;
   try{
     if(screen.orientation&&typeof screen.orientation.angle==="number")screenAngle=screen.orientation.angle;
     else if(typeof window.orientation==="number")screenAngle=window.orientation;
   }catch(e){}
   const normAngle=((screenAngle%360)+360)%360;
-  console.log("[CAM-DEBUG]",{
-    videoIntrinsic:vW+"x"+vH,
-    screenAngle:normAngle,
-    isPortraitScreen:(normAngle===0||normAngle===180),
-    isLandscapeFrame:vW>vH,
-    usedImageCapture:!!photoBlob,
-    blobDimensions:photoBlob?(vW2+"x"+vH2):"n/a",
-    userAgent:navigator.userAgent.slice(0,100)
-  });
 
   if(!photoBlob){
     // === FALLBACK: captura do <video> com ROTAÇÃO BILATERAL ===
@@ -2771,10 +2765,8 @@ window.tirarFoto=async()=>{
       // Quando rotacionado 90°, a "largura" do destino é a altura original do video
       ctx.drawImage(video,-finalH/2,-finalW/2,finalH,finalW);
       ctx.restore();
-      console.log("[CAM-DEBUG] Aplicou rotação",rotDir*90,"° (canvas final "+finalW+"x"+finalH+")");
     } else {
       ctx.drawImage(video,0,0,finalW,finalH);
-      console.log("[CAM-DEBUG] Sem rotação (canvas final "+finalW+"x"+finalH+")");
     }
   }
   const outW=vW2,outH=vH2;
@@ -3543,27 +3535,14 @@ function recomprimirParaPDF(dataUrl,maxDim,quality){
     img.onload=()=>{
       try{
         const nW=img.naturalWidth,nH=img.naturalHeight;
-        // Dimensões físicas (do binário) versus visuais (do navegador).
         const binW=(dimsBin&&dimsBin.w>0)?dimsBin.w:nW;
         const binH=(dimsBin&&dimsBin.h>0)?dimsBin.h:nH;
-        console.log("[PDF-FOTO] Binário="+binW+"x"+binH+" | <img>="+nW+"x"+nH);
-        // Detectar se o navegador "rotacionou" automaticamente: dimensões trocadas
         const navegadorRotacionou=(binW>0&&binH>0)&&((binW===nH)&&(binH===nW))&&(binW!==binH);
-        // Escolher dimensões alvo:
-        //   Se navegador rotacionou: as dimensões visuais (do <img>) são as CORRETAS visualmente,
-        //     porque já têm o EXIF aplicado. Usamos elas.
-        //   Se navegador NÃO rotacionou: usamos as do binário (que são as fisicas).
-        //   Em ambos casos, o ctx.drawImage(img, ...) vai desenhar a imagem JÁ na orientação
-        //     que o navegador entrega — então só precisamos respeitar essas dimensões.
         let w=navegadorRotacionou?nW:binW;
         let h=navegadorRotacionou?nH:binH;
-        if(navegadorRotacionou){
-          console.log("[PDF-FOTO] Navegador aplicou rotação EXIF automaticamente — usando dimensões visuais");
-        }
         const maior=Math.max(w,h);
         const sc=maior>maxDim?(maxDim/maior):1;
         w=Math.round(w*sc);h=Math.round(h*sc);
-        // Desenhar respeitando orientation se houver EXIF (caso raro: EXIF presente mas navegador não aplicou)
         const aplicarRotacaoManual=(orientation!==1)&&!navegadorRotacionou;
         const c=desenharComOrientacao(img,w,h,aplicarRotacaoManual?orientation:1,quality);
         res(c.toDataURL("image/jpeg",quality));
@@ -4354,16 +4333,23 @@ window.finalizarVistoria=async()=>{
     setStatus("Otimizando fotos...");
     const fotosRecomp={};
     const fotosArr=Object.entries(fotosPendentes);
-    for(let i=0;i<fotosArr.length;i++){
-      const[id,f]=fotosArr[i];
-      setStatus("Otimizando "+(i+1)+"/"+fotosArr.length+"...");
-      try{
-        const optimized=await recomprimirParaPDF(f.dataUrl,1200,0.82);
-        fotosRecomp[id]={...f,dataUrl:optimized};
-      }catch(eOpt){
-        console.warn("Recompressão falhou na foto",id,eOpt);
-        fotosRecomp[id]=f;
-      }
+    // Recompressão em PARALELO (batch de 3 por vez) — muito mais rápido que sequencial.
+    // 3 fotos por vez é o sweet spot: aproveita múltiplos cores sem sobrecarregar memória.
+    const BATCH=3;
+    let processadas=0;
+    for(let i=0;i<fotosArr.length;i+=BATCH){
+      const batch=fotosArr.slice(i,i+BATCH);
+      setStatus("Otimizando "+(i+1)+"-"+Math.min(i+BATCH,fotosArr.length)+" de "+fotosArr.length+"...");
+      await Promise.all(batch.map(async([id,f])=>{
+        try{
+          const optimized=await recomprimirParaPDF(f.dataUrl,1200,0.82);
+          fotosRecomp[id]={...f,dataUrl:optimized};
+        }catch(eOpt){
+          console.warn("Recompressão falhou na foto",id,eOpt);
+          fotosRecomp[id]=f;
+        }
+        processadas++;
+      }));
       await yieldThread();
     }
     fotosPendentes=fotosRecomp;
@@ -4904,7 +4890,6 @@ async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
       const fw_k=k===0?FPL:FPR;
       const fx=k===0?ML:ML+FPL+1;
       const dims=await getImgDims(f.dataUrl);
-      console.log("[PDF-LAYOUT] Par foto",fotoNum+k,"| dims="+dims.w+"x"+dims.h+" ("+(dims.w>dims.h?"paisagem":"retrato")+") | célula="+fw_k+"x"+FPH);
       const sc=Math.min((fw_k-PAD*2)/dims.w,(FPH-PAD*2)/dims.h);
       const fwR=Math.round(dims.w*sc),fhR=Math.round(dims.h*sc);
       const xo=Math.round((fw_k-fwR)/2),yo=Math.round((FPH-fhR)/2);
