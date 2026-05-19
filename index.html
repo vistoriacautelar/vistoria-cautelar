@@ -3477,22 +3477,38 @@ function desenharComOrientacao(img,w,h,orientation,quality){
 
 function recomprimirParaPDF(dataUrl,maxDim,quality){
   return new Promise((res,rej)=>{
-    // Lê a orientação EXIF do JPEG ANTES de carregar a imagem.
-    // Isso elimina dependência do navegador aplicar (ou não) o EXIF automaticamente.
     const orientation=lerEXIFOrientation(dataUrl);
     if(orientation!==1){
-      console.log("[PDF-FOTO] EXIF orientation detectada:",orientation,"(será rotacionada)");
+      console.log("[PDF-FOTO] EXIF orientation:",orientation);
     }
+    const dimsBin=lerDimensoesJPEG(dataUrl);
     const img=new Image();
     img.onload=()=>{
       try{
-        let w=img.naturalWidth,h=img.naturalHeight;
+        const nW=img.naturalWidth,nH=img.naturalHeight;
+        // Dimensões físicas (do binário) versus visuais (do navegador).
+        const binW=(dimsBin&&dimsBin.w>0)?dimsBin.w:nW;
+        const binH=(dimsBin&&dimsBin.h>0)?dimsBin.h:nH;
+        console.log("[PDF-FOTO] Binário="+binW+"x"+binH+" | <img>="+nW+"x"+nH);
+        // Detectar se o navegador "rotacionou" automaticamente: dimensões trocadas
+        const navegadorRotacionou=(binW>0&&binH>0)&&((binW===nH)&&(binH===nW))&&(binW!==binH);
+        // Escolher dimensões alvo:
+        //   Se navegador rotacionou: as dimensões visuais (do <img>) são as CORRETAS visualmente,
+        //     porque já têm o EXIF aplicado. Usamos elas.
+        //   Se navegador NÃO rotacionou: usamos as do binário (que são as fisicas).
+        //   Em ambos casos, o ctx.drawImage(img, ...) vai desenhar a imagem JÁ na orientação
+        //     que o navegador entrega — então só precisamos respeitar essas dimensões.
+        let w=navegadorRotacionou?nW:binW;
+        let h=navegadorRotacionou?nH:binH;
+        if(navegadorRotacionou){
+          console.log("[PDF-FOTO] Navegador aplicou rotação EXIF automaticamente — usando dimensões visuais");
+        }
         const maior=Math.max(w,h);
-        // Reduz para maxDim mantendo proporção
         const sc=maior>maxDim?(maxDim/maior):1;
         w=Math.round(w*sc);h=Math.round(h*sc);
-        // Desenha aplicando rotação (se houver EXIF) — canvas final fica em orientação visual
-        const c=desenharComOrientacao(img,w,h,orientation,quality);
+        // Desenhar respeitando orientation se houver EXIF (caso raro: EXIF presente mas navegador não aplicou)
+        const aplicarRotacaoManual=(orientation!==1)&&!navegadorRotacionou;
+        const c=desenharComOrientacao(img,w,h,aplicarRotacaoManual?orientation:1,quality);
         res(c.toDataURL("image/jpeg",quality));
       }catch(e){rej(e);}
     };
@@ -4831,6 +4847,7 @@ async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
       const fw_k=k===0?FPL:FPR;
       const fx=k===0?ML:ML+FPL+1;
       const dims=await getImgDims(f.dataUrl);
+      console.log("[PDF-LAYOUT] Par foto",fotoNum+k,"| dims="+dims.w+"x"+dims.h+" ("+(dims.w>dims.h?"paisagem":"retrato")+") | célula="+fw_k+"x"+FPH);
       const sc=Math.min((fw_k-PAD*2)/dims.w,(FPH-PAD*2)/dims.h);
       const fwR=Math.round(dims.w*sc),fhR=Math.round(dims.h*sc);
       const xo=Math.round((fw_k-fwR)/2),yo=Math.round((FPH-fhR)/2);
