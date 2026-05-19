@@ -5005,7 +5005,12 @@ function lerDimensoesJPEG(dataUrl){
 }
 
 function getImgDims(dataUrl){
-  const key=dataUrl.substring(0,64);
+  // CHAVE DE CACHE MAIS ESPECÍFICA: combina tamanho + meio do dataURL + final.
+  // Bug anterior: usava só os primeiros 64 chars, que são quase idênticos em todo JPEG
+  // (header SOI + APP0 padrão JFIF), fazendo TODAS as fotos compartilharem o mesmo cache.
+  const len=dataUrl.length;
+  const meio=Math.floor(len/2);
+  const key=len+"|"+dataUrl.substring(0,32)+"|"+dataUrl.substring(meio,meio+32)+"|"+dataUrl.substring(len-32);
   if(_dimCache[key])return Promise.resolve(_dimCache[key]);
   // Primeiro tenta ler do binário (dimensões físicas reais, independente do navegador)
   const dimsBin=lerDimensoesJPEG(dataUrl);
