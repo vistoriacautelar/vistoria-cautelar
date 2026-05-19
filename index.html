@@ -219,6 +219,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div id="perfil-arm-resumo" style="font-size:13px;color:#555;margin-bottom:10px">Carregando...</div>
       <button class="btn" onclick="goTo('s-armazenamento')">Gerenciar fotos locais</button>
     </div>
+    <div class="card" style="background:#fef3c7;border-color:#fcd34d"><h2 style="color:#92400e">🔬 Diagnóstico (temporário)</h2>
+      <p style="font-size:13px;color:#78350f;margin-bottom:10px">Após gerar um PDF, toque aqui para ver os logs técnicos. Útil para investigar problemas de rotação de foto.</p>
+      <button class="btn" style="background:#fbbf24;color:#78350f;border-color:#f59e0b" onclick="verLogsPDF()">📋 Ver Logs do PDF</button>
+    </div>
   </div>
 </div>
 
@@ -768,6 +772,59 @@ let deviceOrientation=0;
 let vistoriaDetalheId=null,vistoriaDetalheData=null;
 
 function showToast(msg,dur){const t=document.getElementById("toast");t.textContent=msg;t.style.display="block";setTimeout(()=>{t.style.display="none";},dur||2500);}
+
+// ===== CAPTURA DE LOGS [PDF-*] PARA DIAGNÓSTICO (temporário) =====
+// Intercepta console.log e guarda mensagens com prefixo [PDF-* numa lista que pode ser
+// visualizada num modal. Remover quando bug de rotação for resolvido.
+window._pdfLogs=[];
+(function(){
+  const origLog=console.log;
+  console.log=function(...args){
+    try{
+      const txt=args.map(a=>typeof a==="object"?JSON.stringify(a):String(a)).join(" ");
+      if(txt.includes("[PDF-")||txt.includes("[CAM-DEBUG")||txt.includes("[CAM-DETECT")){
+        const ts=new Date().toISOString().substring(11,19);
+        window._pdfLogs.push(ts+" "+txt);
+        if(window._pdfLogs.length>200)window._pdfLogs.shift();
+      }
+    }catch(e){}
+    return origLog.apply(console,args);
+  };
+})();
+
+window.verLogsPDF=()=>{
+  const logs=window._pdfLogs||[];
+  const txt=logs.length?logs.join("\n"):"(nenhum log capturado ainda — gere um PDF primeiro)";
+  // Modal simples ocupando toda a tela
+  let m=document.getElementById("logs-modal");
+  if(!m){
+    m=document.createElement("div");
+    m.id="logs-modal";
+    m.style.cssText="position:fixed;inset:0;background:#fff;z-index:99999;padding:14px;overflow:auto;font-family:monospace;font-size:11px;line-height:1.5";
+    document.body.appendChild(m);
+  }
+  m.innerHTML='<div style="position:sticky;top:0;background:#fff;padding-bottom:8px;border-bottom:1px solid #ddd;display:flex;gap:8px;margin-bottom:10px">'
+    +'<button onclick="copiarLogsPDF()" style="flex:1;padding:10px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-weight:600">📋 Copiar tudo</button>'
+    +'<button onclick="document.getElementById(\'logs-modal\').remove()" style="flex:1;padding:10px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-weight:600">Fechar</button>'
+    +'</div>'
+    +'<pre style="white-space:pre-wrap;word-wrap:break-word">'+txt.replace(/</g,"&lt;")+'</pre>';
+};
+
+window.copiarLogsPDF=async()=>{
+  const txt=(window._pdfLogs||[]).join("\n");
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(txt);
+      showToast("Logs copiados! Cole no WhatsApp ou Notas",3000);
+    } else {
+      // Fallback antigo
+      const ta=document.createElement("textarea");
+      ta.value=txt;document.body.appendChild(ta);ta.select();
+      document.execCommand("copy");document.body.removeChild(ta);
+      showToast("Logs copiados!",3000);
+    }
+  }catch(e){alert("Erro ao copiar: "+e.message);}
+};
 
 // Máscara de documento: aplica CPF se numérico e >=10 dígitos, senão texto livre
 window.maskDoc=el=>{
