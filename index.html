@@ -194,7 +194,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 </div>
 
 <div id="s-editor-fotos" class="screen">
-  <div class="topbar"><button class="back" onclick="goTo('s-detalhe-vistoria')">&#8249; Voltar</button><h1>Editar Fotos</h1><button class="btn small" style="color:#10b981;border-color:#10b981" onclick="salvarEdicaoFotos()">Salvar</button></div>
+  <div class="topbar"><button class="back" onclick="goTo('s-detalhe-vistoria')">&#8249; Voltar</button><h1>Editar Fotos</h1><button class="btn small" style="color:#007aff;border-color:#007aff;margin-right:4px" onclick="efAdicionarComodo()">+ Cômodo</button><button id="ef-btn-salvar" class="btn small" style="color:#10b981;border-color:#10b981" onclick="salvarEdicaoFotos()">Salvar</button></div>
   <div class="content" id="ef-content"></div>
 </div>
 
@@ -601,7 +601,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div class="field"><label>Numero</label><input type="text" id="er-num"></div>
       <div class="field"><label>Complemento</label><input type="text" id="er-comp"></div>
     </div>
+    <div class="field"><label>Status da Vistoria</label><select id="er-status"><option value="concluida">Finalizado</option><option value="parcial">Parcial</option><option value="externa">Externa</option><option value="ausente">Ausente</option><option value="recusa">Recusa</option></select></div>
     <div class="grid2" style="margin-top:8px"><button class="btn" onclick="closeModal('modal-editar-resp')">Cancelar</button><button class="btn primary" onclick="salvarEdicaoResponsavel()">Salvar</button></div>
+  </div>
+</div>
+
+<div id="modal-ef-add-comodo" class="modal-bg" style="display:none" onclick="closeModalBg(event,'modal-ef-add-comodo')">
+  <div class="modal"><h3>Adicionar Cômodo</h3>
+    <p style="font-size:13px;color:#888;margin-bottom:10px">Escolha um cômodo da lista <b>ou</b> digite o nome de um cômodo novo. Depois de criado, use o botão "+ Foto" da seção pra adicionar as fotos dele.</p>
+    <div class="field"><label>Cômodo da lista</label><select id="ef-add-comodo-sel"><option value="">Selecione...</option></select></div>
+    <div class="field"><label>Ou digite um nome novo</label><input type="text" id="ef-add-comodo-novo" placeholder="Ex.: Closet, Escritório, Adega"></div>
+    <div class="grid2" style="margin-top:8px"><button class="btn" onclick="closeModal('modal-ef-add-comodo')">Cancelar</button><button class="btn primary" onclick="efConfirmarAddComodo()">Adicionar</button></div>
   </div>
 </div>
 
@@ -1857,12 +1867,16 @@ async function populateClienteSelect(selectId){
 
 // ===== EDITOR DE FOTOS DE VISTORIA SALVA =====
 let _efId=null,_efData=null,_efFotos=[];
+// Cômodos adicionados manualmente nesta sessão de edição (mesmo sem fotos ainda).
+// Permite renderizar a seção do cômodo vazia com o botão "+ Foto" pronto pra usar.
+let _efComodosNovos=new Set();
 let _efFotoEditando=null,_efFotoIdx=null;
 let _efCameraMode=null; // 'adicionar' | 'substituir'
 let _efAmbienteAlvo=null,_efSubstIdx=null;
 
 window.abrirEditorFotos=async(id,data)=>{
   _efId=id;_efData=data;
+  _efComodosNovos=new Set();
   // Tenta IndexedDB primeiro (novo armazenamento local-only); fallback p/ fotosBase64 antigo
   let fotos=null;
   try{fotos=await localBuscarFotos(id);}catch(e){console.error("localBuscarFotos:",e);}
@@ -1886,21 +1900,45 @@ window.abrirEditorFotos=async(id,data)=>{
 
 function renderEditorFotos(){
   const c=document.getElementById("ef-content");c.innerHTML="";
-  if(!_efFotos.length){c.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhuma foto</p>';return;}
-  // Agrupar por ambiente
+  // Agrupar fotos existentes por ambiente
   const grupos={};
   _efFotos.forEach((f,i)=>{
     const amb=f.ambiente||"Geral";
     if(!grupos[amb])grupos[amb]=[];
     grupos[amb].push({...f,_globalIdx:i});
   });
-  const order=[...AMBIENTES,...((_efData.ambientesExtras)||[])].filter(a=>grupos[a]);
+  // Inclui cômodos novos adicionados nesta sessão (mesmo sem fotos ainda)
+  _efComodosNovos.forEach(amb=>{
+    if(!grupos[amb])grupos[amb]=[];
+  });
+  // Se não há absolutamente nada (nem fotos, nem cômodos novos), mostra placeholder
+  if(!Object.keys(grupos).length){
+    c.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhuma foto. Toque em "+ Cômodo" no topo para começar.</p>';
+    return;
+  }
+  // Ordem: AMBIENTES (lista oficial) + ambientesExtras + _efComodosNovos, deduplicada e só
+  // os que existem em grupos
+  const ordemCompleta=[...AMBIENTES,...((_efData.ambientesExtras)||[]),..._efComodosNovos];
+  const seen=new Set();
+  const order=ordemCompleta.filter(a=>{
+    if(!grupos[a])return false;
+    if(seen.has(a))return false;
+    seen.add(a);return true;
+  });
   // Ambientes não mapeados no final
   Object.keys(grupos).forEach(a=>{if(!order.includes(a))order.push(a);});
   order.forEach(amb=>{
     const fotos=grupos[amb];
     const sec=document.createElement("div");sec.className="card";
     sec.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">'+amb+'</h2><button class="btn small" style="color:#007aff;border-color:#007aff" onclick="efAdicionarFoto(\''+amb+'\')">+ Foto</button></div>';
+    if(!fotos.length){
+      const vazio=document.createElement("p");
+      vazio.style.cssText="text-align:center;color:#aaa;font-size:13px;padding:14px 8px;margin:0";
+      vazio.textContent='Sem fotos ainda. Toque em "+ Foto" pra adicionar.';
+      sec.appendChild(vazio);
+      c.appendChild(sec);
+      return;
+    }
     const grid=document.createElement("div");grid.className="photo-grid";
     fotos.forEach((f)=>{
       const gi=f._globalIdx;
@@ -1929,6 +1967,43 @@ window.efAdicionarFoto=amb=>{
   _efCameraMode="adicionar";_efAmbienteAlvo=amb;_efSubstIdx=null;
   fotoAtualAmbiente=amb;fotoAtualTipo="Detalhe";
   abrirCamera(amb);
+};
+
+// Abre modal pra adicionar um cômodo (vazio) ao editor — o usuário usa "+ Foto" depois
+window.efAdicionarComodo=()=>{
+  // Apura cômodos já presentes na vistoria (com foto, em ambientesExtras ou recém-adicionados)
+  const usados=new Set();
+  _efFotos.forEach(f=>{if(f.ambiente)usados.add(f.ambiente);});
+  ((_efData&&_efData.ambientesExtras)||[]).forEach(a=>usados.add(a));
+  _efComodosNovos.forEach(a=>usados.add(a));
+  // Lista cômodos disponíveis (da lista AMBIENTES que não estão na vistoria)
+  const disponiveis=AMBIENTES.filter(a=>!usados.has(a));
+  const sel=document.getElementById("ef-add-comodo-sel");
+  sel.innerHTML='<option value="">Selecione...</option>'
+    +disponiveis.map(a=>'<option value="'+a.replace(/"/g,"&quot;")+'">'+a+'</option>').join("");
+  document.getElementById("ef-add-comodo-novo").value="";
+  document.getElementById("modal-ef-add-comodo").style.display="flex";
+};
+
+window.efConfirmarAddComodo=()=>{
+  const fromSel=document.getElementById("ef-add-comodo-sel").value;
+  const novo=document.getElementById("ef-add-comodo-novo").value.trim();
+  // Texto livre tem prioridade sobre o select (cobre casos onde o usuário digitou algo)
+  const nome=(novo||fromSel||"").trim();
+  if(!nome){
+    return alert("Escolha um cômodo da lista ou digite um nome novo.");
+  }
+  // Já existe (case-insensitive)?
+  const todos=new Set();
+  _efFotos.forEach(f=>{if(f.ambiente)todos.add(f.ambiente.toLowerCase());});
+  ((_efData&&_efData.ambientesExtras)||[]).forEach(a=>todos.add(a.toLowerCase()));
+  _efComodosNovos.forEach(a=>todos.add(a.toLowerCase()));
+  if(todos.has(nome.toLowerCase())){
+    return alert("Esse cômodo já existe na vistoria.");
+  }
+  _efComodosNovos.add(nome);
+  closeModal("modal-ef-add-comodo");
+  renderEditorFotos();
 };
 
 window.efSubstituir=(gi,amb)=>{
@@ -2018,18 +2093,39 @@ window.confirmarSetas=function(){
 };
 
 window.salvarEdicaoFotos=async()=>{
-  if(!_efId||!_efFotos.length)return;
-  const btn=document.querySelector("#s-editor-fotos .btn.small");
+  if(!_efId)return;
+  // Permite salvar mesmo sem fotos (caso o usuário tenha excluído todas e queira manter o estado)
+  if(!_efFotos.length&&_efComodosNovos.size===0){
+    return alert("Não há nada para salvar. Adicione ao menos uma foto ou um cômodo.");
+  }
+  const btn=document.getElementById("ef-btn-salvar");
   if(btn){btn.textContent="Salvando...";btn.disabled=true;}
   try{
     _efRenumerar();
-    // Salvar fotos no IndexedDB (local-only) e apenas metadado no Firestore
+    // Apura ambientesExtras finais: junta os já existentes + cômodos novos personalizados
+    // (que não estão na lista oficial AMBIENTES_BASE).
+    const extrasAntigos=((_efData&&_efData.ambientesExtras)||[]).slice();
+    const extrasSet=new Set(extrasAntigos);
+    // Cômodos que aparecem em fotos OU em _efComodosNovos e não fazem parte da lista base
+    const candidatos=new Set();
+    _efFotos.forEach(f=>{if(f.ambiente)candidatos.add(f.ambiente);});
+    _efComodosNovos.forEach(a=>candidatos.add(a));
+    candidatos.forEach(a=>{
+      if(!AMBIENTES_BASE.some(b=>b.toLowerCase()===a.toLowerCase())){
+        // Se ainda não está em extrasSet (case-insensitive), adiciona
+        const jaTem=Array.from(extrasSet).some(e=>e.toLowerCase()===a.toLowerCase());
+        if(!jaTem)extrasSet.add(a);
+      }
+    });
+    const ambientesExtrasAtualizado=Array.from(extrasSet);
+    // Salvar fotos no IndexedDB (local-only) e metadados no Firestore
     await localSalvarFotos(_efId,_efFotos);
     await updateDoc(doc(db,"vistorias",_efId),{
-      totalFotos:_efFotos.length
+      totalFotos:_efFotos.length,
+      ambientesExtras:ambientesExtrasAtualizado
     });
-    // Gerar ZIP com fotos atualizadas
-    if(window.JSZip){
+    // Gerar ZIP com fotos atualizadas (só se houver fotos)
+    if(window.JSZip&&_efFotos.length){
       const zip=new window.JSZip();
       const nomeBase=(_efData.coletorNome||"vistoria").replace(/[^a-zA-Z0-9]/g,"_");
       const folder=zip.folder("fotos_"+nomeBase);
@@ -2043,9 +2139,9 @@ window.salvarEdicaoFotos=async()=>{
       await shareOrDownload(zBlob,nomeZip,"application/zip");
     }
     // Atualizar dados locais para regerar PDF
-    _efData={..._efData,fotosBase64:_efFotos,totalFotos:_efFotos.length};
+    _efData={..._efData,fotosBase64:_efFotos,totalFotos:_efFotos.length,ambientesExtras:ambientesExtrasAtualizado};
     vistoriaDetalheData=_efData;
-    showToast("Fotos salvas! Use 'Gerar PDF Novamente' para atualizar o relatório.");
+    showToast("Salvo! Use 'Gerar PDF Novamente' para atualizar o relatório.");
     goTo("s-detalhe-vistoria");
   }catch(e){alert("Erro ao salvar: "+e.message);}
   finally{if(btn){btn.textContent="Salvar";btn.disabled=false;}}
@@ -4094,11 +4190,14 @@ window.editarVistoriaAtual=()=>{
   document.getElementById("er-rua").value=v.endereco&&v.endereco.rua||"";
   document.getElementById("er-num").value=v.endereco&&v.endereco.num||"";
   document.getElementById("er-comp").value=v.endereco&&v.endereco.comp||"";
+  document.getElementById("er-status").value=v.status||"concluida";
   document.getElementById("modal-editar-resp").style.display="flex";
 };
 
 window.salvarEdicaoResponsavel=async()=>{
   if(!vistoriaDetalheId)return;
+  const novoStatus=document.getElementById("er-status").value||"concluida";
+  const statusAntigo=vistoriaDetalheData&&vistoriaDetalheData.status||"concluida";
   const updates={
     "responsavel.nome":document.getElementById("er-nome").value.trim(),
     "responsavel.doc":document.getElementById("er-doc").value.trim(),
@@ -4106,12 +4205,20 @@ window.salvarEdicaoResponsavel=async()=>{
     "endereco.rua":document.getElementById("er-rua").value.trim(),
     "endereco.num":document.getElementById("er-num").value.trim(),
     "endereco.comp":document.getElementById("er-comp").value.trim(),
+    status:novoStatus
   };
+  // Se mudou DE "ausente" para qualquer outro status, a flag de pendente_retorno
+  // não faz mais sentido — zerar pra não aparecer mais na tela de pendentes.
+  if(statusAntigo==="ausente"&&novoStatus!=="ausente"){
+    updates.pendente_retorno=false;
+  }
   try{
     await updateDoc(doc(db,"vistorias",vistoriaDetalheId),updates);
     // Atualizar local
     vistoriaDetalheData.responsavel={nome:updates["responsavel.nome"],doc:updates["responsavel.doc"],tel:updates["responsavel.tel"]};
     vistoriaDetalheData.endereco={rua:updates["endereco.rua"],num:updates["endereco.num"],comp:updates["endereco.comp"]};
+    vistoriaDetalheData.status=novoStatus;
+    if(updates.pendente_retorno===false)vistoriaDetalheData.pendente_retorno=false;
     closeModal("modal-editar-resp");
     showToast("Dados atualizados!");
     abrirDetalheVistoria(vistoriaDetalheId,vistoriaDetalheData);
