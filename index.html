@@ -1930,11 +1930,19 @@ function renderEditorFotos(){
   order.forEach(amb=>{
     const fotos=grupos[amb];
     const sec=document.createElement("div");sec.className="card";
-    sec.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">'+amb+'</h2><button class="btn small" style="color:#007aff;border-color:#007aff" onclick="efAdicionarFoto(\''+amb+'\')">+ Foto</button></div>';
+    // Escapa aspas simples no nome do ambiente pra usar com segurança no onclick="..."
+    const ambEsc=amb.replace(/'/g,"\\'");
+    sec.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">'
+      +'<h2 style="margin:0">'+amb+'</h2>'
+      +'<div style="display:flex;gap:6px">'
+        +'<button class="btn small" style="color:#007aff;border-color:#007aff" onclick="efAdicionarFoto(\''+ambEsc+'\',\'Vista\')">+ Vista</button>'
+        +'<button class="btn small" style="color:#007aff;border-color:#007aff" onclick="efAdicionarFoto(\''+ambEsc+'\',\'Detalhe\')">+ Detalhe</button>'
+      +'</div>'
+    +'</div>';
     if(!fotos.length){
       const vazio=document.createElement("p");
       vazio.style.cssText="text-align:center;color:#aaa;font-size:13px;padding:14px 8px;margin:0";
-      vazio.textContent='Sem fotos ainda. Toque em "+ Foto" pra adicionar.';
+      vazio.textContent='Sem fotos ainda. Toque em "+ Vista" ou "+ Detalhe" pra adicionar.';
       sec.appendChild(vazio);
       c.appendChild(sec);
       return;
@@ -1963,9 +1971,12 @@ window.efExcluir=gi=>{
   renderEditorFotos();
 };
 
-window.efAdicionarFoto=amb=>{
+window.efAdicionarFoto=(amb,tipo)=>{
   _efCameraMode="adicionar";_efAmbienteAlvo=amb;_efSubstIdx=null;
-  fotoAtualAmbiente=amb;fotoAtualTipo="Detalhe";
+  fotoAtualAmbiente=amb;
+  // Tipo vem do botão clicado ("Vista" ou "Detalhe"). Default "Detalhe" se vier vazio
+  // (compatibilidade com chamadas antigas que não passavam o segundo argumento).
+  fotoAtualTipo=tipo||"Detalhe";
   abrirCamera(amb);
 };
 
