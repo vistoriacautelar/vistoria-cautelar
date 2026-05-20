@@ -2695,10 +2695,24 @@ async function detectarCameras(){
   return _camerasCache;
 }
 
-window.abrirCamera=async()=>{
-  const amb=document.getElementById("v-ambiente").value;if(!amb)return alert("Selecione o ambiente primeiro");
-  fotoAtualAmbiente=amb;fotoAtualTipo=document.getElementById("v-tipo-foto").value;
-  document.getElementById("cam-label").textContent=amb;document.getElementById("cam-tipo-badge").textContent=fotoAtualTipo;
+window.abrirCamera=async(ambParam)=>{
+  // Dois caminhos:
+  //  1) Editor de fotos: o chamador (efAdicionarFoto/efSubstituir) passa o ambiente como
+  //     parâmetro E já setou fotoAtualAmbiente/fotoAtualTipo. Não devemos ler do <select v-ambiente>
+  //     porque ele pertence à tela de Nova Vistoria e pode estar vazio.
+  //  2) Fluxo normal de Nova Vistoria: nenhum parâmetro — lê do <select>.
+  let amb;
+  if(ambParam){
+    amb=ambParam;
+    // fotoAtualAmbiente e fotoAtualTipo já vêm setados pelo chamador
+  }else{
+    amb=document.getElementById("v-ambiente").value;
+    if(!amb)return alert("Selecione o ambiente primeiro");
+    fotoAtualAmbiente=amb;
+    fotoAtualTipo=document.getElementById("v-tipo-foto").value;
+  }
+  document.getElementById("cam-label").textContent=amb;
+  document.getElementById("cam-tipo-badge").textContent=fotoAtualTipo||"";
   // Tentar fullscreen para esconder a barra do navegador (só funciona via gesto do usuário,
   // que é exatamente o que esse toque é). Se falhar, continua normal.
   try{
