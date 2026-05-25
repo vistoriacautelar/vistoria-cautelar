@@ -591,6 +591,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
     </div>
   </div>
 </div>
+
+<div id="modal-retomar-rascunho" class="modal-bg" style="display:none">
+  <div class="modal" style="text-align:center">
+    <h3 style="color:#1d4ed8">Vistoria em andamento</h3>
+    <p id="rascunho-info" style="font-size:14px;color:#555;margin:12px 0 20px"></p>
+    <p style="font-size:12px;color:#888;margin-bottom:20px">Encontramos uma vistoria que não foi finalizada (provavelmente o app foi recarregado). Você pode retomá-la de onde parou ou descartá-la.</p>
+    <div class="grid2">
+      <button class="btn" onclick="descartarRascunho()">Descartar</button>
+      <button class="btn primary" onclick="retomarRascunho()">Retomar</button>
+    </div>
+  </div>
+</div>
 <div id="modal-editar-resp" class="modal-bg" style="display:none" onclick="closeModalBg(event,'modal-editar-resp')">
   <div class="modal"><h3>Editar Dados</h3>
     <div class="field"><label>Nome</label><input type="text" id="er-nome"></div>
@@ -690,13 +702,24 @@ const LOGO_CONST="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgc
 
 import{initializeApp,deleteApp}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import{getAuth,signInWithEmailAndPassword,signOut,createUserWithEmailAndPassword,onAuthStateChanged,updatePassword,sendPasswordResetEmail}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import{getFirestore,collection,doc,setDoc,getDoc,getDocs,addDoc,query,where,orderBy,serverTimestamp,deleteDoc,updateDoc,runTransaction}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import{getFirestore,initializeFirestore,persistentLocalCache,persistentMultipleTabManager,collection,doc,setDoc,getDoc,getDocs,addDoc,query,where,orderBy,serverTimestamp,deleteDoc,updateDoc,runTransaction}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import{getStorage,ref as storageRef,uploadBytes,getDownloadURL,deleteObject}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
 
 const FC={apiKey:"AIzaSyAwwO2yLyNVnKMLFfmKKCx64zeh7Tbgrvc",authDomain:"vistoria-cautelar-71f6d.firebaseapp.com",projectId:"vistoria-cautelar-71f6d",storageBucket:"vistoria-cautelar-71f6d.firebasestorage.app",messagingSenderId:"157244396794",appId:"1:157244396794:web:c0b983583939e13e91a543"};
 const fbApp=initializeApp(FC);
 const auth=getAuth(fbApp);
-const db=getFirestore(fbApp);
+// Firestore com PERSISTÊNCIA OFFLINE: leituras/escritas são cacheadas localmente
+// (IndexedDB) e sincronizam sozinhas quando a conexão volta. persistentMultipleTabManager
+// evita conflito se o app estiver aberto em mais de uma aba. Se a inicialização com cache
+// falhar (navegador sem suporte, modo privado etc.), cai pro getFirestore padrão — o app
+// continua funcionando, só sem o cache offline do banco.
+let db;
+try{
+  db=initializeFirestore(fbApp,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})});
+}catch(e){
+  console.warn("[Firestore] persistência offline indisponível, usando modo padrão:",e);
+  db=getFirestore(fbApp);
+}
 const fbStorage=getStorage(fbApp);
 
 // AMBIENTES é uma lista dinâmica: começa com a base fixa, e recebe cômodos custom carregados
@@ -892,6 +915,94 @@ function localDB(){
     req.onerror=()=>rej(req.error);
   });
 }
+
+// ===== RASCUNHO DA VISTORIA EM ANDAMENTO (proteção contra reload/perda de fotos) =====
+// Reutiliza o MESMO objectStore (keyPath "vistoriaId") com uma chave fixa reservada.
+// A cada foto adicionada/removida, gravamos o estado completo aqui. Se a aba recarregar
+// (pressão de memória no iOS/Android, troca de rede, app indo pro background), o trabalho
+// é recuperado deste rascunho ao reabrir — em vez de evaporar com o objeto em memória.
+const DRAFT_KEY="__rascunho_ativo__";
+let _draftSalvando=false; // evita gravações concorrentes sobrepostas
+
+async function localSalvarRascunho(vistoria,fotos){
+  if(_draftSalvando)return false; // já tem uma gravação em curso; a próxima chamada cobre
+  _draftSalvando=true;
+  try{
+    const db=await localDB();
+    // Serializa só o necessário das fotos (dataUrl + metadados), igual ao que o
+    // finalizarVistoria já persiste, pra reconstrução fiel.
+    const fotosArr=Object.values(fotos||{}).map(f=>({
+      id:f.id,dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,
+      legenda:f.legenda,numero:f.numero,patologias:f.patologias||[],
+      combinacoes:f.combinacoes||[],timestamp:f.timestamp
+    }));
+    return await new Promise((res,rej)=>{
+      const tx=db.transaction(LOCAL_DB_STORE,"readwrite");
+      tx.objectStore(LOCAL_DB_STORE).put({
+        vistoriaId:DRAFT_KEY,
+        vistoria,           // metadados da vistoria (cliente, endereço, checklist etc.)
+        fotos:fotosArr,
+        savedAt:Date.now()
+      });
+      tx.oncomplete=()=>res(true);
+      tx.onerror=()=>rej(tx.error);
+    });
+  }catch(e){console.error("localSalvarRascunho:",e);return false;}
+  finally{_draftSalvando=false;}
+}
+
+async function localBuscarRascunho(){
+  try{
+    const db=await localDB();
+    return await new Promise((res,rej)=>{
+      const tx=db.transaction(LOCAL_DB_STORE,"readonly");
+      const req=tx.objectStore(LOCAL_DB_STORE).get(DRAFT_KEY);
+      req.onsuccess=()=>res(req.result||null);
+      req.onerror=()=>rej(req.error);
+    });
+  }catch(e){console.error("localBuscarRascunho:",e);return null;}
+}
+
+async function localApagarRascunho(){
+  try{
+    const db=await localDB();
+    return await new Promise((res,rej)=>{
+      const tx=db.transaction(LOCAL_DB_STORE,"readwrite");
+      tx.objectStore(LOCAL_DB_STORE).delete(DRAFT_KEY);
+      tx.oncomplete=()=>res(true);
+      tx.onerror=()=>rej(tx.error);
+    });
+  }catch(e){console.error("localApagarRascunho:",e);return false;}
+}
+
+// Salva rascunho com pequeno debounce: chamadas em rajada (várias fotos rápidas)
+// viram uma só gravação, sem travar a UI.
+let _draftTimer=null;
+function agendarSalvarRascunho(){
+  if(typeof currentVistoria==="undefined"||!currentVistoria)return;
+  if(currentVistoria.status&&currentVistoria.status!=="em_andamento")return;
+  clearTimeout(_draftTimer);
+  _draftTimer=setTimeout(()=>{
+    try{localSalvarRascunho(currentVistoria,fotosPendentes);}catch(e){console.warn("agendarSalvarRascunho:",e);}
+  },400);
+}
+
+// REDE DE SEGURANÇA: quando o app vai pro background (trocar de app, abrir a câmera,
+// tela bloqueia), o iOS/Android pode descartar a aba a qualquer momento. Aqui forçamos
+// uma gravação IMEDIATA do rascunho (sem esperar o debounce), garantindo que a última
+// foto não se perca se a aba for morta antes do timer de 400ms disparar.
+function salvarRascunhoImediato(){
+  try{
+    if(typeof currentVistoria==="undefined"||!currentVistoria)return;
+    if(currentVistoria.status&&currentVistoria.status!=="em_andamento")return;
+    if(!fotosPendentes||!Object.keys(fotosPendentes).length)return;
+    clearTimeout(_draftTimer);
+    localSalvarRascunho(currentVistoria,fotosPendentes);
+  }catch(e){console.warn("salvarRascunhoImediato:",e);}
+}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")salvarRascunhoImediato();});
+window.addEventListener("pagehide",salvarRascunhoImediato);
+
 async function localSalvarFotos(vistoriaId,fotos){
   try{
     const db=await localDB();
@@ -932,7 +1043,7 @@ async function localListarIds(){
     return new Promise((res,rej)=>{
       const tx=db.transaction(LOCAL_DB_STORE,"readonly");
       const req=tx.objectStore(LOCAL_DB_STORE).getAllKeys();
-      req.onsuccess=()=>res(req.result||[]);
+      req.onsuccess=()=>res((req.result||[]).filter(k=>k!==DRAFT_KEY));
       req.onerror=()=>rej(req.error);
     });
   }catch(e){console.error("localListarIds:",e);return[];}
@@ -1060,8 +1171,37 @@ onAuthStateChanged(auth,async user=>{
       loadPrestadorDefault(),
       loadAmbientesCustom()
     ]);
-    if(snapUser.exists()){currentUserData=snapUser.data();currentRole=currentUserData.role;assinaturaTecnico=currentUserData.assinatura||null;}
-    else{currentRole="master";currentUserData={nome:"Admin",email:user.email,role:"master"};await setDoc(doc(db,"users",user.uid),{...currentUserData,criadoEm:serverTimestamp()});}
+    if(snapUser.exists()){
+      currentUserData=snapUser.data();currentRole=currentUserData.role;assinaturaTecnico=currentUserData.assinatura||null;
+    } else {
+      // Doc do usuário não existe. Dois cenários:
+      //  (a) FUNDADOR: é o primeiríssimo acesso do sistema (coleção users vazia) → vira master.
+      //  (b) CONTA ÓRFÃ: a conta existe no Auth mas perdeu o doc no Firestore (bug antigo de
+      //      cadastro, onde o Auth era criado mas o setDoc falhava). NÃO deve virar master —
+      //      recria o doc como "cadastrador" pra destravar o uso (gerar PDF etc.).
+      let ehFundador=false;
+      try{
+        const todosUsers=await getDocs(collection(db,"users"));
+        ehFundador=todosUsers.empty;
+      }catch(_){ehFundador=false;}
+      if(ehFundador){
+        currentRole="master";
+        currentUserData={nome:"Admin",email:user.email,role:"master"};
+        try{await setDoc(doc(db,"users",user.uid),{...currentUserData,criadoEm:serverTimestamp()});}
+        catch(e){console.error("Falha ao criar doc do fundador:",e);}
+      }else{
+        // Self-bootstrap como cadastrador (permitido pelas regras). Recupera a conta órfã.
+        currentRole="cadastrador";
+        currentUserData={nome:user.displayName||user.email||"Usuário",email:user.email,role:"cadastrador"};
+        try{
+          await setDoc(doc(db,"users",user.uid),{...currentUserData,criadoEm:serverTimestamp(),autoRecuperado:true});
+          assinaturaTecnico=null;
+        }catch(e){
+          console.error("Falha no self-bootstrap do usuário:",e);
+          alert("Sua conta está sem perfil cadastrado e não foi possível recuperá-la automaticamente. Peça ao administrador (Master) para recriar seu usuário em Usuários.");
+        }
+      }
+    }
     // Solicita persistência do storage em BACKGROUND (sem await — não bloqueia login)
     if(navigator.storage&&navigator.storage.persist){
       navigator.storage.persisted().then(persisted=>{
@@ -1075,6 +1215,7 @@ onAuthStateChanged(auth,async user=>{
       if(saved)ultimoResponsavel=JSON.parse(saved);
     }catch(e){}
     goTo("s-dash");
+    verificarRascunho(); // oferece retomar vistoria não finalizada (recuperação pós-reload)
   }else{goTo("s-login");}
 });
 
@@ -2260,9 +2401,74 @@ window.abrirRetorno=async(id,v)=>{
   goTo("s-vistoria");renderFotos();
 };
 
-window.togglePendenteRetorno=v=>{
-  const el=document.getElementById("field-pendente-retorno");
-  if(el)el.style.display=v==="ausente"?"block":"none";
+// ===== RETOMADA DE RASCUNHO (recuperação após reload no meio da vistoria) =====
+let _rascunhoPendente=null; // segura o rascunho detectado até o usuário decidir
+
+// Chamada após o login: se houver rascunho de uma vistoria não finalizada, mostra o modal.
+async function verificarRascunho(){
+  try{
+    const r=await localBuscarRascunho();
+    if(!r||!r.vistoria)return;
+    const numFotos=(r.fotos||[]).length;
+    // Só faz sentido oferecer retomada se havia conteúdo de fato.
+    if(numFotos===0&&!(r.vistoria.checklist&&Object.keys(r.vistoria.checklist).length))
+      {await localApagarRascunho();return;}
+    _rascunhoPendente=r;
+    const v=r.vistoria;
+    const nome=(v.responsavel&&v.responsavel.nome)||"Morador não identificado";
+    const quando=r.savedAt?new Date(r.savedAt).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"";
+    document.getElementById("rascunho-info").innerHTML=
+      "<b>"+nome+"</b><br>"+numFotos+" foto"+(numFotos===1?"":"s")+" salva"+(numFotos===1?"":"s")
+      +(quando?"<br><span style='font-size:12px;color:#aaa'>Último salvamento: "+quando+"</span>":"");
+    showModal("modal-retomar-rascunho");
+  }catch(e){console.warn("verificarRascunho:",e);}
+}
+
+window.retomarRascunho=()=>{
+  closeModal("modal-retomar-rascunho");
+  const r=_rascunhoPendente;
+  if(!r||!r.vistoria){return;}
+  const v=r.vistoria;
+  currentVistoria={...v}; // restaura metadados (cliente, endereço, checklist, status etc.)
+  // Reconstrói fotosPendentes preservando os IDs originais (mantém numeração/ordem)
+  fotosPendentes={};
+  (r.fotos||[]).forEach((f,i)=>{
+    const fid=f.id||("d"+i+"_"+Date.now());
+    fotosPendentes[fid]={
+      id:fid,dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,
+      legenda:f.legenda||f.tipo,
+      numero:f.numero||("Foto "+String(i+1).padStart(2,"0")),
+      patologias:f.patologias||[],combinacoes:f.combinacoes||[],
+      timestamp:f.timestamp
+    };
+  });
+  ambientesExtras=v.ambientesExtras||[];
+  // Reconstrói a UI da tela de vistoria (espelha criarVistoria/abrirRetorno)
+  const nome=(v.responsavel&&v.responsavel.nome)||"";
+  document.getElementById("v-titulo").textContent=nome?nome.split(" ")[0]:"Vistoria";
+  const tipoLaudo=v.tipoLaudo||"completo";
+  const badgeTipo=tipoLaudo==="completo"?'<span class="badge laudo" style="display:inline-block;margin-bottom:4px">Laudo Completo</span><br>':'';
+  const nomeHtml=nome?("<b>"+nome+"</b>"):'<span style="color:#888;font-style:italic">Morador não identificado</span>';
+  const enderecoTxt=(v.endereco&&v.endereco.rua||"")+", "+(v.endereco&&v.endereco.num||"")+(v.endereco&&v.endereco.comp?" - "+v.endereco.comp:"");
+  document.getElementById("v-info").innerHTML=[
+    badgeTipo+nomeHtml,
+    v.responsavel&&v.responsavel.doc?"Doc: "+v.responsavel.doc:"",
+    v.responsavel&&v.responsavel.tel?"Tel: "+v.responsavel.tel:"",
+    enderecoTxt,
+    "<span style='color:#1d4ed8;font-size:12px;font-weight:600'>↻ Retomada após recarregamento</span>"
+  ].filter(Boolean).join("<br>");
+  popularSeletorAmbiente(document.getElementById("v-ambiente"));
+  const obsEl=document.getElementById("v-obs");if(obsEl)obsEl.value=v.observacoes||"";
+  _rascunhoPendente=null;
+  goTo("s-vistoria");renderFotos();
+  showToast("Vistoria retomada — "+Object.keys(fotosPendentes).length+" foto(s) recuperada(s)",3500);
+};
+
+window.descartarRascunho=async()=>{
+  closeModal("modal-retomar-rascunho");
+  _rascunhoPendente=null;
+  await localApagarRascunho();
+  showToast("Rascunho descartado",2500);
 };
 
 window.togglePendenteRetorno=v=>{
@@ -2405,6 +2611,7 @@ window.criarVistoria=async()=>{
   // anterior. Crítico após "Gerar PDF Novamente" ou banner pós-finalização — caminhos onde
   // _bkFotosPendentes do regeRarPDF poderia ter deixado lixo se houvesse erro.
   fotosPendentes={};assinaturaData=null;ambientesExtras=[];
+  localApagarRascunho(); // nova vistoria começa limpa; descarta rascunho anterior
   fotoAtualBlob=null;fotoAtualTipo=null;fotoAtualAmbiente=null;
   arrowImage=null;arrowPoints=[];
   _fotoSetasAcumuladas=[];_fotoOriginalBlob=null;
@@ -2482,7 +2689,7 @@ function renderFotos(){
     s.appendChild(gd);c.appendChild(s);
   });
 }
-window.removerFoto=id=>{delete fotosPendentes[id];renderFotos();};
+window.removerFoto=id=>{delete fotosPendentes[id];renderFotos();agendarSalvarRascunho();};
 
 // ===== DIAGNÓSTICO TEMPORÁRIO: baixa o JPEG bruto do fotosPendentes sem nenhuma alteração =====
 // Usado pra inspeção do EXIF e dimensões físicas reais que saem da câmera + canvas em cada navegador.
@@ -3927,6 +4134,7 @@ function salvarFotoFinal(dataUrl,patologias,combinacoes){
       patologias.forEach(p=>{const arr=currentVistoria.checklist[fotoAtualAmbiente][p.col]||[];if(!arr.includes(p.pat))arr.push(p.pat);currentVistoria.checklist[fotoAtualAmbiente][p.col]=arr;});
     }
     renderFotos();showToast("Foto "+String(num).padStart(2,"0")+" salva!");
+    agendarSalvarRascunho(); // protege contra reload: persiste estado da vistoria
   });
 }
 
@@ -5059,29 +5267,14 @@ window.finalizarVistoria=async()=>{
     // Salvar Firebase (sem fotos — fotos vão para IndexedDB local-only) + download
     // OBS: assinaturaResp gravada no Firestore (necessária para regerar comprovante depois).
     const vDoc={clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,coletorNome:currentVistoria.coletorNome,responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,ocupacao:currentVistoria.ocupacao,tipo:currentVistoria.tipo,tipoLaudo:currentVistoria.tipoLaudo||"simplificado",estado:currentVistoria.estado,idade:currentVistoria.idade,data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,userId:currentUser.uid,checklist:currentVistoria.checklist,ambientesExtras:ambientesExtras||[],observacoes:currentVistoria.observacoes,totalFotos:Object.keys(fotosPendentes).length,status:currentVistoria.statusVistoria||"concluida",pendente_retorno:isPendente,visitas:currentVistoria.visitas||1,criadoEm:serverTimestamp(),assinaturaResp:assinaturaData||null};
-    let vRef;
-    // RETOMADA DE PENDENTE: se a vistoria veio de um pendente_retorno (currentVistoria._retornoId),
-    // atualizamos o doc original em vez de criar um novo. Isso preserva o histórico de visitas.
-    if(currentVistoria._retornoId){
-      const docRef=doc(db,"vistorias",currentVistoria._retornoId);
-      // Não sobrescrever criadoEm
-      const{criadoEm,...vDocUpd}=vDoc;
-      vDocUpd.atualizadoEm=serverTimestamp();
-      await updateDoc(docRef,vDocUpd);
-      vRef={id:currentVistoria._retornoId};
-    } else {
-      vRef=await addDoc(collection(db,"vistorias"),vDoc);
-    }
-    // Salvar fotos local-only (IndexedDB) usando o ID gerado pelo Firestore.
-    // Usa o _backupFotos (qualidade original, antes da recompressão para PDF) para que
-    // a edição posterior tenha fotos com boa qualidade. Aplica a mesma numeração/ordem
-    // que foi usada no PDF (já alinhada acima quando atualizamos _backupFotos).
-    try{
-      const fonteFotos=(_backupFotos&&Object.keys(_backupFotos).length)?_backupFotos:fotosPendentes;
-      const fotosLocais=Object.values(fonteFotos).map(f=>({dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,legenda:f.legenda||f.tipo,numero:f.numero,combinacoes:f.combinacoes||[]}));
-      await localSalvarFotos(vRef.id,fotosLocais);
-    }catch(eLocal){console.error("Falha ao salvar fotos local-only:",eLocal);}
-
+    // (A gravação no Firestore foi movida para DEPOIS da geração do PDF — ver abaixo.)
+    // ============================================================================
+    // ORDEM CRÍTICA: gerar o PDF (e ZIP) ANTES de qualquer escrita no Firestore.
+    // Se a gravação no Firestore falhar (ex.: erro de permissão), o cadastrador
+    // JÁ TEM o PDF e o ZIP no celular pra enviar manualmente — não perde o trabalho.
+    // A persistência (Firestore + IndexedDB) acontece DEPOIS, e suas falhas não
+    // impedem o PDF: são tratadas como avisos, não como erro fatal.
+    // ============================================================================
     const dataArq=currentVistoria.data.replace(/\//g,"-");
     const endArq=(currentVistoria.endereco.rua+" "+currentVistoria.endereco.num+(currentVistoria.endereco.comp?" "+currentVistoria.endereco.comp:"")).replace(/[^a-zA-Z0-9\s]/g,"").trim().replace(/\s+/g,"_");
     const colArq=currentVistoria.coletorNome.replace(/[^a-zA-Z0-9\s]/g,"").trim().replace(/\s+/g,"_");
@@ -5110,6 +5303,51 @@ window.finalizarVistoria=async()=>{
         showToast("Fotos salvas com sucesso!",3000);
       }catch(e){console.error("ZIP:",e);}
     }
+
+    // ===== AGORA SIM: persistência. Falhas aqui NÃO impedem o PDF (que já saiu). =====
+    setStatus("Salvando...");
+    let vRef=null;
+    let erroPersistencia=null;
+    try{
+      // RETOMADA DE PENDENTE: se a vistoria veio de um pendente_retorno, atualiza o doc
+      // original em vez de criar um novo. Isso preserva o histórico de visitas.
+      if(currentVistoria._retornoId){
+        const docRef=doc(db,"vistorias",currentVistoria._retornoId);
+        const{criadoEm,...vDocUpd}=vDoc;
+        vDocUpd.atualizadoEm=serverTimestamp();
+        await updateDoc(docRef,vDocUpd);
+        vRef={id:currentVistoria._retornoId};
+      } else {
+        vRef=await addDoc(collection(db,"vistorias"),vDoc);
+      }
+    }catch(ePersist){
+      console.error("Falha ao gravar vistoria no Firestore:",ePersist);
+      erroPersistencia=ePersist;
+    }
+
+    // Salvar fotos local-only (IndexedDB) — só se conseguimos um ID. Usa _backupFotos
+    // (qualidade original) com a mesma numeração/ordem do PDF.
+    if(vRef&&vRef.id){
+      try{
+        const fonteFotos=(_backupFotos&&Object.keys(_backupFotos).length)?_backupFotos:fotosPendentes;
+        const fotosLocais=Object.values(fonteFotos).map(f=>({dataUrl:f.dataUrl,ambiente:f.ambiente,tipo:f.tipo,legenda:f.legenda||f.tipo,numero:f.numero,combinacoes:f.combinacoes||[]}));
+        await localSalvarFotos(vRef.id,fotosLocais);
+      }catch(eLocal){console.error("Falha ao salvar fotos local-only:",eLocal);}
+    }
+
+    // Se a gravação no Firestore falhou, avisa MAS não perde o trabalho: o PDF e o ZIP
+    // já foram baixados, e a sessão é mantida pra nova tentativa de salvar.
+    if(erroPersistencia){
+      const msgPerm=(erroPersistencia.code==="permission-denied"||/insufficient permissions/i.test(erroPersistencia.message||""))
+        ?"\n\n⚠️ Seu usuário está sem permissão para salvar no servidor. O PDF e as fotos JÁ foram baixados no celular — guarde-os. Avise o administrador para verificar seu cadastro (peça para sair e entrar novamente no app)."
+        :"\n\nO PDF e as fotos já foram baixados no celular. Tente finalizar novamente para salvar no servidor.";
+      // Mantém a sessão viva pra nova tentativa
+      if(_backupVistoria)currentVistoria=_backupVistoria;
+      if(_backupFotos)fotosPendentes=_backupFotos;
+      alert("PDF gerado com sucesso e baixado no celular!"+msgPerm);
+      return; // sai sem limpar a sessão; o finally reabilita o botão
+    }
+
     // === COMPROVANTE: NÃO é mais gerado automaticamente. O cadastrador pode
     // acionar manualmente pelo botão "Enviar Comprovante" no histórico (s-detalhe-vistoria).
     // Isso evita o travamento que acontecia no fim da finalização ao tentar fazer upload
@@ -5126,11 +5364,12 @@ window.finalizarVistoria=async()=>{
     // Os dados ficam guardados num objeto temporário (window._ultimaVistoriaFinalizada) que
     // a tela de Finalização mostra como banner de sucesso com botões de ação.
     window._ultimaVistoriaFinalizada={
-      id:vRef.id,
-      data:{...vDoc,id:vRef.id},
+      id:(vRef&&vRef.id)||null,
+      data:{...vDoc,id:(vRef&&vRef.id)||null},
       criadoEmTs:Date.now()
     };
     currentVistoria=null;fotosPendentes={};assinaturaData=null;ambientesExtras=[];
+    localApagarRascunho(); // vistoria finalizada: rascunho não é mais necessário
     // Recarrega a tela de Finalização para mostrar o estado de sucesso com botões
     renderFinalizacao();
   }catch(e){
@@ -5212,6 +5451,7 @@ window.marcarAusentePassivelRetorno=async()=>{
     showToast("Ausente registrado! Disponível em \"Ausentes Pendentes\" para retorno.",4500);
     // Limpar estado e voltar
     currentVistoria=null;fotosPendentes={};assinaturaData=null;ambientesExtras=[];
+    localApagarRascunho(); // ausente registrado e persistido: descarta rascunho
     goTo("s-pendentes");
   }catch(e){
     console.error("marcarAusentePassivelRetorno:",e);
