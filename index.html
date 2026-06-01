@@ -4212,7 +4212,14 @@ function renderFinalizacao(){
   if(blocosNormais)blocosNormais.style.display="block";
   if(btnBack)btnBack.setAttribute("onclick","goTo('s-vistoria')");
   // Limpar campos da vistoria anterior e aplicar defaults
-  const defaults={"fin-idade":"","fin-estado":"Regular","fin-status-vistoria":"concluida","fin-pendente":""};
+  // Se a vistoria foi iniciada pelo botão "Iniciar como Ausente — Passível de Retorno",
+  // o default da tela de Finalização já vem com status=ausente + pendente=sim. O togglePendente
+  // que roda em seguida cuida de esconder os cards de assinatura e o botão de PDF, deixando
+  // só o botão laranja "Ausente — Passível de Retorno". Caso contrário, defaults normais.
+  const ehModoAusente=currentVistoria&&currentVistoria._modoAusente;
+  const defaults=ehModoAusente
+    ?{"fin-idade":"","fin-estado":"Regular","fin-status-vistoria":"ausente","fin-pendente":"sim"}
+    :{"fin-idade":"","fin-estado":"Regular","fin-status-vistoria":"concluida","fin-pendente":""};
   Object.entries(defaults).forEach(([id,val])=>{
     const el=document.getElementById(id);
     if(el)el.value=val;
