@@ -5760,25 +5760,36 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
   pdf.line(ML+CW*(9.3/12),lY5,ML+CW*(9.3/12),lY6);
   pdf.line(ML,lY6,ML+CW,lY6);
 
-  // === R8: Coletor | Estado de Conservação | Idade Aparente ===
+  // === R8: Coletor | Ocupação | Estado de Conservação | Idade Aparente ===
+  // 4 células: divisores em 3/12, 6/12 e 9.5/12 da largura. O label "Estado de Conservação"
+  // é longo (24 chars), por isso a célula dele tem 3.5/12 enquanto Coletor e Ocupação ficam com 3/12.
   const colL="Coletor:  ";
   pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
   pdf.text(colL,ML+1.5,cy(lY6,h8));
   pdf.setFont("helvetica","normal");pdf.text(v.coletorNome||"",ML+1.5+pdf.getTextWidth(colL),cy(lY6,h8));
+  // Tipo de Ocupação — célula 2
+  if(v.ocupacao){
+    const ocupL="Ocupação:  ";
+    pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
+    pdf.text(ocupL,ML+CW*(3/12)+1.5,cy(lY6,h8));
+    pdf.setFont("helvetica","normal");
+    pdf.text(v.ocupacao,ML+CW*(3/12)+1.5+pdf.getTextWidth(ocupL),cy(lY6,h8));
+    pdf.setLineWidth(0.2);pdf.line(ML+CW*(3/12),lY6,ML+CW*(3/12),lY7);
+  }
   if(v.estado){
     const estL="Estado de Conservação:  ";
     pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
-    pdf.text(estL,ML+CW*(3.5/12)+1.5,cy(lY6,h8));
+    pdf.text(estL,ML+CW*(6/12)+1.5,cy(lY6,h8));
     pdf.setFont("helvetica","normal");
-    pdf.text(" "+v.estado,ML+CW*(3.5/12)+1.5+pdf.getTextWidth(estL),cy(lY6,h8));
-    pdf.setLineWidth(0.2);pdf.line(ML+CW*(3.5/12),lY6,ML+CW*(3.5/12),lY7);
+    pdf.text(" "+v.estado,ML+CW*(6/12)+1.5+pdf.getTextWidth(estL),cy(lY6,h8));
+    pdf.setLineWidth(0.2);pdf.line(ML+CW*(6/12),lY6,ML+CW*(6/12),lY7);
     if(v.idade){
       const idL="Idade Aparente:  ";
       pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
-      pdf.text(idL,ML+CW*(8.5/12)+1.5,cy(lY6,h8));
+      pdf.text(idL,ML+CW*(9.5/12)+1.5,cy(lY6,h8));
       pdf.setFont("helvetica","normal");
-      pdf.text(" "+v.idade+" anos",ML+CW*(8.5/12)+1.5+pdf.getTextWidth(idL),cy(lY6,h8));
-      pdf.setLineWidth(0.2);pdf.line(ML+CW*(8.5/12),lY6,ML+CW*(8.5/12),lY7);
+      pdf.text(" "+v.idade+" anos",ML+CW*(9.5/12)+1.5+pdf.getTextWidth(idL),cy(lY6,h8));
+      pdf.setLineWidth(0.2);pdf.line(ML+CW*(9.5/12),lY6,ML+CW*(9.5/12),lY7);
     }
   }
   pdf.setLineWidth(0.3);pdf.line(ML,lY7,ML+CW,lY7);
