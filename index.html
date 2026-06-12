@@ -1170,13 +1170,14 @@ onAuthStateChanged(auth,async user=>{
       return;
     }
     currentUser=user;
-    // Paraleliza as 3 chamadas Firestore: user data + prestador default + ambientes custom.
-    // Antes era sequencial (3 requests em série = lento). Agora dispara as 3 em paralelo.
-    const[snapUser]=await Promise.all([
-      getDoc(doc(db,"users",user.uid)),
-      loadPrestadorDefault(),
-      loadAmbientesCustom()
-    ]);
+    // OTIMIZAÇÃO DE LOGIN: bloqueia APENAS no que é crítico pra exibir o dashboard.
+    // O getDoc do user é obrigatório (define o papel — master vs cadastrador, e isso muda a UI).
+    // Já loadPrestadorDefault() e loadAmbientesCustom() são usados só DEPOIS, quando o cadastrador
+    // entra em "Nova Vistoria". Disparamos em background — chegam enquanto o usuário olha o dash.
+    const snapUser=await getDoc(doc(db,"users",user.uid));
+    // Background: carrega prestador padrão e ambientes custom sem bloquear o login
+    loadPrestadorDefault().catch(e=>console.warn("loadPrestadorDefault bg:",e));
+    loadAmbientesCustom().catch(e=>console.warn("loadAmbientesCustom bg:",e));
     if(snapUser.exists()){
       currentUserData=snapUser.data();currentRole=currentUserData.role;assinaturaTecnico=currentUserData.assinatura||null;
     } else {
@@ -2420,11 +2421,20 @@ async function loadPendentes(){
     if(currentRole==="cadastrador"||(currentRole==="master"&&_pendModoMaster==="meus")){
       filtros.push(where("userId","==",currentUser.uid));
     }
-    filtros.push(orderBy("criadoEm","desc"));
+    // OBS: orderBy("criadoEm","desc") era aplicado aqui, mas combinado com 2 where
+    // (pendente_retorno + userId) exige um índice composto no Firestore. Em vez de
+    // exigir esse índice, ordenamos no cliente após buscar — listas de pendentes
+    // tipicamente têm dezenas de itens, então o custo é insignificante.
     const q=query(collection(db,"vistorias"),...filtros);
     const snap=await getDocs(q);
     if(snap.size===0){
-      el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhum ausente pendente</p>';return;
+      // Mensagem específica conforme o papel: cadastrador vê só as próprias, então
+      // se está vazio significa "você não tem nenhuma pendente" (situação boa).
+      const ehProprias=currentRole==="cadastrador"||(currentRole==="master"&&_pendModoMaster==="meus");
+      const msg=ehProprias
+        ? "Você não tem vistorias pendentes de retorno"
+        : "Nenhum ausente pendente";
+      el.innerHTML='<div style="text-align:center;padding:48px 24px;color:#9ca3af"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="margin-bottom:12px;opacity:0.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><p style="font-size:14px;margin:0">'+msg+'</p></div>';return;
     }
     // Coleta as vistorias e os IDs de usuários/clientes/coletores únicos
     const vistorias=[];
@@ -2434,6 +2444,12 @@ async function loadPendentes(){
       if(v.userId)userIds.add(v.userId);
       if(v.clienteId)clienteIds.add(v.clienteId);
       if(v.coletorId)coletorIds.add(v.coletorId);
+    });
+    // Ordena no cliente: mais recente primeiro (compensa a remoção do orderBy do Firestore)
+    vistorias.sort((a,b)=>{
+      const ta=(a.criadoEm&&a.criadoEm.seconds)||0;
+      const tb=(b.criadoEm&&b.criadoEm.seconds)||0;
+      return tb-ta;
     });
     // Resolve nomes em paralelo (somente os IDs realmente usados nesta lista)
     const [usersMap,clientesMap,coletoresMap]=await Promise.all([
