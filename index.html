@@ -4466,6 +4466,8 @@ let _histSelecionadas=new Set();
 window.histToggleSelecao=(ativar)=>{
   _histModoSelecao=!!ativar;
   _histSelecionadas.clear();
+  // Ao entrar/sair do modo seleção, descarta posição salva (UI muda completamente)
+  _histScrollY=0;
   document.getElementById("hist-btn-selecionar").style.display=ativar?"none":"inline-block";
   document.getElementById("hist-btn-cancelar").style.display=ativar?"inline-block":"none";
   document.getElementById("hist-bulk-bar").style.display=ativar?"flex":"none";
@@ -4474,11 +4476,22 @@ window.histToggleSelecao=(ativar)=>{
 };
 
 window.histSelecionarTodas=()=>{
-  document.querySelectorAll("#lista-historico input.hist-check").forEach(cb=>{
-    cb.checked=true;
-    _histSelecionadas.add(cb.dataset.id);
-  });
-  _histAtualizarBulkBar();
+  // Em modo agrupado, "Selecionar Todas" pode pegar itens que ainda não estão renderizados
+  // dentro de grupos recolhidos. Vou refazer a query para garantir que pega tudo.
+  // Estratégia simples e segura: marcar todos os checkboxes visíveis e somar IDs dos
+  // checkboxes-de-dia (cada um conhece os IDs do dia inteiro via data-grp-id).
+  // Mais robusto: refaz a busca dos IDs como em loadHistorico, mas sem renderizar.
+  (async()=>{
+    try{
+      const q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));
+      const snap=await getDocs(q);
+      snap.forEach(d=>_histSelecionadas.add(d.id));
+      // Reflete nos checkboxes visíveis
+      document.querySelectorAll("#lista-historico input.hist-check").forEach(cb=>cb.checked=true);
+      document.querySelectorAll("#lista-historico input.hist-check-dia").forEach(cb=>cb.checked=true);
+      _histAtualizarBulkBar();
+    }catch(e){console.error("histSelecionarTodas:",e);}
+  })();
 };
 
 window._histAtualizarBulkBar=()=>{
@@ -4514,41 +4527,208 @@ window.excluirSelecionadas=async()=>{
   histToggleSelecao(false);
 };
 
+// Estado preservado entre navegações: quais grupos estão expandidos e o scroll.
+// Limpo só quando o modo de seleção é ativado (porque a UI muda completamente).
+let _histGruposAbertos=new Set();
+let _histScrollY=0;
+
 async function loadHistorico(){
-  const el=document.getElementById("lista-historico");el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Carregando...</p>';
+  const el=document.getElementById("lista-historico");
+  el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Carregando...</p>';
   try{
     const q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));
-    const snap=await getDocs(q);el.innerHTML="";
-    if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhuma vistoria</p>';return;}
+    // OBS: query original buscava só do próprio user (cadastrador) — mesmo para Master.
+    // Mantive esse comportamento porque a tela se chama "Minhas vistorias". Master que
+    // queira ver as de outros usa o relatório/dashboard. (Confirmar com Thamyres se mudar.)
+    const snap=await getDocs(q);
+    if(snap.size===0){
+      el.innerHTML='<div style="text-align:center;padding:48px 24px;color:#9ca3af"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="margin-bottom:12px;opacity:0.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg><p style="font-size:14px;margin:0">Nenhuma vistoria registrada</p></div>';
+      return;
+    }
     const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));
     docs.sort((a,b)=>(b.criadoEm&&b.criadoEm.seconds||0)-(a.criadoEm&&a.criadoEm.seconds||0));
+
+    // Resolve nomes de usuário (só pra Master — cadastrador vê só as próprias)
+    let usersMap={};
+    if(currentRole==="master"){
+      const userIds=new Set();
+      docs.forEach(v=>{if(v.userId)userIds.add(v.userId);});
+      usersMap=await _resolverNomes("users",[...userIds],d=>d.nome||d.email||"--");
+    }
+
+    el.innerHTML="";
+    // Hierarquia:
+    //   Master:     Data → Usuário → Cliente → [vistorias]
+    //   Cadastrador: Data → Cliente → [vistorias]   (sem nível Usuário — é sempre ele)
+    const arvore={};
     docs.forEach(v=>{
-      const div=document.createElement("div");div.className="list-item";div.style.cursor="pointer";
-      const tipoBadge=v.tipoLaudo==="completo"?'<span class="badge laudo" style="margin-right:6px">Completo</span>':'';
-      const corpoItem='<div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></div><div class="info"><div class="title">'+(v.responsavel&&v.responsavel.nome||"--")+'</div><div class="sub">'+(v.endereco&&v.endereco.rua||"")+" "+( v.endereco&&v.endereco.num||"")+" | "+(v.totalFotos||0)+" fotos | "+(v.data||"")+'</div></div><div class="hist-actions">'+tipoBadge+'<span class="badge '+({concluida:"ok",parcial:"cad",externa:"cad",recusa:"master",ausente:"com"}[v.status]||"ok")+'">'+({"concluida":"Finalizado","parcial":"Parcial","externa":"Externa","recusa":"Recusa","ausente":"Ausente"}[v.status]||"Finalizado")+"</span></div>";
-      if(_histModoSelecao){
-        const isChecked=_histSelecionadas.has(v.id);
-        div.innerHTML='<input type="checkbox" class="hist-check" data-id="'+v.id+'" '+(isChecked?"checked":"")+' style="width:20px;height:20px;margin-right:6px;flex-shrink:0;accent-color:#dc2626">'+corpoItem;
-        const cb=div.querySelector("input.hist-check");
-        const toggle=()=>{
-          if(cb.checked)_histSelecionadas.add(v.id);
-          else _histSelecionadas.delete(v.id);
-          _histAtualizarBulkBar();
-        };
-        cb.addEventListener("change",toggle);
-        // Clicar no item inteiro também alterna o checkbox
-        div.onclick=(e)=>{
-          if(e.target===cb)return; // já tratado pelo change
-          cb.checked=!cb.checked;
-          toggle();
-        };
-      } else {
-        div.innerHTML=corpoItem;
-        div.onclick=()=>abrirDetalheVistoria(v.id,v);
+      const dataKey=_dataChave(v.criadoEm);
+      const userKey=usersMap[v.userId]||"(sem usuário)";
+      const cliKey=v.clienteNome||"(sem cliente)";
+      arvore[dataKey]=arvore[dataKey]||{};
+      if(currentRole==="master"){
+        arvore[dataKey][userKey]=arvore[dataKey][userKey]||{};
+        arvore[dataKey][userKey][cliKey]=arvore[dataKey][userKey][cliKey]||[];
+        arvore[dataKey][userKey][cliKey].push(v);
+      }else{
+        arvore[dataKey][cliKey]=arvore[dataKey][cliKey]||[];
+        arvore[dataKey][cliKey].push(v);
       }
-      el.appendChild(div);
     });
-  }catch(e){el.innerHTML='<p style="text-align:center;color:#dc2626;padding:24px">Erro: '+e.message+"</p>";}
+
+    // Render: datas ordenadas decrescente (mais recente primeiro)
+    Object.keys(arvore).sort((a,b)=>_dataChaveSort(b)-_dataChaveSort(a)).forEach(dataKey=>{
+      const noData=arvore[dataKey];
+      const totalDia=_contarFolhas(noData);
+      const idDia="hist-d-"+dataKey;
+      const grpData=document.createElement("div");grpData.style.marginBottom="8px";
+      grpData.innerHTML=_histCabecalho(idDia,dataKey,totalDia,"#1d4ed8","15",true,_histModoSelecao);
+      const corpoData=document.createElement("div");
+      corpoData.style.display=_histGruposAbertos.has(idDia)?"block":"none";
+      corpoData.style.paddingLeft="12px";
+
+      const renderClientes=(nivelPai,corpo)=>{
+        Object.keys(nivelPai).sort((a,b)=>a.localeCompare(b,"pt-BR")).forEach(cliKey=>{
+          const arr=nivelPai[cliKey];
+          const idCli=idDia+"-c-"+_slug(cliKey);
+          const grpCli=document.createElement("div");grpCli.style.marginBottom="4px";
+          grpCli.innerHTML=_histCabecalho(idCli,cliKey,arr.length,"#0369a1","13",false,false);
+          const corpoCli=document.createElement("div");
+          corpoCli.style.display=_histGruposAbertos.has(idCli)?"block":"none";
+          arr.forEach(v=>corpoCli.appendChild(_histItemCard(v)));
+          grpCli.appendChild(corpoCli);
+          grpCli.children[0].onclick=()=>_histToggleGrupo(idCli,grpCli.children[0],corpoCli);
+          corpo.appendChild(grpCli);
+        });
+      };
+
+      if(currentRole==="master"){
+        Object.keys(noData).sort((a,b)=>a.localeCompare(b,"pt-BR")).forEach(userKey=>{
+          const noUser=noData[userKey];
+          const totalUser=_contarFolhas(noUser);
+          const idUser=idDia+"-u-"+_slug(userKey);
+          const grpUser=document.createElement("div");grpUser.style.marginBottom="6px";
+          grpUser.innerHTML=_histCabecalho(idUser,userKey,totalUser,"#7c3aed","14",false,false);
+          const corpoUser=document.createElement("div");
+          corpoUser.style.display=_histGruposAbertos.has(idUser)?"block":"none";
+          corpoUser.style.paddingLeft="10px";
+          renderClientes(noUser,corpoUser);
+          grpUser.appendChild(corpoUser);
+          grpUser.children[0].onclick=()=>_histToggleGrupo(idUser,grpUser.children[0],corpoUser);
+          corpoData.appendChild(grpUser);
+        });
+      }else{
+        // Cadastrador: pula nível Usuário, vai direto Data → Cliente
+        renderClientes(noData,corpoData);
+      }
+
+      grpData.appendChild(corpoData);
+      // Listener do cabeçalho da Data: clicar no texto expande; clicar no checkbox seleciona dia inteiro
+      grpData.children[0].addEventListener("click",ev=>{
+        // Se clicou no checkbox da Data (seleção em massa do dia), não expande
+        if(ev.target.classList&&ev.target.classList.contains("hist-check-dia"))return;
+        _histToggleGrupo(idDia,grpData.children[0],corpoData);
+      });
+      // Wire-up do checkbox de dia inteiro (se modo seleção)
+      const cbDia=grpData.querySelector(".hist-check-dia");
+      if(cbDia){
+        // Coleta IDs de todas as vistorias do dia (cruza todos os usuários e clientes)
+        const idsDoDia=[];
+        const recolher=no=>{
+          if(Array.isArray(no))no.forEach(v=>idsDoDia.push(v.id));
+          else Object.values(no||{}).forEach(recolher);
+        };
+        recolher(noData);
+        cbDia.addEventListener("change",()=>{
+          if(cbDia.checked)idsDoDia.forEach(id=>_histSelecionadas.add(id));
+          else idsDoDia.forEach(id=>_histSelecionadas.delete(id));
+          // Atualiza visualmente os checkboxes dos itens individuais já expandidos
+          idsDoDia.forEach(id=>{
+            const cb=document.querySelector('#lista-historico input.hist-check[data-id="'+id+'"]');
+            if(cb)cb.checked=cbDia.checked;
+          });
+          _histAtualizarBulkBar();
+        });
+      }
+      el.appendChild(grpData);
+    });
+
+    // Restaura a posição do scroll (preservação ao voltar do detalhe)
+    if(_histScrollY)setTimeout(()=>{window.scrollTo(0,_histScrollY);},0);
+  }catch(e){
+    el.innerHTML='<p style="text-align:center;color:#dc2626;padding:24px">Erro: '+e.message+"</p>";
+  }
+}
+
+// Toggle expand/collapse de um grupo. Persiste estado em _histGruposAbertos.
+function _histToggleGrupo(id,cabecalho,corpo){
+  const aberto=corpo.style.display!=="none";
+  corpo.style.display=aberto?"none":"block";
+  if(aberto)_histGruposAbertos.delete(id);
+  else _histGruposAbertos.add(id);
+  const seta=cabecalho.querySelector(".hist-seta");
+  if(seta)seta.textContent=aberto?"▸":"▾";
+}
+
+// Cria o cabeçalho clicável de um grupo. Se ehData=true e modoSelecao=true,
+// inclui checkbox lateral pra selecionar todas as vistorias daquele dia.
+function _histCabecalho(id,texto,total,cor,fonte,bold,incluirCheckboxDia){
+  const aberto=_histGruposAbertos.has(id);
+  const cbHtml=incluirCheckboxDia
+    ? '<input type="checkbox" class="hist-check-dia" data-grp-id="'+id+'" style="width:18px;height:18px;margin-right:8px;flex-shrink:0;accent-color:#1d4ed8" onclick="event.stopPropagation()">'
+    : '';
+  return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#f9fafb;border-radius:8px;cursor:pointer;border-left:3px solid '+cor+';font-size:'+fonte+'px;'+(bold?"font-weight:600":"")+'">'
+    +'<div style="display:flex;align-items:center">'+cbHtml+'<span class="hist-seta" style="display:inline-block;width:14px;color:'+cor+'">'+(aberto?"▾":"▸")+'</span> '+texto+'</div>'
+    +'<span style="background:'+cor+';color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600">'+total+'</span>'
+    +'</div>';
+}
+
+// Item visual de uma vistoria. Reutiliza o markup que já existia, só extraído pra função.
+function _histItemCard(v){
+  const div=document.createElement("div");div.className="list-item";div.style.cursor="pointer";
+  const tipoBadge=v.tipoLaudo==="completo"?'<span class="badge laudo" style="margin-right:6px">Completo</span>':'';
+  const statusBadge='<span class="badge '+({concluida:"ok",parcial:"cad",externa:"cad",recusa:"master",ausente:"com"}[v.status]||"ok")+'">'+({"concluida":"Finalizado","parcial":"Parcial","externa":"Externa","recusa":"Recusa","ausente":"Ausente"}[v.status]||"Finalizado")+'</span>';
+  const corpoItem='<div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></div><div class="info"><div class="title">'+(v.responsavel&&v.responsavel.nome||"--")+'</div><div class="sub">'+(v.endereco&&v.endereco.rua||"")+" "+(v.endereco&&v.endereco.num||"")+" | "+(v.totalFotos||0)+" fotos | "+(v.data||"")+'</div></div><div class="hist-actions">'+tipoBadge+statusBadge+'</div>';
+  if(_histModoSelecao){
+    const isChecked=_histSelecionadas.has(v.id);
+    div.innerHTML='<input type="checkbox" class="hist-check" data-id="'+v.id+'" '+(isChecked?"checked":"")+' style="width:20px;height:20px;margin-right:6px;flex-shrink:0;accent-color:#dc2626">'+corpoItem;
+    const cb=div.querySelector("input.hist-check");
+    const toggle=()=>{
+      if(cb.checked)_histSelecionadas.add(v.id);
+      else _histSelecionadas.delete(v.id);
+      _histAtualizarBulkBar();
+    };
+    cb.addEventListener("change",toggle);
+    div.onclick=(e)=>{
+      if(e.target===cb)return;
+      cb.checked=!cb.checked;
+      toggle();
+    };
+  }else{
+    div.innerHTML=corpoItem;
+    div.onclick=()=>{
+      _histScrollY=window.scrollY||0;
+      abrirDetalheVistoria(v.id,v);
+    };
+  }
+  return div;
+}
+
+// Converte Timestamp em chave "DD/MM/AAAA" pra agrupar por dia
+function _dataChave(ts){
+  if(!ts||!ts.seconds)return "(sem data)";
+  const d=new Date(ts.seconds*1000);
+  return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();
+}
+// Converte chave "DD/MM/AAAA" em timestamp pra ordenar
+function _dataChaveSort(s){
+  if(s==="(sem data)")return 0;
+  const[d,m,a]=s.split("/");
+  return new Date(+a,+m-1,+d).getTime();
+}
+// Slug seguro pra usar como ID HTML (sem espaços, acentos, etc)
+function _slug(s){
+  return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
 }
 
 function abrirDetalheVistoria(id,data){
