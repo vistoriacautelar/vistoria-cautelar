@@ -189,6 +189,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 <div id="s-pendentes" class="screen">
   <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Ausentes Pendentes</h1></div>
   <div class="content">
+    <div id="pendentes-filtro-master" style="display:none;margin-bottom:12px">
+      <div style="display:flex;gap:8px;background:#f3f4f6;border-radius:10px;padding:4px">
+        <button id="pend-modo-todos" class="btn small" style="flex:1;background:#1d4ed8;color:#fff;border-color:#1d4ed8" onclick="pendSetarModo('todos')">Todos</button>
+        <button id="pend-modo-meus" class="btn small" style="flex:1" onclick="pendSetarModo('meus')">Apenas meus</button>
+      </div>
+    </div>
     <div id="lista-pendentes"></div>
   </div>
 </div>
@@ -1633,14 +1639,25 @@ window.exportarPlanilhaCliente=async()=>{
   const header=[
     "Ordem","Frente de Serviço / Coletor","Endereço","Número","Complemento",
     "Vistoria Interna","Vistoria Externa","Tipo do Imóvel",
-    "Data 1ª visita","Data 2ª visita","Data da entrega",
+    "Data 1ª visita","Data 2ª visita","Data da vistoria",
     "Nome do acompanhante da vistoria","Status","Contato","Documento"
   ];
   const rows=[header];
   docs.forEach((v,i)=>{
     const{interna,externa}=classificarInternaExterna(v);
+    // === Datas conforme regra acordada com o cliente ===
+    // 1ª Visita: sempre preenchida (data de criação da vistoria — primeira ida ao endereço).
+    // 2ª Visita: SÓ preenchida em vistorias que tiveram retorno (visitas > 1).
+    //   Em vistoria finalizada já na 1ª ida (qualquer status: concluída, recusa, parcial,
+    //   externa, ausente final sem retorno), 2ª visita fica VAZIA.
+    // Data da vistoria: preenchida quando a vistoria foi finalizada (qualquer status).
+    //   Ausente ainda PENDENTE de retorno fica VAZIA.
+    //   Vistorias antigas (sem data_finalizacao) também ficam VAZIAS — equipe sabe disso.
     const data1=v.criadoEm&&v.criadoEm.seconds?new Date(v.criadoEm.seconds*1000):null;
-    const data2=v.visitas&&v.visitas>1&&v.atualizadoEm&&v.atualizadoEm.seconds?new Date(v.atualizadoEm.seconds*1000):null;
+    const data2=(v.visitas&&v.visitas>1&&v.atualizadoEm&&v.atualizadoEm.seconds)
+      ?new Date(v.atualizadoEm.seconds*1000):null;
+    const dataVist=(v.data_finalizacao&&v.data_finalizacao.seconds)
+      ?new Date(v.data_finalizacao.seconds*1000):null;
     rows.push([
       i+1,
       v.coletorNome||"",
@@ -1652,7 +1669,7 @@ window.exportarPlanilhaCliente=async()=>{
       v.ocupacao||v.tipo||"",
       data1?fmtDataExcel(data1):"",
       data2?fmtDataExcel(data2):"",
-      "", // Data da entrega — preenchimento manual depois
+      dataVist?fmtDataExcel(dataVist):"",
       (v.responsavel&&v.responsavel.nome)||"",
       statusLabels[v.status]||v.status||"",
       (v.responsavel&&v.responsavel.tel)||"",
@@ -2347,34 +2364,180 @@ document.addEventListener("change",ev=>{
 
 async function loadPendentesCount(){
   try{
-    const q=query(collection(db,"vistorias"),where("pendente_retorno","==",true));
+    // Conta de pendentes mostrada no dash. Para cadastrador, conta só as próprias
+    // (alinhado com a regra "cadastrador só vê o que é dele"). Para master, conta tudo.
+    const filtros=[where("pendente_retorno","==",true)];
+    if(currentRole==="cadastrador")filtros.push(where("userId","==",currentUser.uid));
+    const q=query(collection(db,"vistorias"),...filtros);
     const s=await getDocs(q);
     const txt=s.size+" pendente(s)";
     ["dash-pendentes-count","dash-pendentes-count2"].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=txt;});
-  }catch(e){}
+  }catch(e){console.warn("loadPendentesCount:",e);}
 }
+
+// Modo do Master na tela de pendentes: "todos" (todos os ausentes da equipe, agrupados)
+// ou "meus" (apenas as vistorias que o master cadastrou pessoalmente — para master
+// que também atua em campo). Persistido em localStorage para sobreviver a recarregamentos.
+let _pendModoMaster=localStorage.getItem("pend_modo_master")||"todos";
+
+window.pendSetarModo=(modo)=>{
+  _pendModoMaster=modo;
+  localStorage.setItem("pend_modo_master",modo);
+  // Ajusta visual dos botões
+  const btnT=document.getElementById("pend-modo-todos"),btnM=document.getElementById("pend-modo-meus");
+  if(btnT&&btnM){
+    const ativo="background:#1d4ed8;color:#fff;border-color:#1d4ed8;flex:1";
+    const inativo="flex:1";
+    btnT.setAttribute("style",modo==="todos"?ativo:inativo);
+    btnM.setAttribute("style",modo==="meus"?ativo:inativo);
+  }
+  loadPendentes();
+};
+
+// Toggle expand/collapse de um grupo (acordeão). data-grp identifica o nó.
+window.pendToggleGrupo=(el)=>{
+  const corpo=el.nextElementSibling;
+  if(!corpo)return;
+  const aberto=corpo.style.display!=="none";
+  corpo.style.display=aberto?"none":"block";
+  const seta=el.querySelector(".pend-seta");
+  if(seta)seta.textContent=aberto?"▸":"▾";
+};
 
 async function loadPendentes(){
   const el=document.getElementById("lista-pendentes");
   el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Carregando...</p>';
+  // Filtro do master: mostra/esconde toggle "Todos vs Apenas meus"
+  const filtroDiv=document.getElementById("pendentes-filtro-master");
+  if(filtroDiv)filtroDiv.style.display=currentRole==="master"?"block":"none";
   try{
-    const q=query(collection(db,"vistorias"),where("pendente_retorno","==",true),orderBy("criadoEm","desc"));
+    // Monta a query conforme papel e modo
+    // - Cadastrador: SEMPRE só as próprias (regra de segurança + UX: ele só tem foto local das dele)
+    // - Master modo "todos": todas as pendentes da equipe (agrupadas por Usuário→Cliente→Coletor)
+    // - Master modo "meus": só as que o master cadastrou (lista plana, sem agrupamento)
+    const filtros=[where("pendente_retorno","==",true)];
+    const ehMasterTodos=(currentRole==="master"&&_pendModoMaster==="todos");
+    if(currentRole==="cadastrador"||(currentRole==="master"&&_pendModoMaster==="meus")){
+      filtros.push(where("userId","==",currentUser.uid));
+    }
+    filtros.push(orderBy("criadoEm","desc"));
+    const q=query(collection(db,"vistorias"),...filtros);
     const snap=await getDocs(q);
-    if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhum ausente pendente</p>';return;}
-    el.innerHTML="";
+    if(snap.size===0){
+      el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhum ausente pendente</p>';return;
+    }
+    // Coleta as vistorias e os IDs de usuários/clientes/coletores únicos
+    const vistorias=[];
+    const userIds=new Set(),clienteIds=new Set(),coletorIds=new Set();
     snap.forEach(d=>{
-      const v=d.data();const id=d.id;
-      const visitas=v.visitas||1;
-      const maxVisitas=3;
-      const div=document.createElement("div");div.className="list-item";div.style.cursor="pointer";
-      div.innerHTML='<div class="avatar" style="background:#fef2f2;color:#dc2626"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div>'
-        +'<div class="info"><div class="title">'+(v.responsavel&&v.responsavel.nome||"--")+'</div>'
-        +'<div class="sub">'+(v.endereco&&v.endereco.rua||"")+" "+(v.endereco&&v.endereco.num||"")+" | "+(v.coletorNome||"")+" | Visita "+visitas+"/"+maxVisitas+'</div></div>'
-        +'<span style="color:#dc2626;font-size:12px;font-weight:600">'+visitas+"/"+maxVisitas+'</span>';
-      div.onclick=()=>abrirRetorno(id,v);
-      el.appendChild(div);
+      const v=d.data();vistorias.push({id:d.id,...v});
+      if(v.userId)userIds.add(v.userId);
+      if(v.clienteId)clienteIds.add(v.clienteId);
+      if(v.coletorId)coletorIds.add(v.coletorId);
     });
-  }catch(e){el.innerHTML='<p style="text-align:center;color:#dc2626;padding:24px">Erro: '+e.message+"</p>";}
+    // Resolve nomes em paralelo (somente os IDs realmente usados nesta lista)
+    const [usersMap,clientesMap,coletoresMap]=await Promise.all([
+      _resolverNomes("users",[...userIds],d=>d.nome||d.email||"--"),
+      _resolverNomes("clientes",[...clienteIds],d=>d.nome||"--"),
+      _resolverNomes("coletores",[...coletorIds],d=>d.nome||"--")
+    ]);
+    // Render: modo plano (cadastrador, ou master "apenas meus") ou agrupado (master "todos")
+    if(!ehMasterTodos){
+      el.innerHTML="";
+      vistorias.forEach(v=>el.appendChild(_pendCardItem(v)));
+    }else{
+      el.innerHTML="";
+      _pendRenderAgrupado(el,vistorias,usersMap,clientesMap,coletoresMap);
+    }
+  }catch(e){
+    el.innerHTML='<p style="text-align:center;color:#dc2626;padding:24px">Erro: '+e.message+"</p>";
+  }
+}
+
+// Busca nomes de uma coleção a partir de uma lista de IDs. Tolerante a IDs vazios
+// e a docs que sumiram (entrega "--" no lugar). Retorna { id: nome }.
+async function _resolverNomes(colecao,ids,extrair){
+  const m={};
+  if(!ids||!ids.length)return m;
+  // getDoc paralelo. Para listas grandes, valeria 'in' query, mas pendentes raramente
+  // passam de dezenas — o custo de N pequenos gets aqui é trivial.
+  await Promise.all(ids.map(async id=>{
+    try{
+      const snap=await getDoc(doc(db,colecao,id));
+      m[id]=snap.exists()?extrair(snap.data()):"--";
+    }catch(e){m[id]="--";}
+  }));
+  return m;
+}
+
+// Cria o card visual de uma vistoria pendente (item folha da árvore ou da lista plana)
+function _pendCardItem(v){
+  const visitas=v.visitas||1,maxVisitas=3;
+  const div=document.createElement("div");div.className="list-item";div.style.cursor="pointer";
+  div.innerHTML='<div class="avatar" style="background:#fef2f2;color:#dc2626"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div>'
+    +'<div class="info"><div class="title">'+(v.responsavel&&v.responsavel.nome||"--")+'</div>'
+    +'<div class="sub">'+(v.endereco&&v.endereco.rua||"")+" "+(v.endereco&&v.endereco.num||"")+" | "+(v.coletorNome||"")+" | Visita "+visitas+"/"+maxVisitas+'</div></div>'
+    +'<span style="color:#dc2626;font-size:12px;font-weight:600">'+visitas+"/"+maxVisitas+'</span>';
+  div.onclick=()=>abrirRetorno(v.id,v);
+  return div;
+}
+
+// Renderiza a árvore Usuário → Cliente → Coletor, com todos os nós RECOLHIDOS por padrão.
+// Cada nível tem cabeçalho clicável com contador. Visual segue o padrão de coletor-group.
+function _pendRenderAgrupado(el,vistorias,usersMap,clientesMap,coletoresMap){
+  // Agrupa em árvore: arvore[usuario][cliente][coletor] = [vistorias]
+  const arvore={};
+  vistorias.forEach(v=>{
+    const u=usersMap[v.userId]||"(sem usuário)";
+    const c=clientesMap[v.clienteId]||"(sem cliente)";
+    const k=coletoresMap[v.coletorId]||v.coletorNome||"(sem coletor)";
+    arvore[u]=arvore[u]||{};
+    arvore[u][c]=arvore[u][c]||{};
+    arvore[u][c][k]=arvore[u][c][k]||[];
+    arvore[u][c][k].push(v);
+  });
+  // Render
+  Object.keys(arvore).sort((a,b)=>a.localeCompare(b,"pt-BR")).forEach(u=>{
+    const totU=_contarFolhas(arvore[u]);
+    const grpU=document.createElement("div");grpU.className="pend-grp";grpU.style.marginBottom="8px";
+    grpU.innerHTML=_cabecalhoGrupo(u,totU,"#1d4ed8","20",true);
+    const corpoU=document.createElement("div");corpoU.style.display="none";corpoU.style.paddingLeft="12px";
+    Object.keys(arvore[u]).sort((a,b)=>a.localeCompare(b,"pt-BR")).forEach(c=>{
+      const totC=_contarFolhas(arvore[u][c]);
+      const grpC=document.createElement("div");grpC.style.marginBottom="6px";
+      grpC.innerHTML=_cabecalhoGrupo(c,totC,"#7c3aed","16",false);
+      const corpoC=document.createElement("div");corpoC.style.display="none";corpoC.style.paddingLeft="10px";
+      Object.keys(arvore[u][c]).sort((a,b)=>a.localeCompare(b,"pt-BR")).forEach(k=>{
+        const arr=arvore[u][c][k];
+        const grpK=document.createElement("div");grpK.style.marginBottom="4px";
+        grpK.innerHTML=_cabecalhoGrupo(k,arr.length,"#0369a1","14",false);
+        const corpoK=document.createElement("div");corpoK.style.display="none";
+        arr.forEach(v=>corpoK.appendChild(_pendCardItem(v)));
+        grpK.appendChild(corpoK);grpK.children[0].onclick=()=>pendToggleGrupo(grpK.children[0]);
+        corpoC.appendChild(grpK);
+      });
+      grpC.appendChild(corpoC);grpC.children[0].onclick=()=>pendToggleGrupo(grpC.children[0]);
+      corpoU.appendChild(grpC);
+    });
+    grpU.appendChild(corpoU);grpU.children[0].onclick=()=>pendToggleGrupo(grpU.children[0]);
+    el.appendChild(grpU);
+  });
+}
+
+// Conta o número de vistorias dentro de uma sub-árvore (recursivo).
+function _contarFolhas(no){
+  let t=0;
+  if(Array.isArray(no))return no.length;
+  Object.values(no||{}).forEach(v=>t+=_contarFolhas(v));
+  return t;
+}
+
+// Cabeçalho clicável de um nó da árvore. corVerde indica nível e tamanho da fonte.
+function _cabecalhoGrupo(texto,total,cor,fonte,bold){
+  return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#f9fafb;border-radius:8px;cursor:pointer;border-left:3px solid '+cor+';font-size:'+fonte+'px;'+(bold?"font-weight:600":"")+'">'
+    +'<div><span class="pend-seta" style="display:inline-block;width:14px;color:'+cor+'">▸</span> '+texto+'</div>'
+    +'<span style="background:'+cor+';color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600">'+total+'</span>'
+    +'</div>';
 }
 
 let _retornoId=null,_retornoData=null;
@@ -4484,6 +4647,15 @@ window.salvarEdicaoResponsavel=async()=>{
   if(statusAntigo==="ausente"&&novoStatus!=="ausente"){
     updates.pendente_retorno=false;
   }
+  // data_finalizacao: grava apenas se a vistoria está sendo finalizada AGORA e
+  // ainda não tem o campo (vistorias antigas). Nunca sobrescreve uma data existente —
+  // preserva o momento real da finalização original.
+  const ehFinalizacaoNova=
+    (novoStatus!=="ausente"||(novoStatus==="ausente"&&!vistoriaDetalheData.pendente_retorno))
+    && !vistoriaDetalheData.data_finalizacao;
+  if(ehFinalizacaoNova){
+    updates.data_finalizacao=serverTimestamp();
+  }
   try{
     await updateDoc(doc(db,"vistorias",vistoriaDetalheId),updates);
     // Atualizar local
@@ -5306,6 +5478,10 @@ window.finalizarVistoria=async()=>{
     // Salvar Firebase (sem fotos — fotos vão para IndexedDB local-only) + download
     // OBS: assinaturaResp gravada no Firestore (necessária para regerar comprovante depois).
     const vDoc={clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,coletorNome:currentVistoria.coletorNome,responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,ocupacao:currentVistoria.ocupacao,tipo:currentVistoria.tipo,tipoLaudo:currentVistoria.tipoLaudo||"simplificado",estado:currentVistoria.estado,idade:currentVistoria.idade,data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,userId:currentUser.uid,checklist:currentVistoria.checklist,ambientesExtras:ambientesExtras||[],observacoes:currentVistoria.observacoes,totalFotos:Object.keys(fotosPendentes).length,status:currentVistoria.statusVistoria||"concluida",pendente_retorno:isPendente,visitas:currentVistoria.visitas||1,criadoEm:serverTimestamp(),assinaturaResp:assinaturaData||null};
+    // data_finalizacao: gravada apenas quando a vistoria está sendo finalizada (não pendente).
+    // Esse campo serve à coluna "Data da vistoria" da planilha do cliente e nunca deve ser
+    // sobrescrito em edições posteriores — preserva o momento real da finalização.
+    if(!isPendente)vDoc.data_finalizacao=serverTimestamp();
     // (A gravação no Firestore foi movida para DEPOIS da geração do PDF — ver abaixo.)
     // ============================================================================
     // ORDEM CRÍTICA: gerar o PDF (e ZIP) ANTES de qualquer escrita no Firestore.
