@@ -364,7 +364,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 <div id="s-vistoria" class="screen">
   <div class="topbar"><button class="back" onclick="confirmarSairVistoria()">&#8249; Sair</button><h1 id="v-titulo">Vistoria</h1></div>
   <div class="content">
-    <div class="card"><h2>Resumo</h2><div id="v-info" style="font-size:13px;color:#555;line-height:1.8"></div></div>
+    <div class="card"><h2>Resumo</h2><div id="v-info" style="font-size:13px;color:#555;line-height:1.8"></div>
+      <button id="btn-editar-resp-vistoria" class="btn small" onclick="abrirEditarRespVistoria()" style="display:none;margin-top:10px;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;font-size:12px;width:100%">✏️ Editar dados do responsável / endereço</button>
+    </div>
     <div id="gps-status" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:8px 12px;font-size:12px;color:#0369a1">Aguardando GPS...</div>
     <div class="card"><h2>Capturar foto</h2>
       <div class="field"><label>Ambiente</label><select id="v-ambiente" onchange="onChangeAmbienteSelect(this)"><option value="">Selecione o ambiente...</option></select></div>
@@ -2457,10 +2459,11 @@ async function loadPendentes(){
       _resolverNomes("clientes",[...clienteIds],d=>d.nome||"--"),
       _resolverNomes("coletores",[...coletorIds],d=>d.nome||"--")
     ]);
-    // Render: modo plano (cadastrador, ou master "apenas meus") ou agrupado (master "todos")
+    // Render: cadastrador/master "apenas meus" → agrupado Cliente→Coletor→Data
+    //         master "todos" → agrupado Usuário→Cliente→Coletor
     if(!ehMasterTodos){
       el.innerHTML="";
-      vistorias.forEach(v=>el.appendChild(_pendCardItem(v)));
+      _pendRenderCadastrador(el,vistorias);
     }else{
       el.innerHTML="";
       _pendRenderAgrupado(el,vistorias,usersMap,clientesMap,coletoresMap);
@@ -2556,7 +2559,71 @@ function _cabecalhoGrupo(texto,total,cor,fonte,bold){
     +'</div>';
 }
 
+// Agrupamento Cliente → Coletor → Data para Cadastrador e Master "apenas meus"
+function _pendRenderCadastrador(el,vistorias){
+  const arvore={};
+  vistorias.forEach(v=>{
+    const cli=v.clienteNome||"(sem cliente)";
+    const col=v.coletorNome||"(sem coletor)";
+    const dt=_dataChave(v.criadoEm);
+    arvore[cli]=arvore[cli]||{};
+    arvore[cli][col]=arvore[cli][col]||{};
+    arvore[cli][col][dt]=arvore[cli][col][dt]||[];
+    arvore[cli][col][dt].push(v);
+  });
+  Object.keys(arvore).sort((a,b)=>a.localeCompare(b,"pt-BR")).forEach(cli=>{
+    const totCli=_contarFolhas(arvore[cli]);
+    const grpCli=document.createElement("div");grpCli.style.marginBottom="8px";
+    grpCli.innerHTML=_cabecalhoGrupo(cli,totCli,"#1d4ed8","15",true);
+    const corpoCli=document.createElement("div");corpoCli.style.display="none";corpoCli.style.paddingLeft="12px";
+    Object.keys(arvore[cli]).sort((a,b)=>a.localeCompare(b,"pt-BR")).forEach(col=>{
+      const totCol=_contarFolhas(arvore[cli][col]);
+      const grpCol=document.createElement("div");grpCol.style.marginBottom="6px";
+      grpCol.innerHTML=_cabecalhoGrupo(col,totCol,"#7c3aed","14",false);
+      const corpoCol=document.createElement("div");corpoCol.style.display="none";corpoCol.style.paddingLeft="10px";
+      Object.keys(arvore[cli][col]).sort((a,b)=>_dataChaveSort(b)-_dataChaveSort(a)).forEach(dt=>{
+        const arr=arvore[cli][col][dt];
+        const grpDt=document.createElement("div");grpDt.style.marginBottom="4px";
+        grpDt.innerHTML=_cabecalhoGrupo(dt,arr.length,"#0369a1","13",false);
+        const corpoDt=document.createElement("div");corpoDt.style.display="none";
+        arr.forEach(v=>corpoDt.appendChild(_pendCardItem(v)));
+        grpDt.appendChild(corpoDt);grpDt.children[0].onclick=()=>pendToggleGrupo(grpDt.children[0]);
+        corpoCol.appendChild(grpDt);
+      });
+      grpCol.appendChild(corpoCol);grpCol.children[0].onclick=()=>pendToggleGrupo(grpCol.children[0]);
+      corpoCli.appendChild(grpCol);
+    });
+    grpCli.appendChild(corpoCli);grpCli.children[0].onclick=()=>pendToggleGrupo(grpCli.children[0]);
+    el.appendChild(grpCli);
+  });
+}
+
 let _retornoId=null,_retornoData=null;
+
+// ===== EDITAR RESPONSÁVEL DURANTE VISTORIA EM ANDAMENTO (retorno de ausente) =====
+// Reutiliza o modal-editar-resp existente, mas salva em currentVistoria (memória)
+// em vez de gravar direto no Firestore. A gravação real acontece na finalização.
+let _editarRespModoVistoria=false;
+
+window.abrirEditarRespVistoria=()=>{
+  if(!currentVistoria)return;
+  _editarRespModoVistoria=true;
+  const r=currentVistoria.responsavel||{};
+  const e=currentVistoria.endereco||{};
+  document.getElementById("er-nome").value=r.nome||"";
+  document.getElementById("er-doc").value=r.doc||"";
+  document.getElementById("er-tel").value=r.tel||"";
+  document.getElementById("er-rua").value=e.rua||"";
+  document.getElementById("er-num").value=e.num||"";
+  document.getElementById("er-comp").value=e.comp||"";
+  // Esconde o campo Status (na vistoria em andamento, status é definido na finalização)
+  const statusField=document.getElementById("er-status").parentElement;
+  if(statusField)statusField.style.display="none";
+  showModal("modal-editar-resp");
+};
+
+// Wrapper: quando o modal salva, decide se vai pro Firestore (histórico) ou pra memória (vistoria)
+const _salvarEdicaoResponsavelOriginal=window.salvarEdicaoResponsavel;
 
 window.abrirRetorno=async(id,v)=>{
   _retornoId=id;_retornoData=v;
@@ -2609,6 +2676,9 @@ window.abrirRetorno=async(id,v)=>{
   const sel=document.getElementById("v-ambiente");
   popularSeletorAmbiente(sel);
   const obsEl=document.getElementById("v-obs");if(obsEl)obsEl.value=v.observacoes||"";
+  // Mostra botão de editar responsável/endereço (retorno: cadastrador pode encontrar o morador)
+  const btnEdResp=document.getElementById("btn-editar-resp-vistoria");
+  if(btnEdResp)btnEdResp.style.display="block";
   goTo("s-vistoria");renderFotos();
 };
 
@@ -2671,6 +2741,9 @@ window.retomarRascunho=()=>{
   popularSeletorAmbiente(document.getElementById("v-ambiente"));
   const obsEl=document.getElementById("v-obs");if(obsEl)obsEl.value=v.observacoes||"";
   _rascunhoPendente=null;
+  // Se é retomada de rascunho de um retorno de ausente, mostra botão de editar responsável
+  const btnEdResp=document.getElementById("btn-editar-resp-vistoria");
+  if(btnEdResp)btnEdResp.style.display=(currentVistoria&&currentVistoria._retornoId)?"block":"none";
   goTo("s-vistoria");renderFotos();
   showToast("Vistoria retomada — "+Object.keys(fotosPendentes).length+" foto(s) recuperada(s)",3500);
 };
@@ -2838,6 +2911,9 @@ window.criarVistoria=async()=>{
   if(selTipo)selTipo.value="Vista";
   // Limpar campo de observações no início (não persiste de uma vistoria pra outra)
   const obsEl=document.getElementById("v-obs");if(obsEl)obsEl.value=currentVistoria.observacoes||"";
+  // Esconde botão de editar responsável (nova vistoria, não é retorno)
+  const btnEdResp=document.getElementById("btn-editar-resp-vistoria");
+  if(btnEdResp)btnEdResp.style.display="none";
   goTo("s-vistoria");renderFotos();
 };
 
@@ -4558,51 +4634,29 @@ async function loadHistorico(){
 
     el.innerHTML="";
     // Hierarquia:
-    //   Master:     Data → Usuário → Cliente → [vistorias]
-    //   Cadastrador: Data → Cliente → [vistorias]   (sem nível Usuário — é sempre ele)
-    const arvore={};
-    docs.forEach(v=>{
-      const dataKey=_dataChave(v.criadoEm);
-      const userKey=usersMap[v.userId]||"(sem usuário)";
-      const cliKey=v.clienteNome||"(sem cliente)";
-      arvore[dataKey]=arvore[dataKey]||{};
-      if(currentRole==="master"){
+    //   Master:      Data → Usuário → Cliente → [vistorias]
+    //   Cadastrador: Cliente → Coletor → Data → [vistorias]
+    if(currentRole==="master"){
+      // ---- MASTER: Data → Usuário → Cliente ----
+      const arvore={};
+      docs.forEach(v=>{
+        const dataKey=_dataChave(v.criadoEm);
+        const userKey=usersMap[v.userId]||"(sem usuário)";
+        const cliKey=v.clienteNome||"(sem cliente)";
+        arvore[dataKey]=arvore[dataKey]||{};
         arvore[dataKey][userKey]=arvore[dataKey][userKey]||{};
         arvore[dataKey][userKey][cliKey]=arvore[dataKey][userKey][cliKey]||[];
         arvore[dataKey][userKey][cliKey].push(v);
-      }else{
-        arvore[dataKey][cliKey]=arvore[dataKey][cliKey]||[];
-        arvore[dataKey][cliKey].push(v);
-      }
-    });
-
-    // Render: datas ordenadas decrescente (mais recente primeiro)
-    Object.keys(arvore).sort((a,b)=>_dataChaveSort(b)-_dataChaveSort(a)).forEach(dataKey=>{
-      const noData=arvore[dataKey];
-      const totalDia=_contarFolhas(noData);
-      const idDia="hist-d-"+dataKey;
-      const grpData=document.createElement("div");grpData.style.marginBottom="8px";
-      grpData.innerHTML=_histCabecalho(idDia,dataKey,totalDia,"#1d4ed8","15",true,_histModoSelecao);
-      const corpoData=document.createElement("div");
-      corpoData.style.display=_histGruposAbertos.has(idDia)?"block":"none";
-      corpoData.style.paddingLeft="12px";
-
-      const renderClientes=(nivelPai,corpo)=>{
-        Object.keys(nivelPai).sort((a,b)=>a.localeCompare(b,"pt-BR")).forEach(cliKey=>{
-          const arr=nivelPai[cliKey];
-          const idCli=idDia+"-c-"+_slug(cliKey);
-          const grpCli=document.createElement("div");grpCli.style.marginBottom="4px";
-          grpCli.innerHTML=_histCabecalho(idCli,cliKey,arr.length,"#0369a1","13",false,false);
-          const corpoCli=document.createElement("div");
-          corpoCli.style.display=_histGruposAbertos.has(idCli)?"block":"none";
-          arr.forEach(v=>corpoCli.appendChild(_histItemCard(v)));
-          grpCli.appendChild(corpoCli);
-          grpCli.children[0].onclick=()=>_histToggleGrupo(idCli,grpCli.children[0],corpoCli);
-          corpo.appendChild(grpCli);
-        });
-      };
-
-      if(currentRole==="master"){
+      });
+      Object.keys(arvore).sort((a,b)=>_dataChaveSort(b)-_dataChaveSort(a)).forEach(dataKey=>{
+        const noData=arvore[dataKey];
+        const totalDia=_contarFolhas(noData);
+        const idDia="hist-d-"+dataKey;
+        const grpData=document.createElement("div");grpData.style.marginBottom="8px";
+        grpData.innerHTML=_histCabecalho(idDia,dataKey,totalDia,"#1d4ed8","15",true,_histModoSelecao);
+        const corpoData=document.createElement("div");
+        corpoData.style.display=_histGruposAbertos.has(idDia)?"block":"none";
+        corpoData.style.paddingLeft="12px";
         Object.keys(noData).sort((a,b)=>a.localeCompare(b,"pt-BR")).forEach(userKey=>{
           const noUser=noData[userKey];
           const totalUser=_contarFolhas(noUser);
@@ -4612,46 +4666,105 @@ async function loadHistorico(){
           const corpoUser=document.createElement("div");
           corpoUser.style.display=_histGruposAbertos.has(idUser)?"block":"none";
           corpoUser.style.paddingLeft="10px";
-          renderClientes(noUser,corpoUser);
+          Object.keys(noUser).sort((a,b)=>a.localeCompare(b,"pt-BR")).forEach(cliKey=>{
+            const arr=noUser[cliKey];
+            const idCli=idDia+"-u-"+_slug(userKey)+"-c-"+_slug(cliKey);
+            const grpCli=document.createElement("div");grpCli.style.marginBottom="4px";
+            grpCli.innerHTML=_histCabecalho(idCli,cliKey,arr.length,"#0369a1","13",false,false);
+            const corpoCli=document.createElement("div");
+            corpoCli.style.display=_histGruposAbertos.has(idCli)?"block":"none";
+            arr.forEach(v=>corpoCli.appendChild(_histItemCard(v)));
+            grpCli.appendChild(corpoCli);
+            grpCli.children[0].onclick=()=>_histToggleGrupo(idCli,grpCli.children[0],corpoCli);
+            corpoUser.appendChild(grpCli);
+          });
           grpUser.appendChild(corpoUser);
           grpUser.children[0].onclick=()=>_histToggleGrupo(idUser,grpUser.children[0],corpoUser);
           corpoData.appendChild(grpUser);
         });
-      }else{
-        // Cadastrador: pula nível Usuário, vai direto Data → Cliente
-        renderClientes(noData,corpoData);
-      }
-
-      grpData.appendChild(corpoData);
-      // Listener do cabeçalho da Data: clicar no texto expande; clicar no checkbox seleciona dia inteiro
-      grpData.children[0].addEventListener("click",ev=>{
-        // Se clicou no checkbox da Data (seleção em massa do dia), não expande
-        if(ev.target.classList&&ev.target.classList.contains("hist-check-dia"))return;
-        _histToggleGrupo(idDia,grpData.children[0],corpoData);
-      });
-      // Wire-up do checkbox de dia inteiro (se modo seleção)
-      const cbDia=grpData.querySelector(".hist-check-dia");
-      if(cbDia){
-        // Coleta IDs de todas as vistorias do dia (cruza todos os usuários e clientes)
-        const idsDoDia=[];
-        const recolher=no=>{
-          if(Array.isArray(no))no.forEach(v=>idsDoDia.push(v.id));
-          else Object.values(no||{}).forEach(recolher);
-        };
-        recolher(noData);
-        cbDia.addEventListener("change",()=>{
-          if(cbDia.checked)idsDoDia.forEach(id=>_histSelecionadas.add(id));
-          else idsDoDia.forEach(id=>_histSelecionadas.delete(id));
-          // Atualiza visualmente os checkboxes dos itens individuais já expandidos
-          idsDoDia.forEach(id=>{
-            const cb=document.querySelector('#lista-historico input.hist-check[data-id="'+id+'"]');
-            if(cb)cb.checked=cbDia.checked;
-          });
-          _histAtualizarBulkBar();
+        grpData.appendChild(corpoData);
+        grpData.children[0].addEventListener("click",ev=>{
+          if(ev.target.classList&&ev.target.classList.contains("hist-check-dia"))return;
+          _histToggleGrupo(idDia,grpData.children[0],corpoData);
         });
-      }
-      el.appendChild(grpData);
-    });
+        const cbDia=grpData.querySelector(".hist-check-dia");
+        if(cbDia){
+          const idsDoDia=[];const recolher=no=>{if(Array.isArray(no))no.forEach(v=>idsDoDia.push(v.id));else Object.values(no||{}).forEach(recolher);};
+          recolher(noData);
+          cbDia.addEventListener("change",()=>{
+            if(cbDia.checked)idsDoDia.forEach(id=>_histSelecionadas.add(id));
+            else idsDoDia.forEach(id=>_histSelecionadas.delete(id));
+            idsDoDia.forEach(id=>{const cb=document.querySelector('#lista-historico input.hist-check[data-id="'+id+'"]');if(cb)cb.checked=cbDia.checked;});
+            _histAtualizarBulkBar();
+          });
+        }
+        el.appendChild(grpData);
+      });
+    }else{
+      // ---- CADASTRADOR: Cliente → Coletor → Data ----
+      const arvore={};
+      docs.forEach(v=>{
+        const cliKey=v.clienteNome||"(sem cliente)";
+        const colKey=v.coletorNome||"(sem coletor)";
+        const dataKey=_dataChave(v.criadoEm);
+        arvore[cliKey]=arvore[cliKey]||{};
+        arvore[cliKey][colKey]=arvore[cliKey][colKey]||{};
+        arvore[cliKey][colKey][dataKey]=arvore[cliKey][colKey][dataKey]||[];
+        arvore[cliKey][colKey][dataKey].push(v);
+      });
+      Object.keys(arvore).sort((a,b)=>a.localeCompare(b,"pt-BR")).forEach(cliKey=>{
+        const totCli=_contarFolhas(arvore[cliKey]);
+        const idCli="hist-c-"+_slug(cliKey);
+        const grpCli=document.createElement("div");grpCli.style.marginBottom="8px";
+        grpCli.innerHTML=_histCabecalho(idCli,cliKey,totCli,"#1d4ed8","15",true,false);
+        const corpoCli=document.createElement("div");
+        corpoCli.style.display=_histGruposAbertos.has(idCli)?"block":"none";
+        corpoCli.style.paddingLeft="12px";
+        Object.keys(arvore[cliKey]).sort((a,b)=>a.localeCompare(b,"pt-BR")).forEach(colKey=>{
+          const totCol=_contarFolhas(arvore[cliKey][colKey]);
+          const idCol=idCli+"-k-"+_slug(colKey);
+          const grpCol=document.createElement("div");grpCol.style.marginBottom="6px";
+          grpCol.innerHTML=_histCabecalho(idCol,colKey,totCol,"#7c3aed","14",false,false);
+          const corpoCol=document.createElement("div");
+          corpoCol.style.display=_histGruposAbertos.has(idCol)?"block":"none";
+          corpoCol.style.paddingLeft="10px";
+          Object.keys(arvore[cliKey][colKey]).sort((a,b)=>_dataChaveSort(b)-_dataChaveSort(a)).forEach(dtKey=>{
+            const arr=arvore[cliKey][colKey][dtKey];
+            const idDt=idCol+"-d-"+dtKey;
+            const grpDt=document.createElement("div");grpDt.style.marginBottom="4px";
+            grpDt.innerHTML=_histCabecalho(idDt,dtKey,arr.length,"#0369a1","13",false,_histModoSelecao);
+            const corpoDt=document.createElement("div");
+            corpoDt.style.display=_histGruposAbertos.has(idDt)?"block":"none";
+            arr.forEach(v=>corpoDt.appendChild(_histItemCard(v)));
+            grpDt.appendChild(corpoDt);
+            grpDt.children[0].addEventListener("click",ev=>{
+              if(ev.target.classList&&ev.target.classList.contains("hist-check-dia"))return;
+              _histToggleGrupo(idDt,grpDt.children[0],corpoDt);
+            });
+            const cbDia=grpDt.querySelector(".hist-check-dia");
+            if(cbDia){
+              const idsDoDia=arr.map(v=>v.id);
+              cbDia.addEventListener("change",()=>{
+                if(cbDia.checked)idsDoDia.forEach(id=>_histSelecionadas.add(id));
+                else idsDoDia.forEach(id=>_histSelecionadas.delete(id));
+                idsDoDia.forEach(id=>{const cb=document.querySelector('#lista-historico input.hist-check[data-id="'+id+'"]');if(cb)cb.checked=cbDia.checked;});
+                _histAtualizarBulkBar();
+              });
+            }
+            corpoCol.appendChild(grpDt);
+          });
+          grpCol.appendChild(corpoCol);
+          grpCol.children[0].onclick=()=>_histToggleGrupo(idCol,grpCol.children[0],corpoCol);
+          corpoCli.appendChild(grpCol);
+        });
+        grpCli.appendChild(corpoCli);
+        grpCli.children[0].addEventListener("click",ev=>{
+          if(ev.target.classList&&ev.target.classList.contains("hist-check-dia"))return;
+          _histToggleGrupo(idCli,grpCli.children[0],corpoCli);
+        });
+        el.appendChild(grpCli);
+      });
+    }
 
     // Restaura a posição do scroll (preservação ao voltar do detalhe)
     if(_histScrollY)setTimeout(()=>{window.scrollTo(0,_histScrollY);},0);
@@ -4826,6 +4939,43 @@ window.editarVistoriaAtual=()=>{
 };
 
 window.salvarEdicaoResponsavel=async()=>{
+  // Modo vistoria em andamento: salva em memória (currentVistoria), não no Firestore
+  if(_editarRespModoVistoria){
+    if(!currentVistoria)return;
+    currentVistoria.responsavel={
+      nome:document.getElementById("er-nome").value.trim(),
+      doc:document.getElementById("er-doc").value.trim(),
+      tel:document.getElementById("er-tel").value.trim()
+    };
+    currentVistoria.endereco={
+      ...currentVistoria.endereco,
+      rua:document.getElementById("er-rua").value.trim(),
+      num:document.getElementById("er-num").value.trim(),
+      comp:document.getElementById("er-comp").value.trim()
+    };
+    // Atualiza o bloco visual v-info
+    const r=currentVistoria.responsavel,e=currentVistoria.endereco;
+    const nomeHtml=r.nome?("<b>"+r.nome+"</b>"):'<span style="color:#888;font-style:italic">Morador não identificado</span>';
+    const endTxt=(e.rua||"")+", "+(e.num||"")+(e.comp?" - "+e.comp:"");
+    const tipoLaudo=currentVistoria.tipoLaudo||"simplificado";
+    const badgeTipo=tipoLaudo==="completo"?'<span class="badge laudo" style="display:inline-block;margin-bottom:4px">Laudo Completo</span><br>':'';
+    const visitaInfo=currentVistoria._retornoId
+      ?'<span style="color:#dc2626;font-size:12px;font-weight:600">↻ Retomada — Visita '+(currentVistoria.visitas||2)+'</span>'
+      :'';
+    document.getElementById("v-info").innerHTML=[
+      badgeTipo+nomeHtml,r.doc?"Doc: "+r.doc:"",r.tel?"Tel: "+r.tel:"",endTxt,visitaInfo
+    ].filter(Boolean).join("<br>");
+    document.getElementById("v-titulo").textContent=(r.nome||"Vistoria").split(" ")[0];
+    _editarRespModoVistoria=false;
+    // Restaura campo Status pra quando o modal for usado no contexto de histórico
+    const statusField=document.getElementById("er-status").parentElement;
+    if(statusField)statusField.style.display="";
+    closeModal("modal-editar-resp");
+    showToast("Dados atualizados!");
+    agendarSalvarRascunho(); // persiste rascunho com novos dados
+    return;
+  }
+  // Modo histórico (comportamento original): salva no Firestore
   if(!vistoriaDetalheId)return;
   const novoStatus=document.getElementById("er-status").value||"concluida";
   const statusAntigo=vistoriaDetalheData&&vistoriaDetalheData.status||"concluida";
