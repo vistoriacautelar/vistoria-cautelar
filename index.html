@@ -1474,15 +1474,17 @@ function renderResumo(docs,deStr,ateStr){
   }
   // Agrupar por cadastrador (userId/userNome) e contar por status
   // userId pode não ter o nome; vamos buscar via _cacheUsuarios se houver
-  const statusKeys=["concluida","parcial","externa","recusa","ausente"];
-  const statusLabels={concluida:"Finalizado",parcial:"Parcial",externa:"Externa",recusa:"Recusa",ausente:"Ausente"};
+  const statusKeys=["concluida","parcial","externa","recusa","ausente","pendente"];
+  const statusLabels={concluida:"Finalizado",parcial:"Parcial",externa:"Externa",recusa:"Recusa",ausente:"Ausente",pendente:"Pend. Retorno"};
   const porCad={}; // {userId: {nome, counts:{...}, total}}
   docs.forEach(v=>{
     const uid=v.userId||"-";
     if(!porCad[uid]){
-      porCad[uid]={nome:nomeUsuario(uid),counts:{concluida:0,parcial:0,externa:0,recusa:0,ausente:0},total:0};
+      porCad[uid]={nome:nomeUsuario(uid),counts:{concluida:0,parcial:0,externa:0,recusa:0,ausente:0,pendente:0},total:0};
     }
-    const st=v.status||"concluida";
+    // Ausente pendente de retorno é contado separado de ausente final
+    let st=v.status||"concluida";
+    if(st==="ausente"&&v.pendente_retorno)st="pendente";
     if(porCad[uid].counts[st]!==undefined)porCad[uid].counts[st]++;
     porCad[uid].total++;
   });
@@ -1492,15 +1494,17 @@ function renderResumo(docs,deStr,ateStr){
     const ts=v.criadoEm&&v.criadoEm.seconds?v.criadoEm.seconds*1000:0;
     if(!ts)return;
     const dt=new Date(ts).toISOString().slice(0,10);
-    if(!porDia[dt])porDia[dt]={concluida:0,parcial:0,externa:0,recusa:0,ausente:0,total:0};
-    const st=v.status||"concluida";
+    if(!porDia[dt])porDia[dt]={concluida:0,parcial:0,externa:0,recusa:0,ausente:0,pendente:0,total:0};
+    let st=v.status||"concluida";
+    if(st==="ausente"&&v.pendente_retorno)st="pendente";
     if(porDia[dt][st]!==undefined)porDia[dt][st]++;
     porDia[dt].total++;
   });
   // Totais gerais
-  const totGeral={concluida:0,parcial:0,externa:0,recusa:0,ausente:0,total:0};
+  const totGeral={concluida:0,parcial:0,externa:0,recusa:0,ausente:0,pendente:0,total:0};
   docs.forEach(v=>{
-    const st=v.status||"concluida";
+    let st=v.status||"concluida";
+    if(st==="ausente"&&v.pendente_retorno)st="pendente";
     if(totGeral[st]!==undefined)totGeral[st]++;
     totGeral.total++;
   });
@@ -1514,6 +1518,7 @@ function renderResumo(docs,deStr,ateStr){
   html+='<div style="background:#fef3c7;padding:10px;border-radius:8px;text-align:center"><div style="font-size:22px;font-weight:700;color:#92400e">'+totGeral.parcial+'</div><div style="font-size:12px;color:#92400e">Parcial</div></div>';
   html+='<div style="background:#dbeafe;padding:10px;border-radius:8px;text-align:center"><div style="font-size:22px;font-weight:700;color:#1d4ed8">'+totGeral.externa+'</div><div style="font-size:12px;color:#1d4ed8">Externa</div></div>';
   html+='<div style="background:#fef2f2;padding:10px;border-radius:8px;text-align:center"><div style="font-size:22px;font-weight:700;color:#dc2626">'+totGeral.ausente+'</div><div style="font-size:12px;color:#dc2626">Ausente</div></div>';
+  html+='<div style="background:#fce7f3;padding:10px;border-radius:8px;text-align:center"><div style="font-size:22px;font-weight:700;color:#be185d">'+totGeral.pendente+'</div><div style="font-size:12px;color:#be185d">Pend. Retorno</div></div>';
   html+='<div style="background:#fee2e2;padding:10px;border-radius:8px;text-align:center;grid-column:span 2"><div style="font-size:22px;font-weight:700;color:#991b1b">'+totGeral.recusa+'</div><div style="font-size:12px;color:#991b1b">Recusa</div></div>';
   html+='</div>';
   html+='<div style="margin-top:14px;padding-top:14px;border-top:1px solid #e5e7eb;text-align:center"><span style="font-size:13px;color:#666">Total geral:</span> <span style="font-size:24px;font-weight:700;color:#111">'+totGeral.total+'</span></div>';
@@ -1522,7 +1527,7 @@ function renderResumo(docs,deStr,ateStr){
   const uids=Object.keys(porCad).sort((a,b)=>porCad[b].total-porCad[a].total);
   html+='<div class="card"><h2>Por Cadastrador</h2>';
   html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">';
-  html+='<thead><tr style="background:#f3f4f6"><th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb">Cadastrador</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Fin.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Parc.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Ext.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Aus.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Rec.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:700">Total</th></tr></thead><tbody>';
+  html+='<thead><tr style="background:#f3f4f6"><th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb">Cadastrador</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Fin.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Parc.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Ext.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Aus.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Pend.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Rec.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:700">Total</th></tr></thead><tbody>';
   uids.forEach(uid=>{
     const r=porCad[uid];
     html+='<tr><td style="padding:8px;border-bottom:1px solid #f3f4f6">'+r.nome+'</td>';
@@ -1530,6 +1535,7 @@ function renderResumo(docs,deStr,ateStr){
     html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#92400e">'+r.counts.parcial+'</td>';
     html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#1d4ed8">'+r.counts.externa+'</td>';
     html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#dc2626">'+r.counts.ausente+'</td>';
+    html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#be185d">'+r.counts.pendente+'</td>';
     html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#991b1b">'+r.counts.recusa+'</td>';
     html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;font-weight:700">'+r.total+'</td></tr>';
   });
@@ -1539,7 +1545,7 @@ function renderResumo(docs,deStr,ateStr){
   if(diasOrdenados.length>1){
     html+='<div class="card"><h2>Por Dia</h2>';
     html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">';
-    html+='<thead><tr style="background:#f3f4f6"><th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb">Data</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Fin.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Parc.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Ext.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Aus.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Rec.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:700">Total</th></tr></thead><tbody>';
+    html+='<thead><tr style="background:#f3f4f6"><th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb">Data</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Fin.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Parc.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Ext.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Aus.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Pend.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb">Rec.</th><th style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:700">Total</th></tr></thead><tbody>';
     diasOrdenados.forEach(d=>{
       const r=porDia[d];
       const dataFmt=d.split("-").reverse().join("/");
@@ -1548,6 +1554,7 @@ function renderResumo(docs,deStr,ateStr){
       html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#92400e">'+r.parcial+'</td>';
       html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#1d4ed8">'+r.externa+'</td>';
       html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#dc2626">'+r.ausente+'</td>';
+      html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#be185d">'+r.pendente+'</td>';
       html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;color:#991b1b">'+r.recusa+'</td>';
       html+='<td style="text-align:center;padding:8px;border-bottom:1px solid #f3f4f6;font-weight:700">'+r.total+'</td></tr>';
     });
@@ -2969,7 +2976,6 @@ function renderFotos(){
       const legendaExib=f.legenda||f.tipo;
       lbl.innerHTML='<span style="flex:1;overflow:hidden;text-overflow:ellipsis;font-size:11px">'+f.numero+' | '+legendaExib+'</span>'
         +'<button class="del-btn" style="color:#007aff;background:none;border:none;font-size:11px;padding:0 4px" onclick="editarLegendaFoto(\''+f.id+'\')">✎</button>'
-        +'<button class="del-btn" style="color:#9333ea;background:none;border:none;font-size:11px;padding:0 4px;font-weight:600" onclick="baixarFotoRaw(\''+f.id+'\')" title="Diagnóstico: baixa o JPEG sem alterações">📥RAW</button>'
         +'<button class="del-btn" onclick="removerFoto(\''+f.id+'\')">X</button>';
       pc.appendChild(img);pc.appendChild(lbl);gd.appendChild(pc);
     });
@@ -2977,44 +2983,6 @@ function renderFotos(){
   });
 }
 window.removerFoto=id=>{delete fotosPendentes[id];renderFotos();agendarSalvarRascunho();};
-
-// ===== DIAGNÓSTICO TEMPORÁRIO: baixa o JPEG bruto do fotosPendentes sem nenhuma alteração =====
-// Usado pra inspeção do EXIF e dimensões físicas reais que saem da câmera + canvas em cada navegador.
-// REMOVER depois que o bug de rotação for resolvido.
-window.baixarFotoRaw=async(id)=>{
-  const f=fotosPendentes[id];
-  if(!f){alert("Foto não encontrada");return;}
-  try{
-    // Converter dataURL pra Blob (sem nenhuma manipulação no meio)
-    const res=await fetch(f.dataUrl);
-    const blob=await res.blob();
-    // Detectar dimensões reais via Image
-    const dimensoes=await new Promise(resolve=>{
-      const img=new Image();
-      img.onload=()=>resolve({w:img.naturalWidth,h:img.naturalHeight,
-        orient:img.naturalWidth>img.naturalHeight?"paisagem":(img.naturalWidth<img.naturalHeight?"retrato":"quadrado")});
-      img.onerror=()=>resolve({w:0,h:0,orient:"erro"});
-      img.src=f.dataUrl;
-    });
-    // Detectar EXIF orientation se a função existir
-    let exifOri="?";
-    try{if(typeof lerEXIFOrientation==="function")exifOri=lerEXIFOrientation(f.dataUrl);}catch(e){}
-    // Nome do arquivo com metadados embutidos
-    const horaTxt=new Date().toISOString().replace(/[:.]/g,"-").substring(11,19);
-    const nomeArq="raw_"+dimensoes.orient+"_"+dimensoes.w+"x"+dimensoes.h+"_exif"+exifOri+"_"+horaTxt+".jpg";
-    // Download direto (mesma técnica do shareOrDownload mas simplificada)
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url;a.download=nomeArq;document.body.appendChild(a);
-    a.click();document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(url),2000);
-    // Mostra info na tela também (pra caso o usuário não ache o arquivo)
-    showToast("Baixado: "+dimensoes.w+"x"+dimensoes.h+" ("+dimensoes.orient+") EXIF="+exifOri,5000);
-  }catch(e){
-    console.error("baixarFotoRaw:",e);
-    alert("Erro ao baixar: "+(e.message||"desconhecido"));
-  }
-};
 
 function gerarTextoConclusao(){
   // Agrupa por (ambiente, elemento) → conjunto único de patologias.
@@ -3218,16 +3186,6 @@ window.abrirCamera=async(ambParam)=>{
   }
   document.getElementById("cam-label").textContent=amb;
   document.getElementById("cam-tipo-badge").textContent=fotoAtualTipo||"";
-  // Tentar fullscreen para esconder a barra do navegador (só funciona via gesto do usuário,
-  // que é exatamente o que esse toque é). Se falhar, continua normal.
-  try{
-    const overlay=document.getElementById("camera-overlay");
-    if(overlay&&overlay.requestFullscreen&&!document.fullscreenElement){
-      await overlay.requestFullscreen({navigationUI:"hide"}).catch(()=>{});
-    } else if(overlay&&overlay.webkitRequestFullscreen&&!document.webkitFullscreenElement){
-      overlay.webkitRequestFullscreen();
-    }
-  }catch(e){console.warn("Fullscreen indisponível:",e);}
   // Mostrar overlay ANTES (evita interrupcao do play por load request)
   document.getElementById("camera-overlay").style.display="flex";
   // Dispara detecção de câmeras em background (não bloqueia abertura).
@@ -3318,11 +3276,6 @@ window.abrirCamera=async(ambParam)=>{
 window.fecharCamera=()=>{
   if(cameraStream)cameraStream.getTracks().forEach(t=>t.stop());
   document.getElementById("camera-overlay").style.display="none";
-  // Sair do fullscreen ao fechar (não dá erro se já não estava em fullscreen)
-  try{
-    if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});
-    else if(document.webkitFullscreenElement)document.webkitExitFullscreen();
-  }catch(e){}
 };
 // Enumerar cameras e ciclar entre traseiras (incluindo wide-angle em Xiaomi)
 let currentCameraIdx=0;let availableCameras=[];
@@ -3564,14 +3517,6 @@ function abrirEditorSetas(imgDataUrl){
     ctxClear.fillRect(0,0,canvas.width,canvas.height);
   }
   const overlay=document.getElementById("arrow-overlay");
-  // Pedir fullscreen pro overlay (esconde barra do navegador). Best-effort.
-  try{
-    if(overlay.requestFullscreen&&!document.fullscreenElement){
-      overlay.requestFullscreen({navigationUI:"hide"}).catch(()=>{});
-    } else if(overlay.webkitRequestFullscreen&&!document.webkitFullscreenElement){
-      overlay.webkitRequestFullscreen();
-    }
-  }catch(e){}
   overlay.style.display="flex";
   const img=new Image();
   img.onload=()=>{
@@ -3854,11 +3799,6 @@ window.confirmarSetas=()=>{
     return alert("No modo Completo, marque apenas UMA seta por vez. Você poderá adicionar mais depois.");
   }
   document.getElementById("arrow-overlay").style.display="none";
-  // Sai do fullscreen (não falha se já não estava)
-  try{
-    if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});
-    else if(document.webkitFullscreenElement)document.webkitExitFullscreen();
-  }catch(e){}
   abrirModalPatologias();
 };
 
