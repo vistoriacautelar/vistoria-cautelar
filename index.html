@@ -173,6 +173,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div class="list-item" onclick="goTo('s-clientes')"><div class="avatar" style="background:#ede9fe;color:#5b21b6"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="info"><div class="title">Clientes e RRTs</div><div class="sub">Gerenciar clientes</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
       <div class="list-item" onclick="goTo('s-coletores')"><div class="avatar" style="background:#e0f2fe;color:#0369a1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div><div class="info"><div class="title">Coletores</div><div class="sub">Bairros por cliente</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
       <div class="list-item" onclick="goTo('s-usuarios')"><div class="avatar" style="background:#d1fae5;color:#065f46"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg></div><div class="info"><div class="title">Usuarios</div><div class="sub">Tecnicos cadastradores</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
+      <div class="list-item" onclick="goTo('s-gastos')"><div class="avatar" style="background:#fef3c7;color:#92400e"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div><div class="info"><div class="title">Gastos</div><div class="sub">Pedágio, alimentação, combustível</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
       <div class="sep"></div>
     </div>
     <div id="dash-cadastrador-section">
@@ -272,6 +273,45 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   </div>
 </div>
 
+<div id="s-gastos" class="screen">
+  <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Gastos</h1></div>
+  <div class="content">
+    <div class="card"><h2>Configuração de Combustível</h2>
+      <div class="grid2">
+        <div class="field"><label>Preço/Litro (R$)</label><input type="number" id="gasto-preco-litro" placeholder="Ex: 5.89" step="0.01" min="0" inputmode="decimal"></div>
+        <div class="field"><label>Km/Litro</label><input type="number" id="gasto-km-litro" placeholder="Ex: 10" step="0.1" min="0.1" inputmode="decimal"></div>
+      </div>
+      <button class="btn small" onclick="salvarConfigCombustivel()" style="margin-top:6px">Salvar config</button>
+    </div>
+    <div class="card"><h2>Registrar Gasto Diário</h2>
+      <div class="field"><label>Data</label><input type="date" id="gasto-data"></div>
+      <div class="field"><label>Cliente</label><select id="gasto-cliente"><option value="">Selecione...</option></select></div>
+      <div class="field"><label>Km Rodado</label><input type="number" id="gasto-km" placeholder="Ex: 120" min="0" inputmode="numeric"></div>
+      <div class="grid2">
+        <div class="field"><label>Pedágio (R$)</label><input type="number" id="gasto-pedagio" placeholder="0.00" step="0.01" min="0" inputmode="decimal"></div>
+        <div class="field"><label>Alimentação (R$)</label><input type="number" id="gasto-alimentacao" placeholder="0.00" step="0.01" min="0" inputmode="decimal"></div>
+      </div>
+      <div class="field"><label>Funcionários que trabalharam</label><input type="text" id="gasto-funcionarios" placeholder="Nomes separados por vírgula"></div>
+      <div class="field"><label>Observações</label><input type="text" id="gasto-obs" placeholder="(opcional)"></div>
+      <button class="btn primary" onclick="salvarGasto()" style="margin-top:8px">Salvar Gasto</button>
+    </div>
+    <div class="card"><h2>Filtros</h2>
+      <div class="grid2">
+        <div class="field"><label>De</label><input type="date" id="gasto-filtro-de"></div>
+        <div class="field"><label>Até</label><input type="date" id="gasto-filtro-ate"></div>
+      </div>
+      <div class="field"><label>Cliente</label><select id="gasto-filtro-cliente"><option value="">Todos</option></select></div>
+      <button class="btn primary" onclick="carregarGastos()" style="margin-top:8px">Buscar Gastos</button>
+    </div>
+    <div id="gastos-lista"></div>
+    <div id="gastos-resumo" style="display:none">
+      <div class="card"><h2>Resumo de Gastos</h2><div id="gastos-resumo-conteudo"></div>
+        <button class="btn success" onclick="exportarGastosXLSX()" style="margin-top:10px">Exportar Planilha de Gastos</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="s-armazenamento" class="screen">
   <div class="topbar"><button class="back" onclick="goTo('s-perfil')">&#8249; Voltar</button><h1>Fotos no Aparelho</h1>
     <button id="arm-btn-selecionar" class="btn small" onclick="armToggleSelecao(true)" style="margin-right:4px">Selecionar</button>
@@ -345,7 +385,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
         </div>
         <div class="laudo-tipo-card" data-tipo="completo" onclick="setTipoLaudo('completo')">
           <div class="laudo-tipo-titulo">Completo</div>
-          <div class="laudo-tipo-sub">Modelo CNRP — capa, anexos, legenda A–L</div>
+          <div class="laudo-tipo-sub">Modelo CNRP — capa, anexos, identificação</div>
         </div>
       </div>
     </div>
@@ -420,6 +460,41 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
     <div id="sig-confirmado" style="display:none;background:#d1fae5;color:#065f46;padding:12px 16px;border-radius:10px;font-size:14px;font-weight:500;text-align:center">Assinatura confirmada</div>
     <button class="btn success" onclick="finalizarVistoria()" id="btn-finalizar" disabled style="opacity:.4">Gerar PDF + ZIP e finalizar</button>
     </div>
+  </div>
+</div>
+
+<div id="s-identificacao" class="screen">
+  <div class="topbar"><button class="back" onclick="goTo('s-vistoria')">&#8249; Voltar</button><h1>Identificação do Imóvel</h1></div>
+  <div class="content">
+    <div class="card"><h2>Selo</h2>
+      <div class="field" style="display:flex;gap:8px;align-items:flex-end">
+        <div style="flex:1"><label>Número do Selo <span style="color:#dc2626">*</span></label><input type="text" id="ident-selo" placeholder="Digite o número do selo"></div>
+        <button class="btn small" onclick="document.getElementById('ident-selo').value='Não possui'" style="margin-bottom:0;white-space:nowrap">Não possui</button>
+      </div>
+    </div>
+    <div class="card"><h2>Serviços Públicos</h2>
+      <div id="ident-servicos" style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="checkbox" value="Água"> Água</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="checkbox" value="Esgoto"> Esgoto</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="checkbox" value="Energia"> Energia</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="checkbox" value="Gás"> Gás</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="checkbox" value="Telefone"> Telefone</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="checkbox" value="Pavimentação"> Pavimentação</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="checkbox" value="Iluminação"> Iluminação</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="checkbox" value="Coleta de lixo"> Coleta de lixo</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="checkbox" value="Transporte"> Transporte</label>
+      </div>
+    </div>
+    <div class="card"><h2>Características do Imóvel</h2>
+      <div class="field"><label>Zoneamento</label><select id="ident-zoneamento"><option value="">Selecione...</option><option>Residencial</option><option>Comercial</option><option>Misto</option><option>Industrial</option></select></div>
+      <div class="field"><label>Garagem</label><select id="ident-garagem"><option value="">Selecione...</option><option>Sim</option><option>Não</option></select></div>
+      <div class="field"><label>Nº de Pavimentos</label><input type="number" id="ident-pavimentos" placeholder="Ex: 2" min="1" max="99" inputmode="numeric"></div>
+    </div>
+    <div class="card"><h2>Materiais Construtivos</h2>
+      <div class="field"><label>Cobertura</label><select id="ident-cobertura"><option value="">Selecione...</option><option>Telha cerâmica</option><option>Telha fibrocimento</option><option>Telha metálica</option><option>Laje</option><option>Outros</option></select></div>
+      <div class="field"><label>Paredes</label><select id="ident-paredes"><option value="">Selecione...</option><option>Alvenaria com reboco</option><option>Alvenaria sem reboco</option><option>Concreto</option><option>Madeira</option><option>Mista</option><option>Outros</option></select></div>
+    </div>
+    <button class="btn primary" onclick="confirmarIdentificacao()" style="margin-top:4px">Continuar para Finalização ›</button>
   </div>
 </div>
 
@@ -738,11 +813,11 @@ let AMBIENTES=[...AMBIENTES_BASE];
 let _ambientesCustomCache=[]; // [{id, nome}] do Firestore
 const PARTES=["Estrutura","Parede e muro","Cobertura e teto","Porta e esquadria","Piso e cal\xe7amento"];
 const COLS=["estrutura","paredes","cobertura","portas","piso"];
-const PATOLOGIAS=["Fissura","Trinca","Rachadura","Umidade","Infiltração","Desplacamento","Armadura Exposta","Danificado"];
+const PATOLOGIAS=["Fissura","Trinca","Rachadura","Umidade","Infiltração","Despl. de Pintura","Despl. de Revestimento","Armadura Exposta","Danificado","Portão Desalinhado"];
 // Grupos do checklist PDF (agrupado para economizar espaço)
-const PATOLOGIAS_CK=["Fissura/Trinca/Rachadura","Umidade/Infiltração","Desplacamento","Armadura Exposta","Danificado"];
-const PATOLOGIAS_CK_MAP={"Fissura/Trinca/Rachadura":["Fissura","Trinca","Rachadura"],"Umidade/Infiltração":["Umidade","Infiltração"],"Desplacamento":["Desplacamento"],"Armadura Exposta":["Armadura Exposta"],"Danificado":["Danificado"]};
-const ELEMENTOS=["Estrutura","Parede","Teto","Piso","Calçada","Porta","Janela","Esquadria"];
+const PATOLOGIAS_CK=["Fissura/Trinca/Rachadura","Umidade/Infiltração","Despl. de Pintura","Despl. de Revestimento","Armadura Exposta","Danificado","Portão Desalinhado"];
+const PATOLOGIAS_CK_MAP={"Fissura/Trinca/Rachadura":["Fissura","Trinca","Rachadura"],"Umidade/Infiltração":["Umidade","Infiltração"],"Despl. de Pintura":["Despl. de Pintura"],"Despl. de Revestimento":["Despl. de Revestimento"],"Armadura Exposta":["Armadura Exposta"],"Danificado":["Danificado"],"Portão Desalinhado":["Portão Desalinhado"]};
+const ELEMENTOS=["Estrutura","Parede","Teto","Piso","Calçada","Porta","Janela","Esquadria","Portão"];
 // Mapeia elemento construtivo (passo 3 do modal simplificado, agora único) para a coluna do checklist
 const ELEMENTO_TO_COL={
   "Estrutura":"estrutura",
@@ -752,54 +827,26 @@ const ELEMENTO_TO_COL={
   "Calçada":"piso",
   "Porta":"portas",
   "Janela":"portas",
-  "Esquadria":"portas"
+  "Esquadria":"portas",
+  "Portão":"portas"
 };
 
-// ===== LAUDO COMPLETO: 12 categorias A-L com subitens =====
-const PATOLOGIAS_AL=[
-  {cod:"A",nome:"Estruturas",subs:[
-    {n:1,t:"Trincas / Fissuras"},{n:2,t:"Rachaduras"},{n:3,t:"Umidade / Mofo"},{n:4,t:"Danificado"},
-    {n:5,t:"Armadura Exposta"},{n:6,t:"Segregação / Ninhos"},{n:7,t:"Reparos / Remendos"},{n:8,t:"Infiltração / Umidade"}
-  ]},
-  {cod:"B",nome:"Alvenaria",subs:[
-    {n:1,t:"Trincas / Fissuras"},{n:2,t:"Rachaduras"},{n:3,t:"Umidade / Mofo"},{n:4,t:"Danificada"}
-  ]},
-  {cod:"C",nome:"Teto / Forro",subs:[
-    {n:1,t:"Trincas / Fissuras"},{n:2,t:"Rachaduras"},{n:3,t:"Umidade / Mofo"},{n:4,t:"Danificado"},{n:5,t:"Eflorescência"}
-  ]},
-  {cod:"D",nome:"Reboco / Revestimento",subs:[
-    {n:1,t:"Trincas / Fissuras"},{n:2,t:"Rachaduras"},{n:3,t:"Umidade / Mofo"},{n:4,t:"Danificado"},
-    {n:5,t:"Eflorescência"},{n:6,t:"Desplacamento"}
-  ]},
-  {cod:"E",nome:"Estr. Metálicas",subs:[
-    {n:1,t:"Trincas / Fissuras"},{n:2,t:"Rachaduras"},{n:3,t:"Oxidação"},{n:4,t:"Danificado"},{n:5,t:"Deformação"}
-  ]},
-  {cod:"F",nome:"Vidros",subs:[
-    {n:1,t:"Trincado"},{n:2,t:"Quebrado"},{n:3,t:"Faltando"}
-  ]},
-  {cod:"G",nome:"Pintura",subs:[
-    {n:1,t:"Trincas / Fissuras"},{n:2,t:"Rachaduras"},{n:3,t:"Umidade / Mofo"},{n:4,t:"Danificado"},
-    {n:5,t:"Eflorescência"},{n:6,t:"Desplacamento"}
-  ]},
-  {cod:"H",nome:"Piso / Pavimento",subs:[
-    {n:1,t:"Trincas / Fissuras"},{n:2,t:"Rachaduras"},{n:3,t:"Umidade / Mofo"},{n:4,t:"Danificado"},
-    {n:5,t:"Recalque"},{n:6,t:"Solapamento"}
-  ]},
-  {cod:"I",nome:"Portas / Caixilhos",subs:[
-    {n:1,t:"Umidade / Mofo"},{n:2,t:"Danificado"}
-  ]},
-  {cod:"J",nome:"Telhados",subs:[
-    {n:1,t:"Danificado / Deformado"},{n:2,t:"Telhas Quebradas"},{n:3,t:"Telhas Faltando"},{n:4,t:"Madeir. Danificado"}
-  ]},
-  {cod:"K",nome:"Inst. Hidráulicas",subs:[
-    {n:1,t:"Vazamento"},{n:2,t:"Danificada"}
-  ]},
-  {cod:"L",nome:"Outros",subs:[
-    {n:1,t:"Outros"}
-  ]}
+// ===== LAUDO COMPLETO: patologias por elemento =====
+const PATOLOGIAS_COMPLETO=[
+  {elem:"Estruturas",col:"estrutura",pats:["Trincas","Fissuras","Rachaduras","Umidade","Infiltração","Danificado","Segregação","Armadura Exposta"]},
+  {elem:"Parede",col:"paredes",pats:["Trincas","Fissuras","Rachaduras","Umidade","Infiltração","Danificado","Eflorescência","Despl. de Pintura","Despl. de Revestimento"]},
+  {elem:"Teto",col:"cobertura",pats:["Trincas","Fissuras","Rachaduras","Umidade","Infiltração","Danificado","Eflorescência","Despl. de Pintura","Despl. de Revestimento"]},
+  {elem:"Forro",col:"cobertura",pats:["Trincas","Fissuras","Rachaduras","Umidade","Infiltração","Danificado","Deformado","Despl. de Pintura","Despl. de Revestimento"]},
+  {elem:"Estr. Metálicas",col:"estrutura",pats:["Trincas","Fissuras","Rachaduras","Oxidação","Danificado","Deformação"]},
+  {elem:"Vidros",col:"portas",pats:["Trincado","Quebrado","Faltando"]},
+  {elem:"Piso",col:"piso",pats:["Trincas","Fissuras","Rachaduras","Umidade","Danificado","Recalque","Solapamento","Eflorescência","Despl. de Pintura","Despl. de Revestimento"]},
+  {elem:"Portas",col:"portas",pats:["Umidade","Danificado","Portão Desalinhado"]},
+  {elem:"Esquadrias",col:"portas",pats:["Umidade","Danificado"]},
+  {elem:"Telhados",col:"cobertura",pats:["Umidade","Telhas Quebradas","Telhas Faltando","Madeira Danificada"]},
+  {elem:"Inst. Hidráulicas",col:"estrutura",pats:["Vazamento","Danificado","Em Reparo"]},
+  {elem:"Outros",col:"paredes",pats:["Outros"]}
 ];
-// Lookup rápido por código
-const PATOLOGIAS_AL_MAP=Object.fromEntries(PATOLOGIAS_AL.map(c=>[c.cod,c]));
+const PATOLOGIAS_COMPLETO_MAP=Object.fromEntries(PATOLOGIAS_COMPLETO.map(c=>[c.elem,c]));
 
 let currentUser=null,currentRole=null,currentUserData=null;
 let currentVistoria=null,fotosPendentes={};
@@ -1130,7 +1177,7 @@ window.goTo=(id)=>{
   }
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   document.getElementById(id).classList.add("active");window.scrollTo(0,0);
-  const m={"s-dash":loadDash,"s-prestadores":loadPrestadores,"s-clientes":loadClientes,"s-coletores":loadColetores,"s-usuarios":loadUsuarios,"s-nova-vistoria":loadNovVistoriaForm,"s-historico":loadHistorico,"s-finalizacao":renderFinalizacao,"s-perfil":renderPerfil,"s-vistoria":iniciarGPS,"s-pendentes":loadPendentes,"s-editor-fotos":renderEditorFotos,"s-armazenamento":loadArmazenamento,"s-ambientes-custom":loadAmbientesCustomList,"s-resumo":loadResumo};
+  const m={"s-dash":loadDash,"s-prestadores":loadPrestadores,"s-clientes":loadClientes,"s-coletores":loadColetores,"s-usuarios":loadUsuarios,"s-nova-vistoria":loadNovVistoriaForm,"s-historico":loadHistorico,"s-finalizacao":renderFinalizacao,"s-identificacao":renderIdentificacao,"s-perfil":renderPerfil,"s-vistoria":iniciarGPS,"s-pendentes":loadPendentes,"s-editor-fotos":renderEditorFotos,"s-armazenamento":loadArmazenamento,"s-ambientes-custom":loadAmbientesCustomList,"s-resumo":loadResumo,"s-gastos":loadGastos};
   if(m[id])m[id]();
 };
 window.showModal=(id)=>{if(id==="modal-coletor")populateClienteSelect("mcol-cliente");document.getElementById(id).style.display="flex";};
@@ -1448,7 +1495,6 @@ window.carregarResumo=async()=>{
     const docs=[];
     snap.forEach(d=>{
       const v={id:d.id,...d.data()};
-      // Data de referência: data_finalizacao para vistorias finalizadas, criadoEm para pendentes/ausentes
       const dfin=v.data_finalizacao&&v.data_finalizacao.seconds?v.data_finalizacao.seconds*1000:0;
       const dcri=v.criadoEm&&v.criadoEm.seconds?v.criadoEm.seconds*1000:0;
       const ts=dfin||dcri;
@@ -1524,7 +1570,7 @@ function renderResumo(docs,deStr,ateStr){
   html+='<div style="background:#dbeafe;padding:10px;border-radius:8px;text-align:center"><div style="font-size:22px;font-weight:700;color:#1d4ed8">'+totGeral.externa+'</div><div style="font-size:12px;color:#1d4ed8">Externa</div></div>';
   html+='<div style="background:#fef2f2;padding:10px;border-radius:8px;text-align:center"><div style="font-size:22px;font-weight:700;color:#dc2626">'+totGeral.ausente+'</div><div style="font-size:12px;color:#dc2626">Ausente</div></div>';
   html+='<div style="background:#fce7f3;padding:10px;border-radius:8px;text-align:center"><div style="font-size:22px;font-weight:700;color:#be185d">'+totGeral.pendente+'</div><div style="font-size:12px;color:#be185d">Pend. Retorno</div></div>';
-  html+='<div style="background:#fee2e2;padding:10px;border-radius:8px;text-align:center;grid-column:span 2"><div style="font-size:22px;font-weight:700;color:#991b1b">'+totGeral.recusa+'</div><div style="font-size:12px;color:#991b1b">Recusa</div></div>';
+  html+='<div style="background:#fee2e2;padding:10px;border-radius:8px;text-align:center"><div style="font-size:22px;font-weight:700;color:#991b1b">'+totGeral.recusa+'</div><div style="font-size:12px;color:#991b1b">Recusa</div></div>';
   html+='</div>';
   html+='<div style="margin-top:14px;padding-top:14px;border-top:1px solid #e5e7eb;text-align:center"><span style="font-size:13px;color:#666">Total geral:</span> <span style="font-size:24px;font-weight:700;color:#111">'+totGeral.total+'</span></div>';
   html+='</div>';
@@ -2204,16 +2250,11 @@ function salvarFotoFinalEditor(dataUrl,patologias,combinacoes){
   const tipoLaudo=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";
   const temPat=combinacoes&&combinacoes.length;
   const tipo=temPat?"Detalhe":"Vista";
-  let legendaCalc;
-  if(tipoLaudo==="completo"){
-    legendaCalc=tipo; // sempre Vista/Detalhe; código vai sobre a imagem
-  } else {
-    legendaCalc=temPat?unificarLegendasCombos(combinacoes):"Vista";
-  }
+  const legendaCalc=temPat?unificarLegendasCombos(combinacoes):"Vista";
   if(_efCameraMode==="adicionar"){
     _efFotos.push({dataUrl,ambiente:_efAmbienteAlvo,tipo,legenda:legendaCalc,combinacoes:combinacoes||[]});
   } else if(_efCameraMode==="substituir"&&_efSubstIdx!==null){
-    const legendaSubst=tipoLaudo==="completo"?legendaCalc:(temPat?legendaCalc:(_efFotos[_efSubstIdx]&&_efFotos[_efSubstIdx].legenda||"Vista"));
+    const legendaSubst=temPat?legendaCalc:(_efFotos[_efSubstIdx]&&_efFotos[_efSubstIdx].legenda||"Vista");
     _efFotos[_efSubstIdx]={..._efFotos[_efSubstIdx],dataUrl,legenda:legendaSubst,combinacoes:combinacoes||[]};
   }
   _efCameraMode=null;_efAmbienteAlvo=null;_efSubstIdx=null;
@@ -2641,7 +2682,7 @@ const _salvarEdicaoResponsavelOriginal=window.salvarEdicaoResponsavel;
 
 window.abrirRetorno=async(id,v)=>{
   _retornoId=id;_retornoData=v;
-  window._ultimaVistoriaFinalizada=null; // limpa estado de finalização anterior
+  window._ultimaVistoriaFinalizada=null;
   const visitas=v.visitas||1;
   // Buscar fotos da visita anterior (IndexedDB local)
   let fotosAntigas=[];
@@ -2722,7 +2763,7 @@ async function verificarRascunho(){
 
 window.retomarRascunho=()=>{
   closeModal("modal-retomar-rascunho");
-  window._ultimaVistoriaFinalizada=null; // limpa estado de finalização anterior
+  window._ultimaVistoriaFinalizada=null;
   const r=_rascunhoPendente;
   if(!r||!r.vistoria){return;}
   const v=r.vistoria;
@@ -3010,28 +3051,11 @@ function gerarTextoConclusao(){
     const slot=porAmbElem[amb]._dados[elemento];
     pats.forEach(p=>{if(!slot.set.has(p)){slot.set.add(p);slot.pats.push(p);}});
   };
-  const empurrarLegendaIntegra=(amb,legenda)=>{
-    // Para combinações do laudo Completo (código CNRP), guardamos a legenda inteira como item solto
-    if(!legenda)return;
-    if(!porAmbElem[amb])porAmbElem[amb]={_ordem:[],_dados:{}};
-    const chave="__leg__"+legenda;
-    if(!porAmbElem[amb]._dados[chave]){
-      porAmbElem[amb]._dados[chave]={integra:legenda};
-      porAmbElem[amb]._ordem.push(chave);
-    }
-  };
   Object.values(fotosPendentes).forEach(f=>{
     if(!f.combinacoes||!f.combinacoes.length)return;
     f.combinacoes.forEach(c=>{
-      if(c.modo==="completo"){
-        empurrarLegendaIntegra(f.ambiente,gerarLegendaCombo(c));
-        return;
-      }
       if(c.modo==="agrupada"&&c.listaInternal){
-        c.listaInternal.forEach(sub=>{
-          if(sub.modo==="completo"){empurrarLegendaIntegra(f.ambiente,gerarLegendaCombo(sub));}
-          else{empurrarPats(f.ambiente,sub.elemento,sub.pats);}
-        });
+        c.listaInternal.forEach(sub=>{empurrarPats(f.ambiente,sub.elemento,sub.pats);});
         return;
       }
       empurrarPats(f.ambiente,c.elemento,c.pats);
@@ -3041,10 +3065,9 @@ function gerarTextoConclusao(){
   const order=[...AMBIENTES,...ambientesExtras].filter(a=>porAmbElem[a]);
   order.forEach(amb=>{
     const ambData=porAmbElem[amb];
-    const partes=ambData._ordem.map(chave=>{
-      const slot=ambData._dados[chave];
-      if(slot.integra)return slot.integra;
-      return chave+": "+slot.pats.join(" / ");
+    const partes=ambData._ordem.map(el=>{
+      const slot=ambData._dados[el];
+      return gerarLegendaCombo({pats:slot.pats,elemento:el});
     });
     linhas.push({amb,texto:partes.join("; ")+"."});
   });
@@ -3801,12 +3824,6 @@ window.confirmarSetas=()=>{
   if(arrowPoints.length===0){
     return alert("Toque na foto para marcar onde está a patologia.");
   }
-  const tipoLaudoCS=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";
-  // No COMPLETO, cada seta exige código próprio (B1, H1;3 etc.), então mantém 1-por-vez.
-  // No SIMPLIFICADO, várias setas podem compartilhar a mesma patologia/elemento — sem alerta.
-  if(tipoLaudoCS==="completo"&&arrowPoints.length>1){
-    return alert("No modo Completo, marque apenas UMA seta por vez. Você poderá adicionar mais depois.");
-  }
   document.getElementById("arrow-overlay").style.display="none";
   abrirModalPatologias();
 };
@@ -3868,8 +3885,8 @@ function abrirModalPatologiasSimplificado(){
 }
 
 function abrirModalPatologiasCompleto(){
-  document.getElementById("pat-label-1").textContent="1. Categoria";
-  document.getElementById("pat-label-2").textContent="2. Subitens";
+  document.getElementById("pat-label-1").textContent="1. Elemento construtivo";
+  document.getElementById("pat-label-2").textContent="2. Patologias";
   document.getElementById("pat-elem-wrap").style.display="none";
   // Resetar estilos que o modo simplificado pode ter aplicado
   const partGrid=document.getElementById("part-grid");
@@ -3879,31 +3896,31 @@ function abrirModalPatologiasCompleto(){
   patList.style.display="";
   patList.style.gridTemplateColumns="";
   patList.style.gap="";
-  // Grid de categorias A–L
-  PATOLOGIAS_AL.forEach(cat=>{
+  // Grid de elementos construtivos
+  PATOLOGIAS_COMPLETO.forEach(cat=>{
     const btn=document.createElement("button");btn.className="part-btn";
-    btn.innerHTML='<b>'+cat.cod+'</b> '+cat.nome;
-    btn.dataset.cod=cat.cod;
+    btn.textContent=cat.elem;
+    btn.dataset.elem=cat.elem;
     btn.onclick=()=>{
       document.querySelectorAll("#part-grid .part-btn").forEach(b=>b.classList.remove("selected"));
       btn.classList.add("selected");
-      _patCatSelecionada=cat.cod;
-      renderSubitensCompleto(cat.cod);
+      _patCatSelecionada=cat.elem;
+      renderSubitensCompleto(cat.elem);
     };
     partGrid.appendChild(btn);
   });
-  // Subitens vazios até categoria ser selecionada
-  patList.innerHTML='<div style="font-size:12px;color:#888;padding:8px">Selecione uma categoria para ver os subitens.</div>';
+  patList.innerHTML='<div style="font-size:12px;color:#888;padding:8px">Selecione um elemento para ver as patologias.</div>';
 }
 
-function renderSubitensCompleto(cod){
-  const cat=PATOLOGIAS_AL_MAP[cod];
+function renderSubitensCompleto(elemNome){
+  const cat=PATOLOGIAS_COMPLETO_MAP[elemNome];
+  if(!cat)return;
   const list=document.getElementById("pat-list");list.innerHTML="";
-  cat.subs.forEach(s=>{
+  cat.pats.forEach(p=>{
     const item=document.createElement("div");item.className="pat-item";
-    const cb=document.createElement("input");cb.type="checkbox";cb.id="pat-cb-"+cod+s.n;cb.value=s.n;
-    const lbl=document.createElement("label");lbl.htmlFor="pat-cb-"+cod+s.n;
-    lbl.innerHTML='<b>'+cod+s.n+'</b> '+s.t;
+    const cb=document.createElement("input");cb.type="checkbox";cb.id="pat-cb-c-"+p.replace(/\s/g,"_");cb.value=p;
+    const lbl=document.createElement("label");lbl.htmlFor=cb.id;
+    lbl.textContent=p;
     item.appendChild(cb);item.appendChild(lbl);
     item.onclick=e=>{if(e.target!==cb)cb.checked=!cb.checked;};
     list.appendChild(item);
@@ -3913,21 +3930,22 @@ function renderSubitensCompleto(cod){
 window.adicionarCombinacao=()=>{
   const tipoLaudo=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";
   if(tipoLaudo==="completo"){
-    if(!_patCatSelecionada)return alert("Selecione uma categoria (A–L)");
-    const checkedSubs=Array.from(document.querySelectorAll("#pat-list input:checked")).map(cb=>parseInt(cb.value)).sort((a,b)=>a-b);
-    if(!checkedSubs.length)return alert("Selecione ao menos um subitem");
-    const cat=PATOLOGIAS_AL_MAP[_patCatSelecionada];
-    const codigo=_patCatSelecionada+checkedSubs.join(";");
-    const combo={modo:"completo",categoria:_patCatSelecionada,categoriaNome:cat.nome,subs:checkedSubs,codigo};
+    // Completo: elemento selecionado no grid de botões + patologias nos checkboxes
+    if(!_patCatSelecionada)return alert("Selecione um elemento construtivo");
+    const checkedPats=Array.from(document.querySelectorAll("#pat-list input:checked")).map(cb=>cb.value);
+    if(!checkedPats.length)return alert("Selecione ao menos uma patologia");
+    const cat=PATOLOGIAS_COMPLETO_MAP[_patCatSelecionada];
+    const col=cat?cat.col:"paredes";
+    const combo={col,parte:"",pats:checkedPats,elemento:_patCatSelecionada};
     _patCombinacoes.push(combo);
     // Limpar para próxima
     document.querySelectorAll("#part-grid .part-btn").forEach(b=>b.classList.remove("selected"));
-    document.getElementById("pat-list").innerHTML='<div style="font-size:12px;color:#888;padding:8px">Selecione uma categoria para ver os subitens.</div>';
+    document.getElementById("pat-list").innerHTML='<div style="font-size:12px;color:#888;padding:8px">Selecione um elemento para ver as patologias.</div>';
     _patCatSelecionada=null;
     renderCombinacoes();
     return;
   }
-  // Simplificado (novo fluxo: só patologia + elemento)
+  // Simplificado: patologia + elemento
   const checkedPats=Array.from(document.querySelectorAll("#part-grid input:checked")).map(cb=>cb.value);
   const selectedElem=document.querySelector("#pat-list .part-btn.selected");
   if(!checkedPats.length)return alert("Selecione ao menos uma patologia");
@@ -3936,7 +3954,6 @@ window.adicionarCombinacao=()=>{
   const col=ELEMENTO_TO_COL[elementoTxt]||"paredes";
   const combo={col,parte:"",pats:checkedPats,elemento:elementoTxt};
   _patCombinacoes.push(combo);
-  // Limpar seleções para próxima combinação
   document.querySelectorAll("#part-grid input:checked").forEach(cb=>cb.checked=false);
   document.querySelectorAll("#pat-list .part-btn").forEach(b=>b.classList.remove("selected"));
   renderCombinacoes();
@@ -3958,34 +3975,30 @@ function renderCombinacoes(){
 }
 
 function gerarLegendaCombo(c){
-  if(c.modo==="completo"){
-    const cat=PATOLOGIAS_AL_MAP[c.categoria];
-    const subStr=c.subs.map(n=>{const s=cat.subs.find(x=>x.n===n);return s?s.t:"?";}).join(" / ");
-    return c.codigo+" — "+subStr;
+  // Mapa de preposições por elemento (para desplacamento: "na Parede", "no Piso", etc.)
+  const PREPOSICAO={"Estruturas":"nas","Estrutura":"na","Parede":"na","Teto":"no","Forro":"no","Piso":"no","Calçada":"na","Porta":"na","Portas":"nas","Janela":"na","Esquadria":"na","Esquadrias":"nas","Portão":"no","Estr. Metálicas":"nas","Vidros":"nos","Telhados":"nos","Inst. Hidráulicas":"nas","Outros":"em"};
+  // Se TODAS as patologias são do tipo desplacamento, usa formato especial
+  const isDespl=c.pats&&c.pats.length&&c.pats.every(p=>p.startsWith("Despl."));
+  if(isDespl&&c.elemento){
+    const prep=PREPOSICAO[c.elemento]||"na";
+    // Ex: "Despl. de Pintura na Parede" ou "Despl. de Pintura / Despl. de Revestimento no Teto"
+    return c.pats.join(" / ")+" "+prep+" "+c.elemento;
   }
-  // Simplificado: patologias separadas por " / " (com espaço antes e depois)
-  // Ex: "Parede: Fissura / Umidade / Trinca"
-  const patsStr=c.pats.join(" / ");
+  // Padrão: "Elemento: Patologia1 / Patologia2"
+  const patsStr=c.pats?c.pats.join(" / "):"";
   return c.elemento+": "+patsStr;
 }
 
 // Unifica várias combinações da MESMA foto numa legenda só, agrupando por elemento
 // e deduplicando patologias. Ex: [{Parede,[Trinca]}, {Teto,[Trinca]}, {Parede,[Trinca]}]
 // → "Parede: Trinca / Teto: Trinca" (sem repetição).
-// Aplica-se apenas ao modo Simplificado — Completo mantém código CNRP por seta.
 function unificarLegendasCombos(combinacoes){
   if(!combinacoes||!combinacoes.length)return "";
-  // Modo completo: cada seta tem seu código próprio, não unifica
-  const temCompleto=combinacoes.some(c=>c.modo==="completo");
-  if(temCompleto){
-    return combinacoes.map(c=>gerarLegendaCombo(c)).join(" / ");
-  }
-  // Simplificado: agrupar por elemento, deduplicar patologias, preservar ordem
+  // Agrupar por elemento, deduplicar patologias, preservar ordem
   const ordemElem=[];
   const grupos={};
   combinacoes.forEach(c=>{
     if(c.modo==="agrupada"&&c.listaInternal){
-      // Caso agrupada: achatar
       c.listaInternal.forEach(sub=>{
         if(!sub.elemento||!sub.pats)return;
         if(!grupos[sub.elemento]){grupos[sub.elemento]={pats:[],set:new Set()};ordemElem.push(sub.elemento);}
@@ -3997,7 +4010,8 @@ function unificarLegendasCombos(combinacoes){
     if(!grupos[c.elemento]){grupos[c.elemento]={pats:[],set:new Set()};ordemElem.push(c.elemento);}
     c.pats.forEach(p=>{if(!grupos[c.elemento].set.has(p)){grupos[c.elemento].set.add(p);grupos[c.elemento].pats.push(p);}});
   });
-  return ordemElem.map(el=>el+": "+grupos[el].pats.join(" / ")).join(" / ");
+  // Gerar legenda por grupo usando gerarLegendaCombo (que já trata desplacamento)
+  return ordemElem.map(el=>gerarLegendaCombo({pats:grupos[el].pats,elemento:el})).join(" / ");
 }
 
 window.removerCombinacao=i=>{_patCombinacoes.splice(i,1);renderCombinacoes();};
@@ -4006,13 +4020,15 @@ window.confirmarPatologias=()=>{
   const tipoLaudo=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";
   // Auto-adicionar seleção pendente, se houver
   if(tipoLaudo==="completo"){
-    const checkedSubs=Array.from(document.querySelectorAll("#pat-list input:checked")).map(cb=>parseInt(cb.value)).sort((a,b)=>a-b);
-    if(_patCatSelecionada&&checkedSubs.length){
-      const cat=PATOLOGIAS_AL_MAP[_patCatSelecionada];
-      _patCombinacoes.push({modo:"completo",categoria:_patCatSelecionada,categoriaNome:cat.nome,subs:checkedSubs,codigo:_patCatSelecionada+checkedSubs.join(";")});
+    // Completo: elemento no grid de botões + patologias nos checkboxes
+    const checkedPats=Array.from(document.querySelectorAll("#pat-list input:checked")).map(cb=>cb.value);
+    if(_patCatSelecionada&&checkedPats.length){
+      const cat=PATOLOGIAS_COMPLETO_MAP[_patCatSelecionada];
+      const col=cat?cat.col:"paredes";
+      _patCombinacoes.push({col,parte:"",pats:checkedPats,elemento:_patCatSelecionada});
     }
   } else {
-    // Simplificado: seletores atualizados (sem grid de partes)
+    // Simplificado: patologias no grid + elemento nos botões
     const checkedPats=Array.from(document.querySelectorAll("#part-grid input:checked")).map(cb=>cb.value);
     const selectedElem=document.querySelector("#pat-list .part-btn.selected");
     if(checkedPats.length&&selectedElem){
@@ -4030,48 +4046,30 @@ window.confirmarPatologias=()=>{
     return;
   }
   // Compactar combinações desta confirmação em uma só (se usuário marcou várias).
-  // No modo Completo, deve haver apenas UMA combinação por seta (uma caixa só).
   const combinacaoDesta=_patCombinacoes.length===1?_patCombinacoes[0]:{modo:"agrupada",listaInternal:_patCombinacoes.slice()};
   const combinacoesArrSnapshot=_patCombinacoes.slice();
 
-  // SIMPLIFICADO (1 OU várias setas): aplicar mesma combinação a todas e salvar direto,
-  // sem passar pelo overlay "+outra seta/Concluir foto". As setas extras compartilham a
-  // mesma patologia/elemento (decisão do projeto). Se o cadastrador quiser uma patologia
-  // diferente, ele tira outra foto.
-  if(tipoLaudo!=="completo"){
-    if(arrowPoints.length===0){
-      // Caso extremo: não há seta ainda. Salva só com seleção pendente (deve ser raro).
-      _patCombinacoes=[];_patCatSelecionada=null;
-      return;
-    }
-    arrowPoints.forEach(p=>{
-      _fotoSetasAcumuladas.push({pontoFracao:p,combinacao:combinacaoDesta,combinacoesArr:combinacoesArrSnapshot});
-    });
+  // Unificado: aplicar mesma combinação a todas as setas e salvar direto.
+  if(arrowPoints.length===0){
     _patCombinacoes=[];_patCatSelecionada=null;
-    const tipoLaudoFinal=tipoLaudo;
-    const dataUrlFinal=renderizarFotoComAcumuladas(tipoLaudoFinal);
-    fotoAtualBlob=dataUrlFinal;
-    // Coletar combinações achatadas para o checklist
-    const todasCombos=[];
-    _fotoSetasAcumuladas.forEach(s=>{(s.combinacoesArr||[s.combinacao]).forEach(c=>todasCombos.push(c));});
-    const pats=[];
-    todasCombos.forEach(c=>{
-      if(c.pats)c.pats.forEach(p=>pats.push({col:c.col,tipo:c.parte,pat:p,elemento:c.elemento,combo:c}));
-    });
-    salvarFotoFinal(fotoAtualBlob,pats,todasCombos);
-    _fotoSetasAcumuladas=[];
-    _fotoOriginalBlob=null;
     return;
   }
-
-  // Caso COMPLETO com 1 seta: mantém overlay para permitir múltiplas patologias diferentes
-  // por foto (cada uma com seu código CNRP — B1, H1;3 etc.).
-  if(arrowPoints.length===1){
-    _fotoSetasAcumuladas.push({pontoFracao:arrowPoints[0],combinacao:combinacaoDesta,combinacoesArr:combinacoesArrSnapshot});
-  }
-  _patCombinacoes=[];
-  _patCatSelecionada=null;
-  abrirOverlayDecisao();
+  arrowPoints.forEach(p=>{
+    _fotoSetasAcumuladas.push({pontoFracao:p,combinacao:combinacaoDesta,combinacoesArr:combinacoesArrSnapshot});
+  });
+  _patCombinacoes=[];_patCatSelecionada=null;
+  const dataUrlFinal=renderizarFotoComAcumuladas(tipoLaudo);
+  fotoAtualBlob=dataUrlFinal;
+  // Coletar combinações achatadas para o checklist
+  const todasCombos=[];
+  _fotoSetasAcumuladas.forEach(s=>{(s.combinacoesArr||[s.combinacao]).forEach(c=>todasCombos.push(c));});
+  const pats=[];
+  todasCombos.forEach(c=>{
+    if(c.pats)c.pats.forEach(p=>pats.push({col:c.col,tipo:c.parte,pat:p,elemento:c.elemento,combo:c}));
+  });
+  salvarFotoFinal(fotoAtualBlob,pats,todasCombos);
+  _fotoSetasAcumuladas=[];
+  _fotoOriginalBlob=null;
 };
 
 // Abre o overlay "+ Adicionar outra seta / Concluir foto" mostrando a foto com
@@ -4119,13 +4117,11 @@ window.multiSetasConcluir=()=>{
   // Coletar todas as combinações de todas as setas para checklist / legenda
   const todasCombos=[];
   _fotoSetasAcumuladas.forEach(s=>{(s.combinacoesArr||[s.combinacao]).forEach(c=>todasCombos.push(c));});
-  // Para o simplificado, montar array flat de patologias
+  // Para o checklist, montar array flat de patologias (unificado para ambos os tipos)
   const pats=[];
-  if(tipoLaudo!=="completo"){
-    todasCombos.forEach(c=>{
-      if(c.pats)c.pats.forEach(p=>pats.push({col:c.col,tipo:c.parte,pat:p,elemento:c.elemento,combo:c}));
-    });
-  }
+  todasCombos.forEach(c=>{
+    if(c.pats)c.pats.forEach(p=>pats.push({col:c.col,tipo:c.parte,pat:p,elemento:c.elemento,combo:c}));
+  });
   salvarFotoFinal(fotoAtualBlob,pats,todasCombos);
   // Limpar estado
   _fotoSetasAcumuladas=[];
@@ -4397,7 +4393,49 @@ function renderChecklist(){
   const obsEl=document.getElementById("cl-obs");if(obsEl&&currentVistoria)obsEl.value=currentVistoria.observacoes||"";
 }
 window.togglePatologia=(amb,col,pat,checked)=>{if(!currentVistoria.checklist)currentVistoria.checklist={};if(!currentVistoria.checklist[amb])currentVistoria.checklist[amb]={};const arr=currentVistoria.checklist[amb][col]||[];if(checked){if(!arr.includes(pat))arr.push(pat);}else{const i=arr.indexOf(pat);if(i>=0)arr.splice(i,1);}currentVistoria.checklist[amb][col]=arr;};
-window.salvarChecklist=()=>{if(currentVistoria){const obsEl=document.getElementById("cl-obs");if(obsEl)currentVistoria.observacoes=obsEl.value;}goTo("s-finalizacao");};
+window.salvarChecklist=()=>{if(currentVistoria){const obsEl=document.getElementById("cl-obs");if(obsEl)currentVistoria.observacoes=obsEl.value;}const tipoLaudo=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";goTo(tipoLaudo==="completo"?"s-identificacao":"s-finalizacao");};
+
+// ===== IDENTIFICAÇÃO DO IMÓVEL (Laudo Completo — Fase 1) =====
+function renderIdentificacao(){
+  if(!currentVistoria)return;
+  const ident=currentVistoria.identificacao||{};
+  // Selo
+  const seloEl=document.getElementById("ident-selo");
+  if(seloEl)seloEl.value=ident.selo||"";
+  // Serviços públicos
+  const svcs=ident.servicosPublicos||[];
+  document.querySelectorAll("#ident-servicos input[type=checkbox]").forEach(cb=>{
+    cb.checked=svcs.includes(cb.value);
+  });
+  // Características
+  const zEl=document.getElementById("ident-zoneamento");if(zEl)zEl.value=ident.zoneamento||"";
+  const gEl=document.getElementById("ident-garagem");if(gEl)gEl.value=ident.garagem||"";
+  const pEl=document.getElementById("ident-pavimentos");if(pEl)pEl.value=ident.pavimentos||"";
+  // Materiais
+  const cEl=document.getElementById("ident-cobertura");if(cEl)cEl.value=ident.cobertura||"";
+  const prEl=document.getElementById("ident-paredes");if(prEl)prEl.value=ident.paredes||"";
+}
+
+window.confirmarIdentificacao=()=>{
+  if(!currentVistoria)return;
+  // Validação: Selo obrigatório
+  const seloVal=(document.getElementById("ident-selo").value||"").trim();
+  if(!seloVal)return alert("Preencha o número do Selo (ou clique em \"Não possui\").");
+  // Coletar serviços públicos
+  const svcs=[];
+  document.querySelectorAll("#ident-servicos input[type=checkbox]:checked").forEach(cb=>svcs.push(cb.value));
+  // Gravar no currentVistoria
+  currentVistoria.identificacao={
+    selo:seloVal,
+    servicosPublicos:svcs,
+    zoneamento:document.getElementById("ident-zoneamento").value,
+    garagem:document.getElementById("ident-garagem").value,
+    pavimentos:document.getElementById("ident-pavimentos").value,
+    cobertura:document.getElementById("ident-cobertura").value,
+    paredes:document.getElementById("ident-paredes").value
+  };
+  goTo("s-finalizacao");
+};
 
 function renderFinalizacao(){
   // === MODO PÓS-FINALIZAÇÃO: se acabamos de gerar PDF, mostrar banner com botões de ação ===
@@ -4986,7 +5024,9 @@ async function regeRarPDF(data){
       estado:data.estado||"Regular",idade:data.idade||"",
       data:data.data,dataCompleta:data.dataCompleta,
       checklist:data.checklist||{},observacoes:data.observacoes||"",
-      statusVistoria:data.status||"concluida"
+      statusVistoria:data.status||"concluida",
+      identificacao:data.identificacao||null,
+      gps:data.gps||null
     };
     // Reconstruir fotosPendentes a partir das fotos do IndexedDB (passadas via data.fotosBase64)
     fotosPendentes={};
@@ -5477,6 +5517,8 @@ window.finalizarVistoria=async()=>{
       fotosPendentes=novo;
       _backupFotos=novoBackup;
     }
+    // Salvar GPS para uso no mapa do PDF
+    if(gpsAtual&&!currentVistoria.gps)currentVistoria.gps={lat:gpsAtual.lat,lng:gpsAtual.lng};
     const{jsPDF}=window.jspdf;
     const pdf=new jsPDF("p","mm","a4");
     // === LAYOUT MODELO EXATO (margens 0.5" = 12.7mm em todos) ===
@@ -5485,10 +5527,12 @@ window.finalizarVistoria=async()=>{
     const CW=PW-ML-MR; // 184.6mm largura util
 
     const HDR=47;
+    const hasSelo=currentVistoria.identificacao&&currentVistoria.identificacao.selo;
+    const actualHDR=HDR+(hasSelo?4.5:0);
     const LEGH=8;    // altura legenda
     const FPL=(CW-1)/2;
     const FPR=(CW-1)/2;
-    const Y0=MT+HDR;
+    const Y0=MT+actualHDR;
     const PGB=PH-MB-14; // limite útil (reserva rodapé)
 
     const fotos=Object.values(fotosPendentes);
@@ -5570,6 +5614,43 @@ window.finalizarVistoria=async()=>{
         }
       }
       pdfFooter(pdf,PW,PH,ML,MR,MB,prest);
+      // === MAPA SATÉLITE (Laudo Completo, após página 1 de fotos) ===
+      if(pg===0&&(currentVistoria.tipoLaudo||"simplificado")==="completo"&&currentVistoria.gps&&currentVistoria.gps.lat){
+        try{
+          setStatus("Gerando mapa...");
+          const mapaUrl=await baixarMapaSatelite(currentVistoria.gps.lat,currentVistoria.gps.lng);
+          if(mapaUrl){
+            pdf.addPage();
+            pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);
+            pdf.rect(ML,ML,CW,PH-ML-MB,"S");
+            // Título
+            pdf.setFillColor(220,220,220);pdf.rect(ML,ML+2,CW,8,"F");
+            pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(ML,ML+2,CW,8,"S");
+            pdf.setFontSize(10);pdf.setFont("helvetica","bold");
+            pdf.text("LOCALIZAÇÃO DO IMÓVEL",ML+CW/2,ML+7.5,{align:"center"});
+            // Endereço
+            pdf.setFontSize(8);pdf.setFont("helvetica","normal");
+            const endTxt=(currentVistoria.endereco.rua||"")+" "+(currentVistoria.endereco.num||"")+(currentVistoria.endereco.comp?" - "+currentVistoria.endereco.comp:"");
+            pdf.text(endTxt,ML+CW/2,ML+15,{align:"center"});
+            // Coordenadas
+            pdf.setFontSize(7);pdf.setTextColor(100,100,100);
+            pdf.text("Lat: "+currentVistoria.gps.lat.toFixed(6)+"  |  Lng: "+currentVistoria.gps.lng.toFixed(6),ML+CW/2,ML+19.5,{align:"center"});
+            pdf.setTextColor(0,0,0);
+            // Imagem do mapa
+            const mapY=ML+23;
+            const mapSize=Math.min(CW-4,PH-MB-mapY-20);
+            try{pdf.addImage(mapaUrl,"JPEG",ML+(CW-mapSize)/2,mapY,mapSize,mapSize);}catch(e){console.error("addImage mapa:",e);}
+            // Borda ao redor do mapa
+            pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
+            pdf.rect(ML+(CW-mapSize)/2,mapY,mapSize,mapSize,"S");
+            // Fonte
+            pdf.setFontSize(5.5);pdf.setTextColor(140,140,140);
+            pdf.text("Fonte: ESRI World Imagery / ArcGIS",ML+CW/2,mapY+mapSize+4,{align:"center"});
+            pdf.setTextColor(0,0,0);
+            pdfFooter(pdf,PW,PH,ML,MR,MB,prest);
+          }
+        }catch(e){console.error("Mapa satélite:",e);}
+      }
     }
 
     // === PAGINA CHECKLIST — página própria com constantes locais ===
@@ -5772,7 +5853,7 @@ window.finalizarVistoria=async()=>{
     }
     // Salvar Firebase (sem fotos — fotos vão para IndexedDB local-only) + download
     // OBS: assinaturaResp gravada no Firestore (necessária para regerar comprovante depois).
-    const vDoc={clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,coletorNome:currentVistoria.coletorNome,responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,ocupacao:currentVistoria.ocupacao,tipo:currentVistoria.tipo,tipoLaudo:currentVistoria.tipoLaudo||"simplificado",estado:currentVistoria.estado,idade:currentVistoria.idade,data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,userId:currentUser.uid,checklist:currentVistoria.checklist,ambientesExtras:ambientesExtras||[],observacoes:currentVistoria.observacoes,totalFotos:Object.keys(fotosPendentes).length,status:currentVistoria.statusVistoria||"concluida",pendente_retorno:isPendente,visitas:currentVistoria.visitas||1,criadoEm:serverTimestamp(),assinaturaResp:assinaturaData||null};
+    const vDoc={clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,coletorNome:currentVistoria.coletorNome,responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,ocupacao:currentVistoria.ocupacao,tipo:currentVistoria.tipo,tipoLaudo:currentVistoria.tipoLaudo||"simplificado",estado:currentVistoria.estado,idade:currentVistoria.idade,data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,userId:currentUser.uid,checklist:currentVistoria.checklist,ambientesExtras:ambientesExtras||[],observacoes:currentVistoria.observacoes,totalFotos:Object.keys(fotosPendentes).length,status:currentVistoria.statusVistoria||"concluida",pendente_retorno:isPendente,visitas:currentVistoria.visitas||1,criadoEm:serverTimestamp(),assinaturaResp:assinaturaData||null,identificacao:currentVistoria.identificacao||null,gps:currentVistoria.gps||null};
     // data_finalizacao: gravada apenas quando a vistoria está sendo finalizada (não pendente).
     // Esse campo serve à coluna "Data da vistoria" da planilha do cliente e nunca deve ser
     // sobrescrito em edições posteriores — preserva o momento real da finalização.
@@ -5916,6 +5997,8 @@ window.marcarAusentePassivelRetorno=async()=>{
     if(btnSalvarAusente){btnSalvarAusente.disabled=true;btnSalvarAusente.textContent="Salvando...";}
   }catch(e){}
   try{
+    // Salvar GPS para uso futuro no mapa do PDF
+    if(gpsAtual&&!currentVistoria.gps)currentVistoria.gps={lat:gpsAtual.lat,lng:gpsAtual.lng};
     // Salvar no Firestore SEM PDF, SEM checklist completo, SEM comprovante.
     const vDoc={
       clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,
@@ -5936,7 +6019,9 @@ window.marcarAusentePassivelRetorno=async()=>{
       pendente_retorno:true, // <-- vai pra lista de pendentes
       visitas:currentVistoria.visitas||1,
       criadoEm:serverTimestamp(),
-      assinaturaResp:null
+      assinaturaResp:null,
+      identificacao:currentVistoria.identificacao||null,
+      gps:currentVistoria.gps||null
     };
     const vRef=await(async()=>{
       // Se veio de retomada, atualiza o doc existente (preserva criadoEm e histórico)
@@ -6145,13 +6230,228 @@ async function shareOrDownload(blob,nome,mime){
   setTimeout(()=>URL.revokeObjectURL(url),3000);
 }
 
+// ===== GASTOS (Master) =====
+let _gastosData=[];
+async function loadGastos(){
+  // Carregar config combustível do localStorage
+  const pl=localStorage.getItem("gasto_preco_litro");
+  const kl=localStorage.getItem("gasto_km_litro");
+  if(pl)document.getElementById("gasto-preco-litro").value=pl;
+  if(kl)document.getElementById("gasto-km-litro").value=kl;
+  // Data padrão = hoje
+  const hoje=new Date().toISOString().slice(0,10);
+  document.getElementById("gasto-data").value=hoje;
+  // Preencher selects de clientes
+  await _preencherSelectClientes("gasto-cliente");
+  await _preencherSelectClientes("gasto-filtro-cliente");
+  // Filtros padrão: mês atual
+  const dM=new Date();dM.setDate(1);
+  document.getElementById("gasto-filtro-de").value=dM.toISOString().slice(0,10);
+  document.getElementById("gasto-filtro-ate").value=hoje;
+  carregarGastos();
+}
+
+async function _preencherSelectClientes(selId){
+  const sel=document.getElementById(selId);
+  const opts=sel.querySelectorAll("option:not(:first-child)");
+  opts.forEach(o=>o.remove());
+  if(!window._cacheClientes){
+    try{
+      const snap=await getDocs(collection(db,"clientes"));
+      window._cacheClientes=[];snap.forEach(d=>window._cacheClientes.push({id:d.id,...d.data()}));
+      window._cacheClientes.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
+    }catch(e){window._cacheClientes=[];}
+  }
+  window._cacheClientes.forEach(c=>{
+    const o=document.createElement("option");o.value=c.id;o.textContent=c.nome;sel.appendChild(o);
+  });
+}
+
+window.salvarConfigCombustivel=()=>{
+  const pl=document.getElementById("gasto-preco-litro").value;
+  const kl=document.getElementById("gasto-km-litro").value;
+  if(!pl||!kl||parseFloat(pl)<=0||parseFloat(kl)<=0)return alert("Preencha preço/litro e km/litro com valores válidos.");
+  localStorage.setItem("gasto_preco_litro",pl);
+  localStorage.setItem("gasto_km_litro",kl);
+  alert("Configuração de combustível salva!");
+};
+
+window.salvarGasto=async()=>{
+  const data=document.getElementById("gasto-data").value;
+  const clienteId=document.getElementById("gasto-cliente").value;
+  const km=parseFloat(document.getElementById("gasto-km").value)||0;
+  const pedagio=parseFloat(document.getElementById("gasto-pedagio").value)||0;
+  const alimentacao=parseFloat(document.getElementById("gasto-alimentacao").value)||0;
+  const funcionariosRaw=document.getElementById("gasto-funcionarios").value.trim();
+  const obs=document.getElementById("gasto-obs").value.trim();
+  if(!data)return alert("Informe a data.");
+  if(!clienteId)return alert("Selecione o cliente.");
+  const precoLitro=parseFloat(localStorage.getItem("gasto_preco_litro"))||0;
+  const kmPorLitro=parseFloat(localStorage.getItem("gasto_km_litro"))||1;
+  const combustivel=km>0?(km/kmPorLitro)*precoLitro:0;
+  const clienteNome=(document.getElementById("gasto-cliente").selectedOptions[0]||{}).textContent||"";
+  const funcionarios=funcionariosRaw?funcionariosRaw.split(",").map(s=>s.trim()).filter(Boolean):[];
+  try{
+    await addDoc(collection(db,"gastos"),{
+      data,clienteId,clienteNome,km,pedagio,alimentacao,
+      precoLitro,kmPorLitro,combustivel,
+      funcionarios,observacoes:obs,
+      userId:currentUser.uid,
+      criadoEm:serverTimestamp()
+    });
+    alert("Gasto registrado!");
+    document.getElementById("gasto-km").value="";
+    document.getElementById("gasto-pedagio").value="";
+    document.getElementById("gasto-alimentacao").value="";
+    document.getElementById("gasto-funcionarios").value="";
+    document.getElementById("gasto-obs").value="";
+    carregarGastos();
+  }catch(e){console.error("salvarGasto:",e);alert("Erro ao salvar: "+e.message);}
+};
+
+async function carregarGastos(){
+  const de=document.getElementById("gasto-filtro-de").value;
+  const ate=document.getElementById("gasto-filtro-ate").value;
+  const clienteId=document.getElementById("gasto-filtro-cliente").value;
+  if(!de||!ate)return;
+  try{
+    let q=query(collection(db,"gastos"),where("data",">=",de),where("data","<=",ate),orderBy("data","desc"));
+    const snap=await getDocs(q);
+    _gastosData=[];
+    snap.forEach(d=>{const dt=d.data();dt._id=d.id;_gastosData.push(dt);});
+    // Filtrar por cliente localmente (se selecionado)
+    if(clienteId)_gastosData=_gastosData.filter(g=>g.clienteId===clienteId);
+    renderGastos();
+  }catch(e){console.error("carregarGastos:",e);document.getElementById("gastos-lista").innerHTML='<div class="card"><p style="color:#dc2626">Erro ao carregar gastos. Verifique as regras do Firestore.</p></div>';}
+}
+
+function renderGastos(){
+  const lista=document.getElementById("gastos-lista");
+  const resumoDiv=document.getElementById("gastos-resumo");
+  if(!_gastosData.length){
+    lista.innerHTML='<div class="card"><p style="color:#888;font-size:13px">Nenhum gasto encontrado no período.</p></div>';
+    resumoDiv.style.display="none";
+    return;
+  }
+  // Lista
+  let html='<div class="card"><h2>Lançamentos ('+_gastosData.length+')</h2><div style="max-height:400px;overflow-y:auto">';
+  _gastosData.forEach(g=>{
+    const total=(g.pedagio||0)+(g.alimentacao||0)+(g.combustivel||0);
+    html+='<div style="border-bottom:1px solid #eee;padding:8px 0;font-size:13px">';
+    html+='<div style="display:flex;justify-content:space-between"><b>'+g.data+'</b><span style="color:#059669;font-weight:600">R$ '+total.toFixed(2)+'</span></div>';
+    html+='<div style="color:#666">'+g.clienteNome+'</div>';
+    html+='<div style="color:#888;font-size:12px">';
+    if(g.km)html+='Km: '+g.km+' · ';
+    if(g.pedagio)html+='Ped: R$'+g.pedagio.toFixed(2)+' · ';
+    if(g.alimentacao)html+='Alim: R$'+g.alimentacao.toFixed(2)+' · ';
+    if(g.combustivel)html+='Comb: R$'+g.combustivel.toFixed(2);
+    html+='</div>';
+    if(g.funcionarios&&g.funcionarios.length)html+='<div style="color:#888;font-size:11px">Func: '+g.funcionarios.join(", ")+'</div>';
+    if(g.observacoes)html+='<div style="color:#aaa;font-size:11px;font-style:italic">'+g.observacoes+'</div>';
+    html+='</div>';
+  });
+  html+='</div></div>';
+  lista.innerHTML=html;
+  // Resumo
+  let totPed=0,totAlim=0,totComb=0,totKm=0;
+  _gastosData.forEach(g=>{totPed+=(g.pedagio||0);totAlim+=(g.alimentacao||0);totComb+=(g.combustivel||0);totKm+=(g.km||0);});
+  const totGeral=totPed+totAlim+totComb;
+  const rc=document.getElementById("gastos-resumo-conteudo");
+  rc.innerHTML='<div style="font-size:13px;line-height:2">'
+    +'<div style="display:flex;justify-content:space-between"><span>Km total</span><b>'+totKm.toFixed(0)+' km</b></div>'
+    +'<div style="display:flex;justify-content:space-between"><span>Pedágio</span><b>R$ '+totPed.toFixed(2)+'</b></div>'
+    +'<div style="display:flex;justify-content:space-between"><span>Alimentação</span><b>R$ '+totAlim.toFixed(2)+'</b></div>'
+    +'<div style="display:flex;justify-content:space-between"><span>Combustível</span><b>R$ '+totComb.toFixed(2)+'</b></div>'
+    +'<div style="display:flex;justify-content:space-between;border-top:2px solid #333;margin-top:4px;padding-top:4px"><span style="font-weight:700">TOTAL GERAL</span><span style="font-weight:700;color:#dc2626;font-size:16px">R$ '+totGeral.toFixed(2)+'</span></div>'
+    +'</div>';
+  resumoDiv.style.display="block";
+}
+
+window.exportarGastosXLSX=()=>{
+  if(!_gastosData.length)return alert("Nenhum dado para exportar.");
+  const rows=[["Data","Cliente","Km Rodado","Pedágio (R$)","Alimentação (R$)","Combustível (R$)","Total (R$)","Funcionários","Observações"]];
+  _gastosData.forEach(g=>{
+    const total=(g.pedagio||0)+(g.alimentacao||0)+(g.combustivel||0);
+    rows.push([g.data,g.clienteNome||"",g.km||0,(g.pedagio||0).toFixed(2),(g.alimentacao||0).toFixed(2),(g.combustivel||0).toFixed(2),total.toFixed(2),(g.funcionarios||[]).join(", "),g.observacoes||""]);
+  });
+  // Totais
+  let tP=0,tA=0,tC=0,tK=0;
+  _gastosData.forEach(g=>{tP+=(g.pedagio||0);tA+=(g.alimentacao||0);tC+=(g.combustivel||0);tK+=(g.km||0);});
+  rows.push(["TOTAL","",tK,tP.toFixed(2),tA.toFixed(2),tC.toFixed(2),(tP+tA+tC).toFixed(2),"",""]);
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Gastos");
+  const buf=XLSX.write(wb,{bookType:"xlsx",type:"array"});
+  const blob=new Blob([buf],{type:"application/octet-stream"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;
+  const de=document.getElementById("gasto-filtro-de").value;
+  const ate=document.getElementById("gasto-filtro-ate").value;
+  a.download="Gastos_"+de+"_a_"+ate+".xlsx";
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+};
+
+// ===== MAPA SATÉLITE PARA PDF (Laudo Completo) =====
+async function baixarMapaSatelite(lat,lng,zoom){
+  zoom=zoom||18;
+  // Converte lat/lng para tile coordinates
+  const n=Math.pow(2,zoom);
+  const xtile=Math.floor((lng+180)/360*n);
+  const ytile=Math.floor((1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*n);
+  // Posição do ponto dentro do tile central (0-256)
+  const xpix=((lng+180)/360*n-xtile)*256;
+  const ypix=((1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*n-ytile)*256;
+  // Download 3x3 grid = 768x768
+  const canvas=document.createElement("canvas");
+  canvas.width=768;canvas.height=768;
+  const ctx=canvas.getContext("2d");
+  const loadTile=(url)=>new Promise((res,rej)=>{
+    const img=new Image();img.crossOrigin="anonymous";
+    img.onload=()=>res(img);
+    img.onerror=()=>res(null); // falha silenciosa
+    img.src=url;
+    setTimeout(()=>res(null),8000); // timeout
+  });
+  // Base: ESRI World Imagery (satélite)
+  const satBase="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile";
+  // Overlay: ruas e nomes
+  const lblBase="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile";
+  for(let dy=-1;dy<=1;dy++){
+    for(let dx=-1;dx<=1;dx++){
+      const tx=xtile+dx,ty=ytile+dy;
+      const ox=(dx+1)*256,oy=(dy+1)*256;
+      // Satélite
+      const sat=await loadTile(satBase+"/"+zoom+"/"+ty+"/"+tx);
+      if(sat)ctx.drawImage(sat,ox,oy,256,256);
+      // Labels
+      const lbl=await loadTile(lblBase+"/"+zoom+"/"+ty+"/"+tx);
+      if(lbl)ctx.drawImage(lbl,ox,oy,256,256);
+    }
+  }
+  // Marcador vermelho no ponto exato
+  const mx=256+xpix,my=256+ypix;
+  ctx.beginPath();ctx.arc(mx,my,10,0,2*Math.PI);ctx.fillStyle="rgba(220,38,38,0.85)";ctx.fill();
+  ctx.strokeStyle="#fff";ctx.lineWidth=3;ctx.stroke();
+  ctx.beginPath();ctx.arc(mx,my,4,0,2*Math.PI);ctx.fillStyle="#fff";ctx.fill();
+  // Crop central 600x600 para melhor enquadramento
+  const crop=document.createElement("canvas");
+  crop.width=600;crop.height=600;
+  const cctx=crop.getContext("2d");
+  cctx.drawImage(canvas,84,84,600,600,0,0,600,600);
+  return crop.toDataURL("image/jpeg",0.92);
+}
+
 function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
   // showLocalBar=false na página de checklist (remove linha Local/Data)
   // Proporções das 9 linhas do modelo (total 49.1mm, escalado para HDR)
   const SC=HDR/49.1;
   const h1=5.6*SC,h2=5.1*SC,h3=7.7*SC,h4=5.1*SC,h5=5.1*SC;
   const h6=5.1*SC,h7=5.1*SC,h8=5.1*SC,h9=showLocalBar!==false?5.3*SC:0;
-  const totalH=h1+h2+h3+h4+h5+h6+h7+h8+h9;
+  // Selo: linha extra entre Endereço (R7) e Coletor (R8), apenas quando presente
+  const hasSelo=v.identificacao&&v.identificacao.selo;
+  const h_selo=hasSelo?4.5:0;
+  const totalH=h1+h2+h3+h4+h5+h6+h7+h_selo+h8+h9;
 
   // Posições Y de cada linha
   const lY1=MT+h1;
@@ -6159,7 +6459,8 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
   const lY3=lY2+h4;
   const lY4=lY3+h5;
   const lY5=lY4+h6;
-  const lY6=lY5+h7;
+  const lY_selo=lY5+h7; // topo da linha Selo (ou topo do Coletor se sem selo)
+  const lY6=lY_selo+h_selo;
   const lY7=lY6+h8;
 
   // Centros Y de cada linha (para texto)
@@ -6227,9 +6528,19 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
   pdf.setFont("helvetica","bold");pdf.text(cL,ML+CW*(9.3/12)+1.5,cy(lY5,h7));
   pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.comp||"",ML+CW*(9.3/12)+1.5+pdf.getTextWidth(cL),cy(lY5,h7));
   pdf.setLineWidth(0.2);
-  pdf.line(ML+CW*(7/12),lY5,ML+CW*(7/12),lY6);
-  pdf.line(ML+CW*(9.3/12),lY5,ML+CW*(9.3/12),lY6);
-  pdf.line(ML,lY6,ML+CW,lY6);
+  pdf.line(ML+CW*(7/12),lY5,ML+CW*(7/12),lY_selo);
+  pdf.line(ML+CW*(9.3/12),lY5,ML+CW*(9.3/12),lY_selo);
+  pdf.line(ML,lY_selo,ML+CW,lY_selo);
+
+  // === R7b: Selo (condicional — apenas quando identificacao.selo existe) ===
+  if(hasSelo){
+    const seloL="Selo:  ";
+    pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
+    pdf.text(seloL,ML+1.5,cy(lY_selo,h_selo));
+    pdf.setFont("helvetica","normal");
+    pdf.text(v.identificacao.selo,ML+1.5+pdf.getTextWidth(seloL),cy(lY_selo,h_selo));
+    pdf.setLineWidth(0.2);pdf.line(ML,lY6,ML+CW,lY6);
+  }
 
   // === R8: Coletor | Ocupação | Estado de Conservação | Idade Aparente ===
   // 4 células: divisores em 3/12, 6/12 e 9.5/12 da largura. O label "Estado de Conservação"
@@ -6272,6 +6583,7 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
     pdf.text("Data Vistoria:  "+(v.data||""),ML+CW-1.5,cy(lY7,h9),{align:"right"});
     pdf.setLineWidth(0.2);pdf.line(ML+CW/2,lY7,ML+CW/2,MT+totalH);
   }
+  return totalH;
 }
 
 function pdfFooter(pdf,PW,PH,ML,MR,MB,p){
