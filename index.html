@@ -1448,7 +1448,10 @@ window.carregarResumo=async()=>{
     const docs=[];
     snap.forEach(d=>{
       const v={id:d.id,...d.data()};
-      const ts=v.criadoEm&&v.criadoEm.seconds?v.criadoEm.seconds*1000:0;
+      // Data de referência: data_finalizacao para vistorias finalizadas, criadoEm para pendentes/ausentes
+      const dfin=v.data_finalizacao&&v.data_finalizacao.seconds?v.data_finalizacao.seconds*1000:0;
+      const dcri=v.criadoEm&&v.criadoEm.seconds?v.criadoEm.seconds*1000:0;
+      const ts=dfin||dcri;
       if(ts>=tsIni&&ts<=tsFim)docs.push(v);
     });
     _resumoVistoriasCache=docs;
@@ -1491,7 +1494,9 @@ function renderResumo(docs,deStr,ateStr){
   // Contagem por dia (para o gráfico do mês)
   const porDia={};
   docs.forEach(v=>{
-    const ts=v.criadoEm&&v.criadoEm.seconds?v.criadoEm.seconds*1000:0;
+    const dfin=v.data_finalizacao&&v.data_finalizacao.seconds?v.data_finalizacao.seconds*1000:0;
+    const dcri=v.criadoEm&&v.criadoEm.seconds?v.criadoEm.seconds*1000:0;
+    const ts=dfin||dcri;
     if(!ts)return;
     const dt=new Date(ts).toISOString().slice(0,10);
     if(!porDia[dt])porDia[dt]={concluida:0,parcial:0,externa:0,recusa:0,ausente:0,pendente:0,total:0};
@@ -1626,7 +1631,9 @@ window.exportarPlanilhaCliente=async()=>{
   const tsFimExp=new Date(expAte+"T23:59:59").getTime();
   // Aplica filtros: período da exportação + (opcional) cliente
   let docs=_resumoVistoriasCache.filter(v=>{
-    const ts=v.criadoEm&&v.criadoEm.seconds?v.criadoEm.seconds*1000:0;
+    const dfin=v.data_finalizacao&&v.data_finalizacao.seconds?v.data_finalizacao.seconds*1000:0;
+    const dcri=v.criadoEm&&v.criadoEm.seconds?v.criadoEm.seconds*1000:0;
+    const ts=dfin||dcri;
     return ts>=tsIniExp&&ts<=tsFimExp;
   });
   let clienteNome="Todos";
