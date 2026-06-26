@@ -276,22 +276,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 <div id="s-gastos" class="screen">
   <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Gastos</h1></div>
   <div class="content">
-    <div class="card"><h2>Configuração de Combustível</h2>
-      <div class="grid2">
-        <div class="field"><label>Preço/Litro (R$)</label><input type="number" id="gasto-preco-litro" placeholder="Ex: 5.89" step="0.01" min="0" inputmode="decimal"></div>
-        <div class="field"><label>Km/Litro</label><input type="number" id="gasto-km-litro" placeholder="Ex: 10" step="0.1" min="0.1" inputmode="decimal"></div>
-      </div>
-      <button class="btn small" onclick="salvarConfigCombustivel()" style="margin-top:6px">Salvar config</button>
+    <div class="card"><h2>Veículos Cadastrados</h2>
+      <div id="gastos-veiculos-lista" style="margin-bottom:8px"></div>
+      <button class="btn small" onclick="showModal('modal-veiculo')" style="color:#007aff;border-color:#007aff">+ Cadastrar Veículo</button>
+    </div>
+    <div class="card"><h2>Equipe</h2>
+      <div id="gastos-funcionarios-lista" style="margin-bottom:8px"></div>
+      <button class="btn small" onclick="adicionarFuncionario()" style="color:#007aff;border-color:#007aff">+ Adicionar Funcionário</button>
     </div>
     <div class="card"><h2>Registrar Gasto Diário</h2>
       <div class="field"><label>Data</label><input type="date" id="gasto-data"></div>
       <div class="field"><label>Cliente</label><select id="gasto-cliente"><option value="">Selecione...</option></select></div>
+      <div class="field"><label>Veículo</label><select id="gasto-veiculo" onchange="onChangeVeiculo()"><option value="">Selecione...</option></select></div>
       <div class="field"><label>Km Rodado</label><input type="number" id="gasto-km" placeholder="Ex: 120" min="0" inputmode="numeric"></div>
       <div class="grid2">
         <div class="field"><label>Pedágio (R$)</label><input type="number" id="gasto-pedagio" placeholder="0.00" step="0.01" min="0" inputmode="decimal"></div>
         <div class="field"><label>Alimentação (R$)</label><input type="number" id="gasto-alimentacao" placeholder="0.00" step="0.01" min="0" inputmode="decimal"></div>
       </div>
-      <div class="field"><label>Funcionários que trabalharam</label><input type="text" id="gasto-funcionarios" placeholder="Nomes separados por vírgula"></div>
+      <div class="field"><label>Funcionários</label><div id="gasto-func-checks" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div></div>
       <div class="field"><label>Observações</label><input type="text" id="gasto-obs" placeholder="(opcional)"></div>
       <button class="btn primary" onclick="salvarGasto()" style="margin-top:8px">Salvar Gasto</button>
     </div>
@@ -308,6 +310,37 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div class="card"><h2>Resumo de Gastos</h2><div id="gastos-resumo-conteudo"></div>
         <button class="btn success" onclick="exportarGastosXLSX()" style="margin-top:10px">Exportar Planilha de Gastos</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div id="modal-veiculo" class="modal-bg" style="display:none" onclick="closeModalBg(event,'modal-veiculo')">
+  <div class="modal"><h3 id="mv-titulo">Cadastrar Veículo</h3>
+    <div class="field"><label>Nome / Modelo *</label><input type="text" id="mv-nome" placeholder="Ex: Fiat Strada Branca"></div>
+    <div class="field"><label>Placa</label><input type="text" id="mv-placa" placeholder="ABC-1D23" style="text-transform:uppercase"></div>
+    <div class="grid2">
+      <div class="field"><label>Preço/Litro (R$) *</label><input type="number" id="mv-preco" placeholder="5.89" step="0.01" min="0" inputmode="decimal"></div>
+      <div class="field"><label>Km/Litro *</label><input type="number" id="mv-km" placeholder="10" step="0.1" min="0.1" inputmode="decimal"></div>
+    </div>
+    <div class="grid2" style="margin-top:8px"><button class="btn" onclick="closeModal('modal-veiculo')">Cancelar</button><button class="btn primary" onclick="salvarVeiculo()">Salvar</button></div>
+  </div>
+</div>
+
+<div id="modal-editar-gasto" class="modal-bg" style="display:none" onclick="closeModalBg(event,'modal-editar-gasto')">
+  <div class="modal"><h3>Editar Gasto</h3>
+    <div class="field"><label>Data</label><input type="date" id="eg-data"></div>
+    <div class="field"><label>Cliente</label><select id="eg-cliente"><option value="">Selecione...</option></select></div>
+    <div class="field"><label>Veículo</label><select id="eg-veiculo"><option value="">Selecione...</option></select></div>
+    <div class="field"><label>Km Rodado</label><input type="number" id="eg-km" min="0" inputmode="numeric"></div>
+    <div class="grid2">
+      <div class="field"><label>Pedágio (R$)</label><input type="number" id="eg-pedagio" step="0.01" min="0" inputmode="decimal"></div>
+      <div class="field"><label>Alimentação (R$)</label><input type="number" id="eg-alimentacao" step="0.01" min="0" inputmode="decimal"></div>
+    </div>
+    <div class="field"><label>Funcionários</label><div id="eg-func-checks" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div></div>
+    <div class="field"><label>Observações</label><input type="text" id="eg-obs"></div>
+    <div class="grid2" style="margin-top:8px">
+      <button class="btn" onclick="closeModal('modal-editar-gasto')">Cancelar</button>
+      <button class="btn primary" onclick="salvarEdicaoGasto()">Salvar</button>
     </div>
   </div>
 </div>
@@ -6289,19 +6322,157 @@ async function shareOrDownload(blob,nome,mime){
 
 // ===== GASTOS (Master) =====
 let _gastosData=[];
+let _gastoEditandoId=null; // ID do gasto sendo editado
+
+// --- VEÍCULOS (localStorage) ---
+function _getVeiculos(){try{return JSON.parse(localStorage.getItem("gastos_veiculos")||"[]");}catch(e){return[];}}
+function _setVeiculos(arr){localStorage.setItem("gastos_veiculos",JSON.stringify(arr));}
+let _veiculoEditandoIdx=null;
+
+function renderVeiculosLista(){
+  const el=document.getElementById("gastos-veiculos-lista");if(!el)return;
+  const veiculos=_getVeiculos();
+  if(!veiculos.length){el.innerHTML='<p style="color:#888;font-size:13px">Nenhum veículo cadastrado.</p>';return;}
+  el.innerHTML=veiculos.map((v,i)=>
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#f9fafb;border-radius:8px;margin-bottom:4px;font-size:13px">'
+    +'<div><b>'+v.nome+'</b>'+(v.placa?' <span style="color:#888">('+v.placa+')</span>':'')
+    +'<br><span style="color:#666;font-size:12px">R$'+parseFloat(v.precoLitro).toFixed(2)+'/L · '+parseFloat(v.kmPorLitro).toFixed(1)+' km/L</span></div>'
+    +'<div style="display:flex;gap:4px">'
+    +'<button class="btn small" onclick="editarVeiculo('+i+')" style="color:#007aff;border-color:#007aff;font-size:11px">Editar</button>'
+    +'<button class="btn small danger" onclick="excluirVeiculo('+i+')" style="font-size:11px">X</button>'
+    +'</div></div>'
+  ).join("");
+}
+
+function popularSelectVeiculos(selId){
+  const sel=document.getElementById(selId);if(!sel)return;
+  const veiculos=_getVeiculos();
+  const val=sel.value;
+  sel.innerHTML='<option value="">Selecione...</option>';
+  veiculos.forEach((v,i)=>{
+    const o=document.createElement("option");
+    o.value=i;o.textContent=v.nome+(v.placa?" ("+v.placa+")":"");
+    sel.appendChild(o);
+  });
+  if(val)sel.value=val;
+}
+
+window.onChangeVeiculo=()=>{
+  // Não precisa mais preencher campos — o cálculo é feito no salvarGasto
+};
+
+window.editarVeiculo=(idx)=>{
+  const veiculos=_getVeiculos();
+  const v=veiculos[idx];if(!v)return;
+  _veiculoEditandoIdx=idx;
+  document.getElementById("mv-titulo").textContent="Editar Veículo";
+  document.getElementById("mv-nome").value=v.nome||"";
+  document.getElementById("mv-placa").value=v.placa||"";
+  document.getElementById("mv-preco").value=v.precoLitro||"";
+  document.getElementById("mv-km").value=v.kmPorLitro||"";
+  showModal("modal-veiculo");
+};
+
+window.excluirVeiculo=(idx)=>{
+  const veiculos=_getVeiculos();
+  if(!confirm('Excluir veículo "'+veiculos[idx].nome+'"?'))return;
+  veiculos.splice(idx,1);_setVeiculos(veiculos);
+  renderVeiculosLista();popularSelectVeiculos("gasto-veiculo");
+};
+
+window.salvarVeiculo=()=>{
+  const nome=document.getElementById("mv-nome").value.trim();
+  const placa=document.getElementById("mv-placa").value.trim().toUpperCase();
+  const preco=parseFloat(document.getElementById("mv-preco").value);
+  const km=parseFloat(document.getElementById("mv-km").value);
+  if(!nome)return alert("Informe o nome/modelo do veículo.");
+  if(!preco||preco<=0||!km||km<=0)return alert("Preencha preço/litro e km/litro com valores válidos.");
+  const veiculos=_getVeiculos();
+  const obj={nome,placa,precoLitro:preco,kmPorLitro:km};
+  if(_veiculoEditandoIdx!==null){veiculos[_veiculoEditandoIdx]=obj;}
+  else{veiculos.push(obj);}
+  _setVeiculos(veiculos);
+  _veiculoEditandoIdx=null;
+  document.getElementById("mv-titulo").textContent="Cadastrar Veículo";
+  ["mv-nome","mv-placa","mv-preco","mv-km"].forEach(id=>document.getElementById(id).value="");
+  closeModal("modal-veiculo");
+  renderVeiculosLista();popularSelectVeiculos("gasto-veiculo");
+  showToast("Veículo salvo!");
+};
+
+// Ao abrir modal de veículo novo, limpa campos
+const _origShowModal=window.showModal;
+window.showModal=(id)=>{
+  if(id==="modal-veiculo"){
+    _veiculoEditandoIdx=null;
+    document.getElementById("mv-titulo").textContent="Cadastrar Veículo";
+    ["mv-nome","mv-placa","mv-preco","mv-km"].forEach(fid=>document.getElementById(fid).value="");
+  }
+  _origShowModal(id);
+};
+
+// --- FUNCIONÁRIOS (localStorage) ---
+function _getFuncionarios(){try{return JSON.parse(localStorage.getItem("gastos_funcionarios")||"[]");}catch(e){return[];}}
+function _setFuncionarios(arr){localStorage.setItem("gastos_funcionarios",JSON.stringify(arr));}
+
+function renderFuncionariosLista(){
+  const el=document.getElementById("gastos-funcionarios-lista");if(!el)return;
+  const funcs=_getFuncionarios();
+  if(!funcs.length){el.innerHTML='<p style="color:#888;font-size:13px">Nenhum funcionário cadastrado.</p>';return;}
+  el.innerHTML=funcs.map((f,i)=>
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:#f9fafb;border-radius:8px;margin-bottom:3px;font-size:13px">'
+    +'<span>'+f+'</span>'
+    +'<button class="btn small danger" onclick="excluirFuncionario('+i+')" style="font-size:11px;padding:4px 8px">X</button>'
+    +'</div>'
+  ).join("");
+}
+
+function renderFuncCheckboxes(containerId,selecionados){
+  const el=document.getElementById(containerId);if(!el)return;
+  const funcs=_getFuncionarios();
+  const selSet=new Set(selecionados||[]);
+  if(!funcs.length){el.innerHTML='<span style="color:#888;font-size:12px">Cadastre funcionários na seção Equipe acima.</span>';return;}
+  el.innerHTML=funcs.map(f=>{
+    const checked=selSet.has(f)?'checked':'';
+    return '<label style="display:flex;align-items:center;gap:5px;background:#f3f4f6;padding:6px 10px;border-radius:8px;font-size:13px;cursor:pointer;white-space:nowrap">'
+      +'<input type="checkbox" value="'+f.replace(/"/g,"&quot;")+'" '+checked+' style="width:16px;height:16px;accent-color:#1d4ed8"> '+f+'</label>';
+  }).join("");
+}
+
+function lerFuncCheckboxes(containerId){
+  const el=document.getElementById(containerId);if(!el)return[];
+  return Array.from(el.querySelectorAll("input:checked")).map(cb=>cb.value);
+}
+
+window.adicionarFuncionario=()=>{
+  const nome=prompt("Nome do funcionário:");
+  if(!nome||!nome.trim())return;
+  const funcs=_getFuncionarios();
+  const nomeTrim=nome.trim();
+  if(funcs.some(f=>f.toLowerCase()===nomeTrim.toLowerCase()))return alert("Já existe.");
+  funcs.push(nomeTrim);funcs.sort((a,b)=>a.localeCompare(b,"pt-BR"));
+  _setFuncionarios(funcs);
+  renderFuncionariosLista();renderFuncCheckboxes("gasto-func-checks",[]);
+  showToast("Funcionário adicionado!");
+};
+
+window.excluirFuncionario=(idx)=>{
+  const funcs=_getFuncionarios();
+  if(!confirm('Remover "'+funcs[idx]+'" da lista?'))return;
+  funcs.splice(idx,1);_setFuncionarios(funcs);
+  renderFuncionariosLista();renderFuncCheckboxes("gasto-func-checks",[]);
+};
+
+// --- LOAD GASTOS ---
 async function loadGastos(){
-  // Carregar config combustível do localStorage
-  const pl=localStorage.getItem("gasto_preco_litro");
-  const kl=localStorage.getItem("gasto_km_litro");
-  if(pl)document.getElementById("gasto-preco-litro").value=pl;
-  if(kl)document.getElementById("gasto-km-litro").value=kl;
-  // Data padrão = hoje
   const hoje=new Date().toISOString().slice(0,10);
   document.getElementById("gasto-data").value=hoje;
-  // Preencher selects de clientes
   await _preencherSelectClientes("gasto-cliente");
   await _preencherSelectClientes("gasto-filtro-cliente");
-  // Filtros padrão: mês atual
+  renderVeiculosLista();
+  popularSelectVeiculos("gasto-veiculo");
+  renderFuncionariosLista();
+  renderFuncCheckboxes("gasto-func-checks",[]);
   const dM=new Date();dM.setDate(1);
   document.getElementById("gasto-filtro-de").value=dM.toISOString().slice(0,10);
   document.getElementById("gasto-filtro-ate").value=hoje;
@@ -6313,55 +6484,41 @@ async function _preencherSelectClientes(selId){
   const opts=sel.querySelectorAll("option:not(:first-child)");
   opts.forEach(o=>o.remove());
   if(!window._cacheClientes){
-    try{
-      const snap=await getDocs(collection(db,"clientes"));
-      window._cacheClientes=[];snap.forEach(d=>window._cacheClientes.push({id:d.id,...d.data()}));
-      window._cacheClientes.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
-    }catch(e){window._cacheClientes=[];}
+    try{const snap=await getDocs(collection(db,"clientes"));window._cacheClientes=[];snap.forEach(d=>window._cacheClientes.push({id:d.id,...d.data()}));window._cacheClientes.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));}catch(e){window._cacheClientes=[];}
   }
-  window._cacheClientes.forEach(c=>{
-    const o=document.createElement("option");o.value=c.id;o.textContent=c.nome;sel.appendChild(o);
-  });
+  window._cacheClientes.forEach(c=>{const o=document.createElement("option");o.value=c.id;o.textContent=c.nome;sel.appendChild(o);});
 }
-
-window.salvarConfigCombustivel=()=>{
-  const pl=document.getElementById("gasto-preco-litro").value;
-  const kl=document.getElementById("gasto-km-litro").value;
-  if(!pl||!kl||parseFloat(pl)<=0||parseFloat(kl)<=0)return alert("Preencha preço/litro e km/litro com valores válidos.");
-  localStorage.setItem("gasto_preco_litro",pl);
-  localStorage.setItem("gasto_km_litro",kl);
-  alert("Configuração de combustível salva!");
-};
 
 window.salvarGasto=async()=>{
   const data=document.getElementById("gasto-data").value;
   const clienteId=document.getElementById("gasto-cliente").value;
+  const veiculoIdx=document.getElementById("gasto-veiculo").value;
   const km=parseFloat(document.getElementById("gasto-km").value)||0;
   const pedagio=parseFloat(document.getElementById("gasto-pedagio").value)||0;
   const alimentacao=parseFloat(document.getElementById("gasto-alimentacao").value)||0;
-  const funcionariosRaw=document.getElementById("gasto-funcionarios").value.trim();
+  const funcionarios=lerFuncCheckboxes("gasto-func-checks");
   const obs=document.getElementById("gasto-obs").value.trim();
   if(!data)return alert("Informe a data.");
   if(!clienteId)return alert("Selecione o cliente.");
-  const precoLitro=parseFloat(localStorage.getItem("gasto_preco_litro"))||0;
-  const kmPorLitro=parseFloat(localStorage.getItem("gasto_km_litro"))||1;
-  const combustivel=km>0?(km/kmPorLitro)*precoLitro:0;
+  // Buscar dados do veículo selecionado
+  let precoLitro=0,kmPorLitro=1,veiculoNome="";
+  if(veiculoIdx!==""){
+    const veiculos=_getVeiculos();
+    const v=veiculos[parseInt(veiculoIdx)];
+    if(v){precoLitro=v.precoLitro;kmPorLitro=v.kmPorLitro;veiculoNome=v.nome+(v.placa?" ("+v.placa+")":"");}
+  }
+  const combustivel=km>0&&kmPorLitro>0?(km/kmPorLitro)*precoLitro:0;
   const clienteNome=(document.getElementById("gasto-cliente").selectedOptions[0]||{}).textContent||"";
-  const funcionarios=funcionariosRaw?funcionariosRaw.split(",").map(s=>s.trim()).filter(Boolean):[];
   try{
     await addDoc(collection(db,"gastos"),{
       data,clienteId,clienteNome,km,pedagio,alimentacao,
-      precoLitro,kmPorLitro,combustivel,
+      precoLitro,kmPorLitro,combustivel,veiculoNome,
       funcionarios,observacoes:obs,
-      userId:currentUser.uid,
-      criadoEm:serverTimestamp()
+      userId:currentUser.uid,criadoEm:serverTimestamp()
     });
-    alert("Gasto registrado!");
-    document.getElementById("gasto-km").value="";
-    document.getElementById("gasto-pedagio").value="";
-    document.getElementById("gasto-alimentacao").value="";
-    document.getElementById("gasto-funcionarios").value="";
-    document.getElementById("gasto-obs").value="";
+    showToast("Gasto registrado!");
+    ["gasto-km","gasto-pedagio","gasto-alimentacao","gasto-obs"].forEach(id=>document.getElementById(id).value="");
+    renderFuncCheckboxes("gasto-func-checks",[]);
     carregarGastos();
   }catch(e){console.error("salvarGasto:",e);alert("Erro ao salvar: "+e.message);}
 };
@@ -6376,10 +6533,9 @@ async function carregarGastos(){
     const snap=await getDocs(q);
     _gastosData=[];
     snap.forEach(d=>{const dt=d.data();dt._id=d.id;_gastosData.push(dt);});
-    // Filtrar por cliente localmente (se selecionado)
     if(clienteId)_gastosData=_gastosData.filter(g=>g.clienteId===clienteId);
     renderGastos();
-  }catch(e){console.error("carregarGastos:",e);document.getElementById("gastos-lista").innerHTML='<div class="card"><p style="color:#dc2626">Erro ao carregar gastos. Verifique as regras do Firestore.</p></div>';}
+  }catch(e){console.error("carregarGastos:",e);document.getElementById("gastos-lista").innerHTML='<div class="card"><p style="color:#dc2626">Erro ao carregar gastos.</p></div>';}
 }
 
 function renderGastos(){
@@ -6387,16 +6543,20 @@ function renderGastos(){
   const resumoDiv=document.getElementById("gastos-resumo");
   if(!_gastosData.length){
     lista.innerHTML='<div class="card"><p style="color:#888;font-size:13px">Nenhum gasto encontrado no período.</p></div>';
-    resumoDiv.style.display="none";
-    return;
+    resumoDiv.style.display="none";return;
   }
-  // Lista
   let html='<div class="card"><h2>Lançamentos ('+_gastosData.length+')</h2><div style="max-height:400px;overflow-y:auto">';
   _gastosData.forEach(g=>{
     const total=(g.pedagio||0)+(g.alimentacao||0)+(g.combustivel||0);
     html+='<div style="border-bottom:1px solid #eee;padding:8px 0;font-size:13px">';
-    html+='<div style="display:flex;justify-content:space-between"><b>'+g.data+'</b><span style="color:#059669;font-weight:600">R$ '+total.toFixed(2)+'</span></div>';
-    html+='<div style="color:#666">'+g.clienteNome+'</div>';
+    html+='<div style="display:flex;justify-content:space-between;align-items:center">';
+    html+='<b>'+g.data+'</b>';
+    html+='<div style="display:flex;align-items:center;gap:6px">';
+    html+='<span style="color:#059669;font-weight:600">R$ '+total.toFixed(2)+'</span>';
+    html+='<button class="btn small" onclick="abrirEdicaoGasto(\''+g._id+'\')" style="font-size:11px;padding:3px 8px;color:#007aff;border-color:#007aff">✎</button>';
+    html+='<button class="btn small danger" onclick="excluirGasto(\''+g._id+'\')" style="font-size:11px;padding:3px 8px">X</button>';
+    html+='</div></div>';
+    html+='<div style="color:#666">'+g.clienteNome+(g.veiculoNome?' · <span style="color:#1d4ed8">'+g.veiculoNome+'</span>':'')+'</div>';
     html+='<div style="color:#888;font-size:12px">';
     if(g.km)html+='Km: '+g.km+' · ';
     if(g.pedagio)html+='Ped: R$'+g.pedagio.toFixed(2)+' · ';
@@ -6409,7 +6569,6 @@ function renderGastos(){
   });
   html+='</div></div>';
   lista.innerHTML=html;
-  // Resumo
   let totPed=0,totAlim=0,totComb=0,totKm=0;
   _gastosData.forEach(g=>{totPed+=(g.pedagio||0);totAlim+=(g.alimentacao||0);totComb+=(g.combustivel||0);totKm+=(g.km||0);});
   const totGeral=totPed+totAlim+totComb;
@@ -6424,17 +6583,74 @@ function renderGastos(){
   resumoDiv.style.display="block";
 }
 
+// --- EDITAR GASTO ---
+window.abrirEdicaoGasto=(id)=>{
+  const g=_gastosData.find(x=>x._id===id);if(!g)return;
+  _gastoEditandoId=id;
+  document.getElementById("eg-data").value=g.data||"";
+  _preencherSelectClientes("eg-cliente").then(()=>{document.getElementById("eg-cliente").value=g.clienteId||"";});
+  popularSelectVeiculos("eg-veiculo");
+  // Tentar selecionar veículo pelo nome salvo
+  if(g.veiculoNome){
+    const veiculos=_getVeiculos();
+    const idx=veiculos.findIndex(v=>(v.nome+(v.placa?" ("+v.placa+")":""))===g.veiculoNome);
+    if(idx>=0)setTimeout(()=>{document.getElementById("eg-veiculo").value=idx;},100);
+  }
+  document.getElementById("eg-km").value=g.km||"";
+  document.getElementById("eg-pedagio").value=g.pedagio||"";
+  document.getElementById("eg-alimentacao").value=g.alimentacao||"";
+  document.getElementById("eg-obs").value=g.observacoes||"";
+  renderFuncCheckboxes("eg-func-checks",g.funcionarios||[]);
+  showModal("modal-editar-gasto");
+};
+
+window.salvarEdicaoGasto=async()=>{
+  if(!_gastoEditandoId)return;
+  const data=document.getElementById("eg-data").value;
+  const clienteId=document.getElementById("eg-cliente").value;
+  const veiculoIdx=document.getElementById("eg-veiculo").value;
+  const km=parseFloat(document.getElementById("eg-km").value)||0;
+  const pedagio=parseFloat(document.getElementById("eg-pedagio").value)||0;
+  const alimentacao=parseFloat(document.getElementById("eg-alimentacao").value)||0;
+  const funcionarios=lerFuncCheckboxes("eg-func-checks");
+  const obs=document.getElementById("eg-obs").value.trim();
+  const clienteNome=(document.getElementById("eg-cliente").selectedOptions[0]||{}).textContent||"";
+  let precoLitro=0,kmPorLitro=1,veiculoNome="";
+  if(veiculoIdx!==""){
+    const veiculos=_getVeiculos();
+    const v=veiculos[parseInt(veiculoIdx)];
+    if(v){precoLitro=v.precoLitro;kmPorLitro=v.kmPorLitro;veiculoNome=v.nome+(v.placa?" ("+v.placa+")":"");}
+  }
+  const combustivel=km>0&&kmPorLitro>0?(km/kmPorLitro)*precoLitro:0;
+  try{
+    await updateDoc(doc(db,"gastos",_gastoEditandoId),{
+      data,clienteId,clienteNome,km,pedagio,alimentacao,
+      precoLitro,kmPorLitro,combustivel,veiculoNome,
+      funcionarios,observacoes:obs
+    });
+    closeModal("modal-editar-gasto");
+    _gastoEditandoId=null;
+    showToast("Gasto atualizado!");
+    carregarGastos();
+  }catch(e){console.error("salvarEdicaoGasto:",e);alert("Erro: "+e.message);}
+};
+
+window.excluirGasto=async(id)=>{
+  if(!confirm("Excluir este gasto?"))return;
+  try{await deleteDoc(doc(db,"gastos",id));showToast("Gasto excluído");carregarGastos();}
+  catch(e){alert("Erro: "+e.message);}
+};
+
 window.exportarGastosXLSX=()=>{
   if(!_gastosData.length)return alert("Nenhum dado para exportar.");
-  const rows=[["Data","Cliente","Km Rodado","Pedágio (R$)","Alimentação (R$)","Combustível (R$)","Total (R$)","Funcionários","Observações"]];
+  const rows=[["Data","Cliente","Veículo","Km Rodado","Pedágio (R$)","Alimentação (R$)","Combustível (R$)","Total (R$)","Funcionários","Observações"]];
   _gastosData.forEach(g=>{
     const total=(g.pedagio||0)+(g.alimentacao||0)+(g.combustivel||0);
-    rows.push([g.data,g.clienteNome||"",g.km||0,(g.pedagio||0).toFixed(2),(g.alimentacao||0).toFixed(2),(g.combustivel||0).toFixed(2),total.toFixed(2),(g.funcionarios||[]).join(", "),g.observacoes||""]);
+    rows.push([g.data,g.clienteNome||"",g.veiculoNome||"",g.km||0,(g.pedagio||0).toFixed(2),(g.alimentacao||0).toFixed(2),(g.combustivel||0).toFixed(2),total.toFixed(2),(g.funcionarios||[]).join(", "),g.observacoes||""]);
   });
-  // Totais
   let tP=0,tA=0,tC=0,tK=0;
   _gastosData.forEach(g=>{tP+=(g.pedagio||0);tA+=(g.alimentacao||0);tC+=(g.combustivel||0);tK+=(g.km||0);});
-  rows.push(["TOTAL","",tK,tP.toFixed(2),tA.toFixed(2),tC.toFixed(2),(tP+tA+tC).toFixed(2),"",""]);
+  rows.push(["TOTAL","","",tK,tP.toFixed(2),tA.toFixed(2),tC.toFixed(2),(tP+tA+tC).toFixed(2),"",""]);
   const ws=XLSX.utils.aoa_to_sheet(rows);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Gastos");
@@ -6445,9 +6661,11 @@ window.exportarGastosXLSX=()=>{
   const de=document.getElementById("gasto-filtro-de").value;
   const ate=document.getElementById("gasto-filtro-ate").value;
   a.download="Gastos_"+de+"_a_"+ate+".xlsx";
-  a.click();
-  setTimeout(()=>URL.revokeObjectURL(url),3000);
+  a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
 };
+
+// Remover função legada (substituída por veículos)
+window.salvarConfigCombustivel=()=>{alert("Use o cadastro de Veículos para configurar combustível.");};
 
 // ===== MAPA SATÉLITE PARA PDF (Laudo Completo) =====
 async function baixarMapaSatelite(lat,lng,zoom){
