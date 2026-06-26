@@ -357,7 +357,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       </div>
       <div class="field"><label>Nome do morador</label><input type="text" id="nv-nome" placeholder="Opcional se for ausente — obrigatório nos demais casos" oninput="capitalizarInput(this)"></div>
       <div class="field" style="display:flex;gap:8px;align-items:flex-end">
-        <div style="flex:1"><label>RG / CPF</label><input type="text" id="nv-doc" placeholder="Digite o documento" inputmode="numeric"></div>
+        <div style="flex:1"><label>RG / CPF</label><input type="text" id="nv-doc" placeholder="Digite o documento" inputmode="text"></div>
         <button class="btn small" onclick="document.getElementById('nv-doc').value='Não Informado'" style="margin-bottom:0;white-space:nowrap">Não inf.</button>
       </div>
       <div class="field" style="display:flex;gap:8px;align-items:flex-end">
@@ -689,7 +689,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 <div id="modal-editar-resp" class="modal-bg" style="display:none" onclick="closeModalBg(event,'modal-editar-resp')">
   <div class="modal"><h3>Editar Dados</h3>
     <div class="field"><label>Nome</label><input type="text" id="er-nome"></div>
-    <div class="field"><label>CPF/RG</label><input type="text" id="er-doc" inputmode="numeric"></div>
+    <div class="field"><label>CPF/RG</label><input type="text" id="er-doc" inputmode="text"></div>
     <div class="field"><label>Telefone</label><input type="tel" id="er-tel" inputmode="numeric" oninput="maskTel(this)"></div>
     <div class="field"><label>Rua</label><input type="text" id="er-rua"></div>
     <div class="grid2">
@@ -1052,11 +1052,13 @@ function salvarRascunhoImediato(){
     if(currentVistoria.status&&currentVistoria.status!=="em_andamento")return;
     if(!fotosPendentes||!Object.keys(fotosPendentes).length)return;
     clearTimeout(_draftTimer);
+    _draftSalvando=false; // força desbloqueio — em contexto de shutdown, não há concorrência
     localSalvarRascunho(currentVistoria,fotosPendentes);
   }catch(e){console.warn("salvarRascunhoImediato:",e);}
 }
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")salvarRascunhoImediato();});
 window.addEventListener("pagehide",salvarRascunhoImediato);
+window.addEventListener("beforeunload",salvarRascunhoImediato);
 
 async function localSalvarFotos(vistoriaId,fotos){
   try{
@@ -2735,6 +2737,10 @@ window.abrirRetorno=async(id,v)=>{
   // Mostra botão de editar responsável/endereço (retorno: cadastrador pode encontrar o morador)
   const btnEdResp=document.getElementById("btn-editar-resp-vistoria");
   if(btnEdResp)btnEdResp.style.display="block";
+  // PROTEÇÃO CRÍTICA: salvar rascunho IMEDIATAMENTE após montar o estado do retorno.
+  // Se o iOS matar a aba antes do timer de 400ms (oscilação de rede, troca de app),
+  // o rascunho já estará persistido e pode ser retomado no próximo login.
+  try{await localSalvarRascunho(currentVistoria,fotosPendentes);}catch(e){console.warn("rascunho imediato retorno:",e);}
   goTo("s-vistoria");renderFotos();
 };
 
@@ -6216,18 +6222,41 @@ function yieldThread(){return new Promise(res=>setTimeout(res,0));}
 
 function addImgPDF(pdf,dataUrl,x,y,w,h){return new Promise(async res=>{await yieldThread();try{pdf.addImage(dataUrl,"JPEG",x,y,w,h,"","FAST");}catch(e){}res();});}
 async function shareOrDownload(blob,nome,mime){
-  // SEMPRE baixar o arquivo no dispositivo primeiro (download direto), garantindo que
-  // o cadastrador sempre tenha o arquivo localmente. Isso resolve o bug em que cancelar
-  // o "compartilhar" do navegador resultava em arquivo nunca salvo.
-  // O navigator.share NÃO é mais usado automaticamente — usuário usa share nativo do gerenciador
-  // de arquivos depois (toque longo no PDF → Compartilhar).
+  // iOS Safari: a.click() com blob URL é instável. Preferir navigator.share (que abre
+  // a sheet nativa de compartilhamento com opção "Salvar em Arquivos") quando disponível.
+  // Fallback 1: window.open (abre o blob numa aba nova, usuário pode salvar manualmente).
+  // Fallback 2: a.click() (funciona bem em Chrome Android).
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+  // Tentar navigator.share primeiro no iOS (sheet nativa com "Salvar em Arquivos")
+  if(isIOS&&navigator.share&&navigator.canShare){
+    try{
+      const file=new File([blob],nome,{type:mime});
+      if(navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:nome});
+        return; // sucesso
+      }
+    }catch(e){
+      if(e.name==="AbortError")return; // usuário cancelou o share — não é erro
+      console.warn("navigator.share falhou no iOS:",e);
+    }
+  }
+  // Android/Desktop: download direto funciona bem
   const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;a.download=nome;a.rel="noopener";a.target="_self";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(url),3000);
+  if(isIOS){
+    // Fallback iOS: abrir em nova aba (Safari mostra preview do PDF com opção de compartilhar)
+    const win=window.open(url,"_blank");
+    if(!win){
+      // Popup bloqueado: tenta a.click() como último recurso
+      const a=document.createElement("a");
+      a.href=url;a.download=nome;a.rel="noopener";a.target="_self";
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+    }
+  }else{
+    const a=document.createElement("a");
+    a.href=url;a.download=nome;a.rel="noopener";a.target="_self";
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+  }
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
 }
 
 // ===== GASTOS (Master) =====
