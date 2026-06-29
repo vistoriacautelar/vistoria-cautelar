@@ -507,29 +507,68 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
         <button class="btn small" onclick="document.getElementById('ident-selo').value='Não possui'" style="margin-bottom:0;white-space:nowrap">Não possui</button>
       </div>
     </div>
-    <div class="card"><h2>Serviços Públicos</h2>
-      <div id="ident-servicos" style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="checkbox" value="Água"> Água</label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="checkbox" value="Esgoto"> Esgoto</label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="checkbox" value="Energia"> Energia</label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="checkbox" value="Gás"> Gás</label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="checkbox" value="Telefone"> Telefone</label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="checkbox" value="Pavimentação"> Pavimentação</label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="checkbox" value="Iluminação"> Iluminação</label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="checkbox" value="Coleta de lixo"> Coleta de lixo</label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="checkbox" value="Transporte"> Transporte</label>
+    <div class="card"><h2>Informações Gerais</h2>
+      <p style="font-size:12px;color:#888;margin-bottom:10px">Serviços públicos disponíveis no local. Desmarque apenas o que NÃO houver.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 14px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="id-sv-energia" checked style="width:18px;height:18px">Energia Elétrica</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="id-sv-iluminacao" checked style="width:18px;height:18px">Iluminação Pública</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="id-sv-pavimentacao" checked style="width:18px;height:18px">Pavimentação</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="id-sv-guias" checked style="width:18px;height:18px">Guias e Sarjetas</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="id-sv-agua" checked style="width:18px;height:18px">Rede de Água</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="id-sv-esgoto" checked style="width:18px;height:18px">Rede de Esgoto</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="id-sv-gas" checked style="width:18px;height:18px">Gás Encanado</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="id-sv-telefone" checked style="width:18px;height:18px">Rede Telefônica</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="id-sv-drenagem" checked style="width:18px;height:18px">Drenagem Pluvial</label>
       </div>
     </div>
-    <div class="card"><h2>Características do Imóvel</h2>
-      <div class="field"><label>Zoneamento</label><select id="ident-zoneamento"><option value="">Selecione...</option><option>Residencial</option><option>Comercial</option><option>Misto</option><option>Industrial</option></select></div>
-      <div class="field"><label>Garagem</label><select id="ident-garagem"><option value="">Selecione...</option><option>Sim</option><option>Não</option></select></div>
-      <div class="field"><label>Nº de Pavimentos</label><input type="number" id="ident-pavimentos" placeholder="Ex: 2" min="1" max="99" inputmode="numeric"></div>
+    <div class="card"><h2>Zoneamento</h2>
+      <div class="field"><label>Tipo de zoneamento</label>
+        <select id="id-zoneamento">
+          <option value="Residencial">Residencial</option>
+          <option value="Comercial">Comercial</option>
+          <option value="Industrial">Industrial</option>
+          <option value="Misto" selected>Misto</option>
+        </select>
+      </div>
     </div>
-    <div class="card"><h2>Materiais Construtivos</h2>
-      <div class="field"><label>Cobertura</label><select id="ident-cobertura"><option value="">Selecione...</option><option>Telha cerâmica</option><option>Telha fibrocimento</option><option>Telha metálica</option><option>Laje</option><option>Outros</option></select></div>
-      <div class="field"><label>Paredes</label><select id="ident-paredes"><option value="">Selecione...</option><option>Alvenaria com reboco</option><option>Alvenaria sem reboco</option><option>Concreto</option><option>Madeira</option><option>Mista</option><option>Outros</option></select></div>
+    <div class="card"><h2>Construção</h2>
+      <div class="field"><label>Garagem</label>
+        <select id="id-garagem">
+          <option value="">Selecione...</option>
+          <option value="Coberta">Coberta</option>
+          <option value="Descoberta">Descoberta</option>
+          <option value="Não tem">Não tem</option>
+        </select>
+      </div>
+      <div class="field"><label>Número de pavimentos <span style="color:#dc2626">*</span></label>
+        <input type="number" id="id-pavimentos" placeholder="Ex: 1, 2, 3..." min="1" max="50" inputmode="numeric">
+      </div>
     </div>
-    <button class="btn primary" onclick="confirmarIdentificacao()" style="margin-top:4px">Continuar para Finalização ›</button>
+    <div class="card"><h2>Materiais</h2>
+      <p style="font-size:12px;color:#888;margin-bottom:10px">Marque todas as opções que se aplicam. <span style="color:#dc2626">*</span></p>
+      <div style="margin-bottom:14px">
+        <div style="font-weight:600;font-size:14px;margin-bottom:6px">Cobertura</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 14px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" class="id-mat-cob" value="Telhas de Barro" style="width:18px;height:18px;flex-shrink:0;margin:0;-webkit-appearance:checkbox;appearance:checkbox">Telhas de Barro</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" class="id-mat-cob" value="Telhas de Fibrocimento" style="width:18px;height:18px;flex-shrink:0;margin:0;-webkit-appearance:checkbox;appearance:checkbox">Telhas de Fibrocimento</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" class="id-mat-cob" value="Telha Metálica" style="width:18px;height:18px;flex-shrink:0;margin:0;-webkit-appearance:checkbox;appearance:checkbox">Telha Metálica</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" class="id-mat-cob" value="Laje de Concreto" style="width:18px;height:18px;flex-shrink:0;margin:0;-webkit-appearance:checkbox;appearance:checkbox">Laje de Concreto</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" class="id-mat-cob" value="Forro de Madeira" style="width:18px;height:18px;flex-shrink:0;margin:0;-webkit-appearance:checkbox;appearance:checkbox">Forro de Madeira</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" class="id-mat-cob" value="Forro PVC" style="width:18px;height:18px;flex-shrink:0;margin:0;-webkit-appearance:checkbox;appearance:checkbox">Forro PVC</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" class="id-mat-cob" value="Outro" style="width:18px;height:18px;flex-shrink:0;margin:0;-webkit-appearance:checkbox;appearance:checkbox">Outro</label>
+        </div>
+      </div>
+      <div>
+        <div style="font-weight:600;font-size:14px;margin-bottom:6px">Paredes</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 14px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" class="id-mat-par" value="Blocos de Cimento" style="width:18px;height:18px;flex-shrink:0;margin:0;-webkit-appearance:checkbox;appearance:checkbox">Blocos de Cimento</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" class="id-mat-par" value="Tijolos de Barro" style="width:18px;height:18px;flex-shrink:0;margin:0;-webkit-appearance:checkbox;appearance:checkbox">Tijolos de Barro</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" class="id-mat-par" value="Outro" style="width:18px;height:18px;flex-shrink:0;margin:0;-webkit-appearance:checkbox;appearance:checkbox">Outro</label>
+        </div>
+      </div>
+    </div>
+    <button class="btn primary" onclick="confirmarIdentificacao()">Avançar para Finalização</button>
+    <p style="font-size:11px;color:#888;text-align:center;margin-top:10px">Os campos <strong>Cobertura</strong>, <strong>Paredes</strong> e <strong>Nº de Pavimentos</strong> são obrigatórios.</p>
   </div>
 </div>
 
@@ -886,6 +925,147 @@ const PATOLOGIAS_COMPLETO=[
   {elem:"Outros",col:"paredes",pats:["Outros"]}
 ];
 const PATOLOGIAS_COMPLETO_MAP=Object.fromEntries(PATOLOGIAS_COMPLETO.map(c=>[c.elem,c]));
+
+// ============================================================================
+// ===== LAUDO COMPLETO: estrutura A-L (codificação interna p/ helpers/PDF) ====
+// ============================================================================
+// PATOLOGIAS_AL é uma representação alternativa do mesmo conjunto de patologias,
+// usada pelos helpers do Laudo Completo (conclusão automática, checklist do Anexo I).
+// Códigos internos (A=Estruturas, B=Parede, ...) não aparecem no PDF — só servem
+// como chave de lookup. As patologias seguem o mesmo conjunto de PATOLOGIAS_COMPLETO,
+// agora com "Desplacamento" consolidado (sem distinguir Pintura/Revestimento).
+const PATOLOGIAS_AL=[
+  {cod:"A",nome:"Estruturas",subs:[
+    {n:1,t:"Trincas"},{n:2,t:"Fissuras"},{n:3,t:"Rachaduras"},{n:4,t:"Umidade"},
+    {n:5,t:"Infiltração"},{n:6,t:"Danificado"},{n:7,t:"Segregação"},{n:8,t:"Armadura Exposta"}
+  ]},
+  {cod:"B",nome:"Parede",subs:[
+    {n:1,t:"Trincas"},{n:2,t:"Fissuras"},{n:3,t:"Rachaduras"},{n:4,t:"Umidade"},{n:5,t:"Infiltração"},
+    {n:6,t:"Danificado"},{n:7,t:"Eflorescência"},{n:8,t:"Desplacamento"}
+  ]},
+  {cod:"C",nome:"Teto",subs:[
+    {n:1,t:"Trincas"},{n:2,t:"Fissuras"},{n:3,t:"Rachaduras"},{n:4,t:"Umidade"},{n:5,t:"Infiltração"},
+    {n:6,t:"Danificado"},{n:7,t:"Eflorescência"},{n:8,t:"Desplacamento"}
+  ]},
+  {cod:"M",nome:"Forro",subs:[
+    {n:1,t:"Trincas"},{n:2,t:"Fissuras"},{n:3,t:"Rachaduras"},{n:4,t:"Umidade"},{n:5,t:"Infiltração"},
+    {n:6,t:"Danificado"},{n:7,t:"Deformado"},{n:8,t:"Desplacamento"}
+  ]},
+  {cod:"E",nome:"Estr. Metálicas",subs:[
+    {n:1,t:"Trincas"},{n:2,t:"Fissuras"},{n:3,t:"Rachaduras"},{n:4,t:"Oxidação"},{n:5,t:"Danificado"},{n:6,t:"Deformação"}
+  ]},
+  {cod:"F",nome:"Vidros",subs:[{n:1,t:"Trincado"},{n:2,t:"Quebrado"},{n:3,t:"Faltando"}]},
+  {cod:"H",nome:"Piso",subs:[
+    {n:1,t:"Trincas"},{n:2,t:"Fissuras"},{n:3,t:"Rachaduras"},{n:4,t:"Umidade"},
+    {n:5,t:"Danificado"},{n:6,t:"Recalque"},{n:7,t:"Solapamento"},{n:8,t:"Eflorescência"},{n:9,t:"Desplacamento"}
+  ]},
+  {cod:"I",nome:"Portas",subs:[{n:1,t:"Umidade"},{n:2,t:"Danificado"}]},
+  {cod:"N",nome:"Esquadrias",subs:[{n:1,t:"Umidade"},{n:2,t:"Danificado"}]},
+  {cod:"J",nome:"Telhados",subs:[
+    {n:1,t:"Umidade"},{n:2,t:"Telhas Quebradas"},{n:3,t:"Telhas Faltando"},{n:4,t:"Madeira Danificada"}
+  ]},
+  {cod:"K",nome:"Inst. Hidráulicas",subs:[{n:1,t:"Vazamento"},{n:2,t:"Danificado"},{n:3,t:"Em Reparo"}]},
+  {cod:"L",nome:"Outros",subs:[{n:1,t:"Outros"}]}
+];
+const PATOLOGIAS_AL_MAP=Object.fromEntries(PATOLOGIAS_AL.map(c=>[c.cod,c]));
+const PATOLOGIAS_AL_BY_NOME=Object.fromEntries(PATOLOGIAS_AL.map(c=>[c.nome,c]));
+
+// Singulariza nomes plurais pra ficar melhor nas legendas das fotos do Completo.
+function _singularizarPat(s){
+  if(!s)return s;
+  if(s==="Trincas")return"Trinca";
+  if(s==="Fissuras")return"Fissura";
+  if(s==="Rachaduras")return"Rachadura";
+  if(s==="Telhas Quebradas")return"Telha Quebrada";
+  if(s==="Telhas Faltando")return"Telha Faltando";
+  return s;
+}
+
+// Preposição para iniciar frase com nome do ambiente (Na cozinha, No banheiro, ...).
+function _preposicaoAmbiente(amb){
+  if(!amb)return "Em";
+  const limpo=amb.toLowerCase().trim();
+  const ehPlural=limpo.endsWith("s")&&!limpo.endsWith("ês");
+  const ultima=limpo.charAt(limpo.length-(ehPlural?2:1));
+  const ehFem=ultima==="a";
+  if(ehPlural)return ehFem?"Nas":"Nos";
+  return ehFem?"Na":"No";
+}
+
+// Agrupa patologias por ambiente, deduplica. Formato de fotosObj: {fid:{ambiente,combinacoes:[{elemento,pats}]}}
+// (formato do simplificado — combinações stored como {col,parte,pats,elemento}).
+// Retorna [{ambiente, descricao}] preservando ordem em que cada ambiente apareceu.
+function _agruparPatologiasPorAmbiente(fotosObj){
+  const ordemAmb=[];
+  const gruposAmb={};
+  Object.values(fotosObj||{}).forEach(f=>{
+    if(!f||!f.combinacoes||!f.combinacoes.length)return;
+    const amb=f.ambiente||"Outros";
+    if(!gruposAmb[amb]){gruposAmb[amb]={elemsOrdem:[],porElem:{}};ordemAmb.push(amb);}
+    const ga=gruposAmb[amb];
+    f.combinacoes.forEach(c=>{
+      const elem=c.elemento||c.parte;if(!elem)return;
+      if(!ga.porElem[elem]){ga.porElem[elem]={pats:[],set:new Set()};ga.elemsOrdem.push(elem);}
+      const g=ga.porElem[elem];
+      (c.pats||[]).forEach(p=>{
+        const ps=_singularizarPat(p);
+        if(!g.set.has(ps)){g.set.add(ps);g.pats.push(ps);}
+      });
+    });
+  });
+  return ordemAmb.filter(amb=>gruposAmb[amb].elemsOrdem.length).map(amb=>{
+    const ga=gruposAmb[amb];
+    const partes=ga.elemsOrdem.map(elem=>{
+      const subsLower=ga.porElem[elem].pats.map(s=>s.toLowerCase()).join(" e ");
+      if(elem==="Outros")return subsLower;
+      return subsLower+" em "+elem.toLowerCase();
+    });
+    return {ambiente:amb,descricao:partes.join(", ")};
+  });
+}
+
+// Texto da Conclusão automática do Laudo Completo.
+function gerarConclusaoAutomatica(){
+  if(!currentVistoria)return "";
+  const ocupacao=(currentVistoria.ocupacao||"residencial").toLowerCase();
+  const estado=(currentVistoria.estado||"regular").toLowerCase();
+  let texto="A edificação é um imóvel "+ocupacao+", apresentando grau de conservação "+estado+".";
+  const grupos=_agruparPatologiasPorAmbiente(fotosPendentes);
+  grupos.forEach(g=>{
+    const prep=_preposicaoAmbiente(g.ambiente);
+    texto+=" "+prep+" "+g.ambiente.toLowerCase()+", foram observadas "+g.descricao+".";
+  });
+  const extra=(currentVistoria.observacoesConclusao||"").trim();
+  if(extra)texto+=" "+extra;
+  return texto;
+}
+
+// Mapeia ELEMENTO (nome) → LINHA da tabela de "Lista de Verificação" do Anexo I.
+const _CHECKLIST_ELEM_MAP={
+  "Estruturas":"Estruturas","Estr. Metálicas":"Estruturas",
+  "Parede":"Paredes e Muros",
+  "Teto":"Coberturas / Tetos","Forro":"Coberturas / Tetos","Telhados":"Coberturas / Tetos",
+  "Vidros":"Portas e Esquadrias","Portas":"Portas e Esquadrias","Esquadrias":"Portas e Esquadrias",
+  "Piso":"Pisos e Calçamentos",
+  "Inst. Hidráulicas":"Equipamentos (antenas parabólicas, etc.)",
+  "Outros":"Equipamentos (antenas parabólicas, etc.)"
+};
+const _CHECKLIST_LINHAS=["Estruturas","Paredes e Muros","Coberturas / Tetos","Portas e Esquadrias","Pisos e Calçamentos","Equipamentos (antenas parabólicas, etc.)"];
+
+// Retorna {linha → boolean} com base nas patologias anotadas em fotosObj.
+function calcularChecklistDanos(fotosObj){
+  const out={};
+  _CHECKLIST_LINHAS.forEach(l=>out[l]=false);
+  Object.values(fotosObj||{}).forEach(f=>{
+    if(!f||!f.combinacoes)return;
+    f.combinacoes.forEach(c=>{
+      const elem=c.elemento||c.parte;if(!elem)return;
+      const linha=_CHECKLIST_ELEM_MAP[elem];
+      if(linha&&out[linha]!==undefined)out[linha]=true;
+    });
+  });
+  return out;
+}
 
 let currentUser=null,currentRole=null,currentUserData=null;
 let currentVistoria=null,fotosPendentes={};
@@ -4462,40 +4642,66 @@ window.salvarChecklist=()=>{if(currentVistoria){const obsEl=document.getElementB
 function renderIdentificacao(){
   if(!currentVistoria)return;
   const ident=currentVistoria.identificacao||{};
-  // Selo
+  // Selo (campo exclusivo do simplificado, preservado)
   const seloEl=document.getElementById("ident-selo");
   if(seloEl)seloEl.value=ident.selo||"";
-  // Serviços públicos
-  const svcs=ident.servicosPublicos||[];
-  document.querySelectorAll("#ident-servicos input[type=checkbox]").forEach(cb=>{
-    cb.checked=svcs.includes(cb.value);
-  });
-  // Características
-  const zEl=document.getElementById("ident-zoneamento");if(zEl)zEl.value=ident.zoneamento||"";
-  const gEl=document.getElementById("ident-garagem");if(gEl)gEl.value=ident.garagem||"";
-  const pEl=document.getElementById("ident-pavimentos");if(pEl)pEl.value=ident.pavimentos||"";
-  // Materiais
-  const cEl=document.getElementById("ident-cobertura");if(cEl)cEl.value=ident.cobertura||"";
-  const prEl=document.getElementById("ident-paredes");if(prEl)prEl.value=ident.paredes||"";
+  // Serviços públicos (objeto com booleanos — formato do Completo)
+  const sp=ident.servicosPublicos||{};
+  const setck=(k,v)=>{const el=document.getElementById(k);if(el)el.checked=v!==false;};
+  setck("id-sv-energia",sp.energia);
+  setck("id-sv-iluminacao",sp.iluminacao);
+  setck("id-sv-pavimentacao",sp.pavimentacao);
+  setck("id-sv-guias",sp.guias);
+  setck("id-sv-agua",sp.agua);
+  setck("id-sv-esgoto",sp.esgoto);
+  setck("id-sv-gas",sp.gas);
+  setck("id-sv-telefone",sp.telefone);
+  setck("id-sv-drenagem",sp.drenagem);
+  // Zoneamento + Construção
+  const z=document.getElementById("id-zoneamento");if(z)z.value=ident.zoneamento||"Misto";
+  const g=document.getElementById("id-garagem");if(g)g.value=ident.garagem||"";
+  const p=document.getElementById("id-pavimentos");if(p)p.value=ident.pavimentos||"";
+  // Materiais (arrays — múltipla seleção). Compatível com formato antigo (string única).
+  const mc=ident.materiais&&ident.materiais.cobertura;
+  const mp=ident.materiais&&ident.materiais.paredes;
+  const arrCob=Array.isArray(mc)?mc:(mc?[mc]:[]);
+  const arrPar=Array.isArray(mp)?mp:(mp?[mp]:[]);
+  document.querySelectorAll(".id-mat-cob").forEach(cb=>cb.checked=arrCob.includes(cb.value));
+  document.querySelectorAll(".id-mat-par").forEach(cb=>cb.checked=arrPar.includes(cb.value));
 }
 
 window.confirmarIdentificacao=()=>{
-  if(!currentVistoria)return;
+  if(!currentVistoria){alert("Sessão da vistoria foi perdida. Volte e reinicie.");return;}
   // Validação: Selo obrigatório
   const seloVal=(document.getElementById("ident-selo").value||"").trim();
   if(!seloVal)return alert("Preencha o número do Selo (ou clique em \"Não possui\").");
-  // Coletar serviços públicos
-  const svcs=[];
-  document.querySelectorAll("#ident-servicos input[type=checkbox]:checked").forEach(cb=>svcs.push(cb.value));
-  // Gravar no currentVistoria
+  // Validação: Cobertura, Paredes e Nº de Pavimentos
+  const cobArr=Array.from(document.querySelectorAll(".id-mat-cob:checked")).map(cb=>cb.value);
+  const parArr=Array.from(document.querySelectorAll(".id-mat-par:checked")).map(cb=>cb.value);
+  const pavimentos=(document.getElementById("id-pavimentos").value||"").trim();
+  if(cobArr.length===0){alert('Selecione pelo menos uma opção em "Cobertura".');return;}
+  if(parArr.length===0){alert('Selecione pelo menos uma opção em "Paredes".');return;}
+  if(!pavimentos){alert("Informe o Nº de Pavimentos.");document.getElementById("id-pavimentos").focus();return;}
   currentVistoria.identificacao={
     selo:seloVal,
-    servicosPublicos:svcs,
-    zoneamento:document.getElementById("ident-zoneamento").value,
-    garagem:document.getElementById("ident-garagem").value,
-    pavimentos:document.getElementById("ident-pavimentos").value,
-    cobertura:document.getElementById("ident-cobertura").value,
-    paredes:document.getElementById("ident-paredes").value
+    servicosPublicos:{
+      energia:document.getElementById("id-sv-energia").checked,
+      iluminacao:document.getElementById("id-sv-iluminacao").checked,
+      pavimentacao:document.getElementById("id-sv-pavimentacao").checked,
+      guias:document.getElementById("id-sv-guias").checked,
+      agua:document.getElementById("id-sv-agua").checked,
+      esgoto:document.getElementById("id-sv-esgoto").checked,
+      gas:document.getElementById("id-sv-gas").checked,
+      telefone:document.getElementById("id-sv-telefone").checked,
+      drenagem:document.getElementById("id-sv-drenagem").checked
+    },
+    zoneamento:document.getElementById("id-zoneamento").value||"Misto",
+    garagem:document.getElementById("id-garagem").value||"",
+    pavimentos:pavimentos,
+    materiais:{
+      cobertura:cobArr,
+      paredes:parArr
+    }
   };
   goTo("s-finalizacao");
 };
@@ -5615,6 +5821,20 @@ window.finalizarVistoria=async()=>{
     const logoSrc=prest.logo||LOGO_CONST;
     const logoPrep=await prepLogoForPDF(logoSrc,45,15);
 
+    // === LAUDO COMPLETO: gera páginas 1-8 (capa, dados, metodologia, conclusão,
+    // encerramento, anexos I e II) ANTES das páginas de fotos. As páginas de
+    // fotos são geradas pelo mesmo loop, com cabeçalho enxuto (_pdfHeaderFotosCompleto).
+    const _tipoLaudoPDF=(currentVistoria.tipoLaudo||"simplificado");
+    if(_tipoLaudoPDF==="completo"){
+      setStatus("Gerando capa e anexos...");
+      try{
+        await gerarPDFCompletoPaginasContexto(pdf,currentVistoria,prest,logoPrep,PW,PH,ML,MT,MR,MB,CW,assinaturaData);
+      }catch(eCompl){
+        console.error("Erro ao gerar páginas de contexto do laudo completo:",eCompl);
+        alert("⚠️ Aviso interno do gerador do laudo completo:\n\n"+(eCompl&&(eCompl.message||eCompl.toString())||"erro desconhecido")+"\n\nO PDF continuará sendo gerado com o que conseguiu produzir + as fotos.");
+      }
+    }
+
     // === MONTAGEM DAS PAGINAS ===
     // Pg1: fachada (faixa 1, largura total) + 2 faixas de par = 5 fotos
     // Pg2+: 3 faixas de par = 6 fotos
@@ -5629,11 +5849,18 @@ window.finalizarVistoria=async()=>{
 
     let fotoNum=1;
     for(let pg=0;pg<pagFotos.length;pg++){
-      if(pg>0)pdf.addPage();
+      // No completo SEMPRE addPage (porque há páginas de contexto antes);
+      // no simplificado só a partir da segunda página de fotos.
+      if(_tipoLaudoPDF==="completo"||pg>0)pdf.addPage();
       const pF=pagFotos[pg].fotos;
       const isP=pagFotos[pg].isPrimeira;
       const locais=[...new Set(pF.map(f=>f.ambiente))];
-      pdfHeader(pdf,ML,PW,CW,currentVistoria,locais.join(" / "),logoSrc,HDR,MT,logoPrep);
+      // Cabeçalho: enxuto no completo (Local: Ambiente | Data:), completo no simplificado
+      if(_tipoLaudoPDF==="completo"){
+        _pdfHeaderFotosCompleto(pdf,ML,MT,CW,locais.join(" / "),currentVistoria.data||"");
+      }else{
+        pdfHeader(pdf,ML,PW,CW,currentVistoria,locais.join(" / "),logoSrc,HDR,MT,logoPrep);
+      }
       let y=Y0;
 
       if(isP&&pF.length>0){
@@ -5689,43 +5916,6 @@ window.finalizarVistoria=async()=>{
         }
       }
       pdfFooter(pdf,PW,PH,ML,MR,MB,prest);
-      // === MAPA SATÉLITE (Laudo Completo, após página 1 de fotos) ===
-      if(pg===0&&(currentVistoria.tipoLaudo||"simplificado")==="completo"&&currentVistoria.gps&&currentVistoria.gps.lat){
-        try{
-          setStatus("Gerando mapa...");
-          const mapaUrl=await baixarMapaSatelite(currentVistoria.gps.lat,currentVistoria.gps.lng);
-          if(mapaUrl){
-            pdf.addPage();
-            pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);
-            pdf.rect(ML,ML,CW,PH-ML-MB,"S");
-            // Título
-            pdf.setFillColor(220,220,220);pdf.rect(ML,ML+2,CW,8,"F");
-            pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(ML,ML+2,CW,8,"S");
-            pdf.setFontSize(10);pdf.setFont("helvetica","bold");
-            pdf.text("LOCALIZAÇÃO DO IMÓVEL",ML+CW/2,ML+7.5,{align:"center"});
-            // Endereço
-            pdf.setFontSize(8);pdf.setFont("helvetica","normal");
-            const endTxt=(currentVistoria.endereco.rua||"")+" "+(currentVistoria.endereco.num||"")+(currentVistoria.endereco.comp?" - "+currentVistoria.endereco.comp:"");
-            pdf.text(endTxt,ML+CW/2,ML+15,{align:"center"});
-            // Coordenadas
-            pdf.setFontSize(7);pdf.setTextColor(100,100,100);
-            pdf.text("Lat: "+currentVistoria.gps.lat.toFixed(6)+"  |  Lng: "+currentVistoria.gps.lng.toFixed(6),ML+CW/2,ML+19.5,{align:"center"});
-            pdf.setTextColor(0,0,0);
-            // Imagem do mapa
-            const mapY=ML+23;
-            const mapSize=Math.min(CW-4,PH-MB-mapY-20);
-            try{pdf.addImage(mapaUrl,"JPEG",ML+(CW-mapSize)/2,mapY,mapSize,mapSize);}catch(e){console.error("addImage mapa:",e);}
-            // Borda ao redor do mapa
-            pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
-            pdf.rect(ML+(CW-mapSize)/2,mapY,mapSize,mapSize,"S");
-            // Fonte
-            pdf.setFontSize(5.5);pdf.setTextColor(140,140,140);
-            pdf.text("Fonte: ESRI World Imagery / ArcGIS",ML+CW/2,mapY+mapSize+4,{align:"center"});
-            pdf.setTextColor(0,0,0);
-            pdfFooter(pdf,PW,PH,ML,MR,MB,prest);
-          }
-        }catch(e){console.error("Mapa satélite:",e);}
-      }
     }
 
     // === PAGINA CHECKLIST — página própria com constantes locais ===
@@ -6676,53 +6866,583 @@ window.exportarGastosXLSX=()=>{
 window.salvarConfigCombustivel=()=>{alert("Use o cadastro de Veículos para configurar combustível.");};
 
 // ===== MAPA SATÉLITE PARA PDF (Laudo Completo) =====
-async function baixarMapaSatelite(lat,lng,zoom){
-  zoom=zoom||18;
-  // Converte lat/lng para tile coordinates
-  const n=Math.pow(2,zoom);
-  const xtile=Math.floor((lng+180)/360*n);
-  const ytile=Math.floor((1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*n);
-  // Posição do ponto dentro do tile central (0-256)
-  const xpix=((lng+180)/360*n-xtile)*256;
-  const ypix=((1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*n-ytile)*256;
-  // Download 3x3 grid = 768x768
-  const canvas=document.createElement("canvas");
-  canvas.width=768;canvas.height=768;
-  const ctx=canvas.getContext("2d");
-  const loadTile=(url)=>new Promise((res,rej)=>{
-    const img=new Image();img.crossOrigin="anonymous";
-    img.onload=()=>res(img);
-    img.onerror=()=>res(null); // falha silenciosa
-    img.src=url;
-    setTimeout(()=>res(null),8000); // timeout
-  });
-  // Base: ESRI World Imagery (satélite)
-  const satBase="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile";
-  // Overlay: ruas e nomes
-  const lblBase="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile";
-  for(let dy=-1;dy<=1;dy++){
-    for(let dx=-1;dx<=1;dx++){
-      const tx=xtile+dx,ty=ytile+dy;
-      const ox=(dx+1)*256,oy=(dy+1)*256;
-      // Satélite
-      const sat=await loadTile(satBase+"/"+zoom+"/"+ty+"/"+tx);
-      if(sat)ctx.drawImage(sat,ox,oy,256,256);
-      // Labels
-      const lbl=await loadTile(lblBase+"/"+zoom+"/"+ty+"/"+tx);
-      if(lbl)ctx.drawImage(lbl,ox,oy,256,256);
-    }
+// ============================================================================
+// ============== LAUDO COMPLETO — Geradores das páginas de TEXTO =============
+// ============================================================================
+// As funções abaixo geram as PÁGINAS DE TEXTO do Laudo Completo (capa, dados,
+// objetivo, mapa, metodologia, análise, conclusão, encerramento, anexos I e II).
+// As páginas de FOTOS continuam sendo geradas pelo loop principal, agora com
+// cabeçalho enxuto via _pdfHeaderFotosCompleto quando tipoLaudo === "completo".
+function _pdfRodapeCompleto(pdf,prest,PW,PH,ML,MR,MB,paginaNum,totalPaginas){
+  const footTop=PH-MB-3;
+  const p=prest||{};
+  // Caixa do rodapé um pouco mais alta pra acomodar 3 linhas (nome, endereço, CNPJ+email)
+  const ROD_H=14;
+  pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
+  pdf.rect(ML,footTop-2,PW-ML-MR,ROD_H,"S");
+  // Linha 1: Nome do prestador (negrito, centralizado)
+  pdf.setFont("helvetica","bold");pdf.setFontSize(9);
+  const nomeEmpresa=p.nome||"CTB ENGENHARIA CAUTELAR";
+  pdf.text(nomeEmpresa,PW/2,footTop+2,{align:"center"});
+  // Linha 2: Endereço (centralizado, normal)
+  pdf.setFont("helvetica","normal");pdf.setFontSize(8);
+  if(p.endereco){
+    // truncar endereço pra caber em 1 linha
+    const endLinhas=pdf.splitTextToSize(p.endereco,PW-ML-MR-6);
+    pdf.text(endLinhas[0]||"",PW/2,footTop+6,{align:"center"});
   }
-  // Marcador vermelho no ponto exato
-  const mx=256+xpix,my=256+ypix;
-  ctx.beginPath();ctx.arc(mx,my,10,0,2*Math.PI);ctx.fillStyle="rgba(220,38,38,0.85)";ctx.fill();
-  ctx.strokeStyle="#fff";ctx.lineWidth=3;ctx.stroke();
-  ctx.beginPath();ctx.arc(mx,my,4,0,2*Math.PI);ctx.fillStyle="#fff";ctx.fill();
-  // Crop central 600x600 para melhor enquadramento
-  const crop=document.createElement("canvas");
-  crop.width=600;crop.height=600;
-  const cctx=crop.getContext("2d");
-  cctx.drawImage(canvas,84,84,600,600,0,0,600,600);
-  return crop.toDataURL("image/jpeg",0.92);
+  // Linha 3: CNPJ + e-mail (centralizado)
+  const linha3=[];
+  if(p.cnpj)linha3.push("CNPJ: "+p.cnpj);
+  if(p.email)linha3.push(p.email);
+  if(linha3.length){
+    pdf.text(linha3.join(" | "),PW/2,footTop+9.5,{align:"center"});
+  }
+  // Número da página: canto direito, mesma posição da linha 1
+  pdf.setFont("helvetica","normal");pdf.setFontSize(8);
+  pdf.text("pág. "+paginaNum,PW-MR-3,footTop+2,{align:"right"});
+}
+
+// Cabeçalho enxuto das páginas de FOTOS do completo: barra "Local: ... | Data Vistoria: ..."
+// Substitui o pdfHeader cheio (com bloco do responsável) usado no simplificado.
+// Cabeçalho enxuto das páginas de fotos do laudo completo (barra "Local | Data").
+// "Local" aqui é o AMBIENTE da página de fotos (Fachada, Calçada, Cozinha, etc), NÃO
+// o endereço do imóvel. Igual ao simplificado.
+function _pdfHeaderFotosCompleto(pdf,ML,MT,CW,localAmbiente,dataVistoria){
+  const H=8;
+  pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
+  pdf.rect(ML,MT,CW,H,"S");
+  pdf.line(ML+CW*0.7,MT,ML+CW*0.7,MT+H);
+  pdf.setFont("helvetica","bold");pdf.setFontSize(9);
+  pdf.text("Local: ",ML+2,MT+5.3);
+  pdf.setFont("helvetica","normal");
+  const txtLocal=pdf.splitTextToSize(localAmbiente||"",CW*0.7-14)[0]||"";
+  pdf.text(txtLocal,ML+12,MT+5.3);
+  pdf.setFont("helvetica","bold");
+  pdf.text("Data: ",ML+CW*0.7+2,MT+5.3);
+  pdf.setFont("helvetica","normal");
+  pdf.text(dataVistoria||"",ML+CW*0.7+12,MT+5.3);
+  return MT+H;
+}
+
+// Página de texto do completo: aplica cabeçalho/título e devolve y inicial pra escrever conteúdo
+function _pdfNovaPagComCabecalho(pdf,ML,MT,MR,CW,PW){
+  // Título superior fixo: "LAUDO DE VISTORIA CAUTELAR" (alinhado à direita do cabeçalho)
+  pdf.setFont("helvetica","bold");pdf.setFontSize(10);
+  pdf.text("LAUDO DE VISTORIA CAUTELAR",PW-MR,MT+2,{align:"right"});
+  return MT+8;
+}
+
+function _pdfTextoBloco(pdf,texto,x,y,maxW,fontSize,linhaH,bold){
+  const fs=fontSize||10;
+  pdf.setFont("helvetica",bold?"bold":"normal");pdf.setFontSize(fs);
+  const lH=fs*1.5/2.83; // 1,5 line-height — ignora linhaH recebido
+  const linhas=pdf.splitTextToSize(texto||"",maxW);
+  linhas.forEach((l,i)=>{
+    const isUltima=i===linhas.length-1;
+    if(!isUltima&&linhas.length>1){
+      // Justifica linha completa expandindo espaços entre palavras
+      pdf.text(l,x,y,{maxWidth:maxW,align:"justify"});
+    } else {
+      pdf.text(l,x,y);
+    }
+    y+=lH;
+  });
+  return y;
+}
+
+// Verifica se há espaço suficiente na página; se não, addPage e retorna nova y (MT+8)
+function _pdfGarantirEspaco(pdf,y,minH,PH,MB,MT){
+  if(y+minH>PH-MB-12){pdf.addPage();return MT+8;}
+  return y;
+}
+
+// === ANEXO I: tabela de identificação do imóvel preenchida com dados da vistoria atual ===
+function _pdfAnexoI(pdf,ML,MT,MR,CW,PW,PH,MB,v){
+  let y=_pdfNovaPagComCabecalho(pdf,ML,MT,MR,CW,PW);
+  // Título
+  pdf.setFont("helvetica","bold");pdf.setFontSize(13);
+  pdf.text("IDENTIFICAÇÃO DO IMÓVEL",PW/2,y+4,{align:"center"});y+=10;
+  // Linha endereço
+  const e=v.endereco||{};
+  pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
+  const linhaH=6;
+  pdf.rect(ML,y,CW,linhaH,"S");
+  pdf.setFont("helvetica","normal");pdf.setFontSize(9);
+  pdf.text("Rua: "+(e.rua||""),ML+2,y+4);
+  pdf.text("Nº "+(e.num||""),ML+CW*0.7,y+4);
+  y+=linhaH;
+  pdf.rect(ML,y,CW,linhaH,"S");
+  pdf.text("Bairro: "+(e.bairro||""),ML+2,y+4);
+  pdf.text("Complemento: "+(e.comp||""),ML+CW*0.5,y+4);
+  y+=linhaH+4;
+
+  // === 1.0 INFORMAÇÕES GERAIS — TABELA com 3 colunas e cabeçalho ===
+  pdf.setFont("helvetica","bold");pdf.setFontSize(10);
+  pdf.text("1.0 INFORMAÇÕES GERAIS",ML,y);y+=6;
+  const id=v.identificacao||{};
+  const sp=id.servicosPublicos||{};
+  // Normalização sem acento — o select da Nova Vistoria usa "Servicos", "Terrea", "Galpao"
+  // SEM acento, mas mostramos com acento no PDF. Pra comparar/marcar com [X], removemos
+  // acentos dos dois lados antes de comparar.
+  const _semAcento=s=>(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  const ocupSel=_semAcento(v.ocupacao);
+  const zoneSel=_semAcento(id.zoneamento);
+  const colW=CW/3;
+  // Cabeçalho da tabela (linha cinza claro)
+  const cabH=7;
+  pdf.setFillColor(245,247,250);
+  pdf.rect(ML,y,CW,cabH,"F");
+  pdf.setDrawColor(180,180,180);pdf.setLineWidth(0.2);
+  pdf.rect(ML,y,CW,cabH,"S");
+  pdf.line(ML+colW,y,ML+colW,y+cabH);
+  pdf.line(ML+2*colW,y,ML+2*colW,y+cabH);
+  pdf.setFont("helvetica","bold");pdf.setFontSize(9);
+  pdf.setTextColor(60,60,60);
+  pdf.text("Serviços Públicos Disponíveis",ML+2,y+4.7);
+  pdf.text("Tipo de Ocupação",ML+colW+2,y+4.7);
+  pdf.text("Zoneamento",ML+2*colW+2,y+4.7);
+  pdf.setTextColor(0,0,0);
+  y+=cabH;
+  // Corpo da tabela
+  const altInfo=55;
+  pdf.rect(ML,y,CW,altInfo,"S");
+  pdf.line(ML+colW,y,ML+colW,y+altInfo);
+  pdf.line(ML+2*colW,y,ML+2*colW,y+altInfo);
+  pdf.setFont("helvetica","normal");pdf.setFontSize(8.5);
+  const servItens=[
+    ["Energia Elétrica",sp.energia!==false],["Iluminação Pública",sp.iluminacao!==false],
+    ["Pavimentação",sp.pavimentacao!==false],["Guias e Sarjetas",sp.guias!==false],
+    ["Gás Encanado",sp.gas!==false],["Rede Telefônica",sp.telefone!==false],
+    ["Rede de Água",sp.agua!==false],["Rede de Esgoto",sp.esgoto!==false],
+    ["Redes Pluviais",sp.drenagem!==false]
+  ];
+  let yi=y+5;
+  servItens.forEach(([txt,marc])=>{pdf.text((marc?"[X] ":"[ ] ")+txt,ML+3,yi);yi+=5;});
+  // Coluna 2: ocupação
+  const ocupOpcoes=["Residencial","Comercial","Industrial","Institucional","Religioso","Serviços","Outros"];
+  yi=y+5;
+  ocupOpcoes.forEach(opt=>{
+    const marc=_semAcento(opt)===ocupSel;
+    pdf.text((marc?"[X] ":"[ ] ")+opt,ML+colW+3,yi);yi+=5;
+  });
+  // Coluna 3: zoneamento
+  const zoneOpcoes=["Residencial","Comercial","Industrial","Misto"];
+  yi=y+5;
+  zoneOpcoes.forEach(opt=>{
+    const marc=_semAcento(opt)===zoneSel;
+    pdf.text((marc?"[X] ":"[ ] ")+opt,ML+2*colW+3,yi);yi+=5;
+  });
+  y+=altInfo+6;
+
+  // === 2.0 DESCRIÇÃO DO IMÓVEL — TABELA de 2 colunas (Característica | Detalhe) ===
+  pdf.setFont("helvetica","bold");pdf.setFontSize(10);
+  pdf.text("2.0 DESCRIÇÃO DO IMÓVEL",ML,y);y+=6;
+  // Materiais agora são arrays. Compat: aceita string antiga. JUNTA COM VÍRGULA pra exibição.
+  const _mc=id.materiais&&id.materiais.cobertura;
+  const _mp=id.materiais&&id.materiais.paredes;
+  const coberArr=Array.isArray(_mc)?_mc:(_mc?[String(_mc)]:[]);
+  const parArr=Array.isArray(_mp)?_mp:(_mp?[String(_mp)]:[]);
+  // Normalização: usar _semAcento já declarado lá em cima.
+  const tipoSel=_semAcento(v.tipo);
+  const garagSel=_semAcento(id.garagem);
+  const estadoSel=_semAcento(v.estado);
+  // DIAGNÓSTICO TEMPORÁRIO: se o tipo estiver vazio mas a vistoria tiver dados,
+  // mostra alert pra ajudar a identificar o bug. (Remover depois de diagnosticado)
+  if(!tipoSel&&v.responsavel&&v.responsavel.nome){
+    console.warn("[DIAG] v.tipo está vazio. Conteúdo bruto:",JSON.stringify(v.tipo),"v.ocupacao:",JSON.stringify(v.ocupacao));
+  }
+  // Helper: renderiza opções inline com [X]/[  ] e item destacado.
+  // Usa _semAcento pra comparar — o select do form tem "Terrea/Galpao" sem acento,
+  // mas o PDF mostra com acento.
+  const coluna1W=CW*0.35;
+  const renderOpcoes=(opcoes,sel,x,yy)=>{
+    let xT=x;
+    opcoes.forEach(t=>{
+      const m=_semAcento(t)===sel;
+      const lab=(m?"[X] ":"[ ] ")+t;
+      pdf.text(lab,xT,yy);
+      xT+=pdf.getTextWidth(lab)+4;
+    });
+  };
+  // Linhas da tabela: [label, valor/render]
+  // Cobertura, Paredes vêm como arrays — juntam com vírgula
+  const linhasDesc=[
+    {label:"Tipo da Edificação",render:yy=>renderOpcoes(["Térrea","Sobrado","Galpão","Soleira Negativa"],tipoSel,ML+coluna1W+2,yy)},
+    {label:"Garagem",render:yy=>renderOpcoes(["Coberta","Descoberta","Não tem"],garagSel,ML+coluna1W+2,yy)},
+    {label:"Nº de Pavimentos",texto:id.pavimentos||""},
+    {label:"Idade Aparente",texto:(v.idade||"")+(v.idade?" anos":"")},
+    {label:"Cobertura",texto:coberArr.join(", ")},
+    {label:"Paredes",texto:parArr.join(", ")},
+    {label:"Estado de Conservação",render:yy=>renderOpcoes(["Bom","Regular","Ruim","Péssimo"],estadoSel,ML+coluna1W+2,yy)}
+  ];
+  const linhaH2=7;
+  const totalDescH=cabH+linhasDesc.length*linhaH2;
+  // Cabeçalho
+  pdf.setFillColor(245,247,250);
+  pdf.rect(ML,y,CW,cabH,"F");
+  pdf.rect(ML,y,CW,cabH,"S");
+  pdf.line(ML+coluna1W,y,ML+coluna1W,y+totalDescH);
+  pdf.setFont("helvetica","bold");pdf.setFontSize(9);
+  pdf.setTextColor(60,60,60);
+  pdf.text("Característica",ML+2,y+4.7);
+  pdf.text("Detalhe Identificado",ML+coluna1W+2,y+4.7);
+  pdf.setTextColor(0,0,0);
+  y+=cabH;
+  // Linhas
+  pdf.setFontSize(8.5);
+  linhasDesc.forEach(l=>{
+    pdf.setDrawColor(180,180,180);pdf.setLineWidth(0.2);
+    pdf.rect(ML,y,CW,linhaH2,"S");
+    pdf.line(ML+coluna1W,y,ML+coluna1W,y+linhaH2);
+    pdf.setFont("helvetica","bold");
+    pdf.text(l.label,ML+2,y+4.7);
+    pdf.setFont("helvetica","normal");
+    if(l.render)l.render(y+4.7);
+    else pdf.text(l.texto||"",ML+coluna1W+2,y+4.7);
+    y+=linhaH2;
+  });
+  y+=6;
+
+  // === 2.3 LISTA DE VERIFICAÇÃO — TABELA com Elemento | Apresenta Danos? ===
+  pdf.setFont("helvetica","bold");pdf.setFontSize(10);
+  pdf.text("2.3 LISTA DE VERIFICAÇÃO DE ELEMENTOS CONSTRUTIVOS",ML,y);y+=6;
+  const danos=calcularChecklistDanos(fotosPendentes);
+  const linhasChk=_CHECKLIST_LINHAS;
+  const colElem=CW*0.6,colDano=CW*0.4;
+  const altCab=7,altLinha=7;
+  const totalChkH=altCab+linhasChk.length*altLinha;
+  // Cabeçalho
+  pdf.setFillColor(245,247,250);
+  pdf.rect(ML,y,CW,altCab,"F");
+  pdf.setDrawColor(180,180,180);pdf.setLineWidth(0.2);
+  pdf.rect(ML,y,CW,altCab,"S");
+  pdf.line(ML+colElem,y,ML+colElem,y+totalChkH);
+  pdf.setFont("helvetica","bold");pdf.setFontSize(9);
+  pdf.setTextColor(60,60,60);
+  pdf.text("Elemento Construtivo",ML+2,y+4.7);
+  pdf.text("Apresenta Danos?",ML+colElem+colDano/2,y+4.7,{align:"center"});
+  pdf.setTextColor(0,0,0);
+  y+=altCab;
+  // Linhas
+  pdf.setFontSize(8.5);
+  linhasChk.forEach(l=>{
+    pdf.setDrawColor(180,180,180);pdf.setLineWidth(0.2);
+    pdf.rect(ML,y,CW,altLinha,"S");
+    pdf.line(ML+colElem,y,ML+colElem,y+altLinha);
+    pdf.setFont("helvetica","normal");
+    pdf.text(l,ML+2,y+4.7);
+    const temDano=danos[l]===true;
+    pdf.text(temDano?"Sim":"Não",ML+colElem+colDano/2,y+4.7,{align:"center"});
+    y+=altLinha;
+  });
+}
+
+async function gerarPDFCompletoPaginasContexto(pdf,v,prest,logoPrep,PW,PH,ML,MT,MR,MB,CW,assinaturaResp){
+  // ===== PÁGINA 1 — CAPA =====
+  // Capa limpa (sem logo) — título "LAUDO DE VISTORIA CAUTELAR" + cidade/data
+  // posicionados na parte INFERIOR DIREITA da página (modelo CNRP).
+  // Y aprox 88% da altura, alinhado à direita com margem padrão.
+  const cTituloY=PH*0.88;
+  const cMargRight=ML+CW-2;
+  pdf.setFont("helvetica","bold");pdf.setFontSize(16);
+  pdf.text("LAUDO DE VISTORIA CAUTELAR",cMargRight,cTituloY,{align:"right"});
+  pdf.setFont("helvetica","normal");pdf.setFontSize(10);
+  pdf.text((v.endereco&&v.endereco.cidade?v.endereco.cidade:"São Paulo")+"/SP, "+(v.dataCompleta||v.data||"")+".",cMargRight,cTituloY+7,{align:"right"});
+
+  // ===== PÁGINA 2 — DADOS, OBJETIVO, LOCALIZAÇÃO =====
+  pdf.addPage();
+  let y=_pdfNovaPagComCabecalho(pdf,ML,MT,MR,CW,PW);
+  const r=v.responsavel||{};
+  const e=v.endereco||{};
+  const enderecoFmt=[e.rua,e.num?"nº "+e.num:"",e.comp,e.bairro,e.cidade||"São Paulo",e.uf||"SP",e.cep].filter(Boolean).join(" – ");
+  pdf.setFont("helvetica","bold");pdf.setFontSize(11);
+  pdf.text("1. DADOS",ML,y);y+=7;
+  pdf.setFont("helvetica","bold");pdf.setFontSize(10);
+  pdf.text("RESPONSÁVEL:",ML+4,y);pdf.setFont("helvetica","normal");pdf.text(r.nome||"",ML+34,y);y+=5;
+  pdf.setFont("helvetica","bold");pdf.text("LOCAL:",ML+4,y);pdf.setFont("helvetica","normal");
+  y=_pdfTextoBloco(pdf,enderecoFmt,ML+34,y,CW-34,10,5);
+  y+=6;
+  pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("2. OBJETIVO:",ML,y);y+=6;
+  y=_pdfTextoBloco(pdf,"O presente laudo, tem por objetivo a constatação visual quanto às eventuais anomalias e estado de conservação do imóvel.",ML+4,y,CW-4,10,5);
+  y+=4;
+  pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("3. LOCALIZAÇÃO:",ML,y);y+=6;
+  y=_pdfTextoBloco(pdf,"O imóvel em questão vistoriado encontra-se assim localizado, conforme levantamento abaixo:",ML+4,y,CW-4,10,5);
+  y+=8;
+  pdf.setFont("helvetica","bold");pdf.setFontSize(9);
+  pdf.text("Mapa 1:",ML+4,y);pdf.setFont("helvetica","normal");pdf.text(" Mapa de localização do imóvel inspecionado.",ML+18,y);
+  y+=5;
+  // Quadro do mapa: 80mm de altura, largura total disponível.
+  // Quadro do mapa: altura maior (proporcional ao canvas 768x768 que é quadrado).
+  // Largura do quadro = CW-8, altura 120mm: proporção ~1.4:1 (menos achatado que 80mm).
+  // O canvas é quadrado (768x768) mas o PDF aceita esticar — a leve distorção horizontal
+  // ainda é mais legível que cortar lateralmente.
+  const mapaW=CW-8,mapaH=120;
+  pdf.setDrawColor(150,150,150);pdf.setLineWidth(0.3);
+  pdf.rect(ML+4,y,mapaW,mapaH,"S");
+  // === ESTRATÉGIA DE COORDENADAS PRO MAPA ===
+  // 1ª escolha: GPS do "Detectar bairro" (mais confiável — é o endereço do imóvel)
+  // 2ª escolha: GPS gravado durante a vistoria (capturado pelo iniciarGPS)
+  // 3ª escolha: nada — mostra quadro com aviso "Sem GPS"
+  let mapaInserido=false;
+  let mensagemErroMapa="";
+  let coords=null;
+  if(v.gps&&v.gps.lat&&v.gps.lon){
+    coords={lat:v.gps.lat,lon:v.gps.lon};
+  } else if(v.gpsFoto&&v.gpsFoto.lat&&v.gpsFoto.lon){
+    coords={lat:v.gpsFoto.lat,lon:v.gpsFoto.lon};
+  }
+  if(coords){
+    try{
+      const mapa=await baixarMapaOSM(coords.lat,coords.lon,mapaW,mapaH);
+      if(mapa&&mapa.dataUrl){
+        // JPEG no addImage pra menor tamanho de PDF. Compression FAST mantém qualidade boa.
+        pdf.addImage(mapa.dataUrl,"JPEG",ML+4,y,mapaW,mapaH,"","FAST");
+        mapaInserido=true;
+      } else {
+        mensagemErroMapa="Mapa não pôde ser carregado (sem internet ou servidor de mapas indisponível)";
+      }
+    }catch(e){
+      console.warn("Erro ao inserir mapa:",e);
+      mensagemErroMapa="Erro ao gerar mapa: "+(e.message||e);
+    }
+  } else {
+    mensagemErroMapa="Coordenadas GPS não disponíveis — use o botão \"Detectar bairro\" ao criar a vistoria";
+  }
+  if(!mapaInserido){
+    pdf.setFontSize(9);pdf.setTextColor(150,150,150);
+    const linhasErro=pdf.splitTextToSize(mensagemErroMapa,mapaW-10);
+    let yErro=y+mapaH/2-((linhasErro.length-1)*2);
+    linhasErro.forEach(l=>{pdf.text(l,ML+4+mapaW/2,yErro,{align:"center"});yErro+=4.5;});
+    pdf.setTextColor(0,0,0);
+  }
+  _pdfRodapeCompleto(pdf,prest,PW,PH,ML,MR,MB,2,"X");
+
+  // ===== PÁGINA 3 — METODOLOGIA + ANÁLISE =====
+  pdf.addPage();
+  y=_pdfNovaPagComCabecalho(pdf,ML,MT,MR,CW,PW);
+  pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("4. METODOLOGIA:",ML,y);y+=9;
+  y=_pdfTextoBloco(pdf,"Conforme disposto na Norma 12722-1992 da ABNT – Associação Brasileira de Normas Técnicas, Item 4.1.10, para a construção da edificação, registra-se o estado de conservação atual e as eventuais anomalias das construções dos imóveis, resguardando a responsabilidade de eventuais danos que possam ocorrer devido a construção.",ML+4,y,CW-4,9.5,5);
+  y+=6;
+  y=_pdfTextoBloco(pdf,"A constatação das anomalias e estado de conservação do imóvel será feita visualmente e registrada através de fotografias.",ML+4,y,CW-4,9.5,5);
+  y+=8;
+  y=_pdfTextoBloco(pdf,"Alguns tipos de anomalias, conforme a descrição a seguir:",ML+4,y,CW-4,9.5,5,true);
+  y+=6;
+  const tiposAnom=[
+    ["TRINCA","Espessura de 1,5 mm (massa ou alvenaria)."],
+    ["RACHADURA FACE A FACE","Espessura de 1,0 à 1,5 mm (transpassando a alvenaria)."],
+    ["MANCHA DE UMIDADE / INFILTRAÇÃO","Espessura de 1,5 mm (massa ou alvenaria, sem divisão em partes)."],
+    ["FENDA","Espessura de mais de 1,5 mm (massa ou alvenaria, causando divisão em partes).",]
+  ];
+  tiposAnom.forEach(([titulo,desc])=>{
+    pdf.setFont("helvetica","bold");pdf.setFontSize(9.5);
+    pdf.text(titulo,ML+4,y);y+=5;
+    pdf.setFont("helvetica","normal");
+    y=_pdfTextoBloco(pdf,"- "+desc,ML+8,y,CW-12,9.5,5);
+    y+=4; // espaço maior entre tipos
+  });
+  y+=8;
+  pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("5. ANÁLISE DAS ANOMALIAS:",ML,y);y+=9;
+  y=_pdfTextoBloco(pdf,"As origens das anomalias podem ter suas causas relacionadas a vários fatores, que podem ser definidos como segue:",ML+4,y,CW-4,9.5,5);
+  y+=6;
+  // Cada item tem TÍTULO em negrito + descrição em normal, separados por ":" e quebrando linha.
+  // Espaçamento extra entre itens facilita leitura visual.
+  const itemsAnalP3=[
+    ["FISSURAS, TRINCAS E RACHADURAS","Prováveis fatores: variações de temperaturas."],
+    ["VARIAÇÕES DIFERENCIADAS DO TEOR DE UMIDADE DOS MATERIAIS POROSOS","Prováveis fatores: movimentações higroscópicas, atuação de sobrecargas, deformidade excessiva das estruturas de concreto armado, recalques diferenciais das fundações, alterações químicas dos materiais de construção."],
+    ["ALTERAÇÕES QUÍMICAS DOS MATERIAIS DE CONSTRUÇÃO","Prováveis fatores: deficiência na execução do encunhamento das paredes de vedação com os componentes estruturais, falta ou deficiência de vergas e contra-vergas nas portas e janelas."],
+    ["EMPOLAMENTO DO REVESTIMENTO","Prováveis fatores: deslocamento de argamassa por carbonatação."],
+    ["PINTURA DECOMPOSTA","Prováveis fatores: decomposição da pintura em paredes e forros de uma edificação se deve pela atuação da umidade excessiva na pintura."],
+    ["MANCHA DE UMIDADE","Prováveis fatores: falta e/ou falha de impermeabilização de áreas a céu aberto ou falta e/ou falha de rejuntamento ou calefação do revestimento externo, deficiência de vedação de caixilhos das janelas e por defeitos nas instalações hidro-sanitárias."]
+  ];
+  itemsAnalP3.forEach(([titulo,desc])=>{
+    y=_pdfGarantirEspaco(pdf,y,15,PH,MB,MT);
+    pdf.setFont("helvetica","bold");pdf.setFontSize(9.5);
+    pdf.text("• "+titulo,ML+4,y);y+=5;
+    pdf.setFont("helvetica","normal");
+    y=_pdfTextoBloco(pdf,desc,ML+9,y,CW-9,9.5,5);
+    y+=4; // espaço entre cada item
+  });
+  _pdfRodapeCompleto(pdf,prest,PW,PH,ML,MR,MB,3,"X");
+
+  // ===== PÁGINA 4 — ANÁLISE (continuação) + LISTA + AVALIAÇÃO + CONCLUSÃO =====
+  pdf.addPage();
+  y=_pdfNovaPagComCabecalho(pdf,ML,MT,MR,CW,PW);
+  // Itens da Análise (continuação) — mesmo formato da pág 3: título em negrito + descrição
+  const itemsAnal2=[
+    ["DESPRENDIMENTO DE PISOS CERÂMICOS","Prováveis fatores: assentamento deficiente destas peças; quanto ao tipo de argamassa utilizada para assentamento; pela falta de espaçamento suficiente entre as peças para uma regular movimentação destas (contração e dilatação) quando da incidência de variações de temperatura bruscas; e, quando da deformação excessiva dos componentes estruturais."],
+    ["DESAGREGAÇÃO DA ARGAMASSA DO REVESTIMENTO","Prováveis fatores: oxidação da ferragem das lajes, vigas e pilares em razão da deficiência do cobrimento, da porosidade do concreto, pelas infiltrações excessivas de água, que propiciam o ataque de cloretos ou gás carbônico na ferrugem."],
+    ["DESTACAMENTO DAS PLACAS DE GESSO","Prováveis fatores: este destacamento, via de regra, é proveniente da incidência de umidade, da execução do atirantamento inadequado e pela ausência da aplicação de massa corrida e fundo preparador sobre o mesmo."]
+  ];
+  itemsAnal2.forEach(([titulo,desc])=>{
+    pdf.setFont("helvetica","bold");pdf.setFontSize(9.5);
+    pdf.text("• "+titulo,ML+4,y);y+=5;
+    pdf.setFont("helvetica","normal");
+    y=_pdfTextoBloco(pdf,desc,ML+9,y,CW-9,9.5,5);
+    y+=5;
+  });
+  y+=10;
+  pdf.setFont("helvetica","bold");pdf.setFontSize(11);
+  pdf.text("6. LISTA DE VERIFICAÇÃO DOS ELEMENTOS CONSTRUTIVOS",ML,y);y+=9;
+  y=_pdfTextoBloco(pdf,"Para auxiliar a anotação das não conformidades foi utilizada uma lista de verificação (check-list), com base nas orientações da Norma Nacional de Inspeção Predial, levando em consideração a tipologia, padrão e as manifestações patológicas esperadas.",ML+4,y,CW-4,9.5,5);
+  y+=12;
+  // AVALIAÇÃO
+  pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("7. AVALIAÇÃO DO IMÓVEL",ML,y);y+=8;
+  y=_pdfTextoBloco(pdf,"A manutenção é avaliada como: CONFORME, NÃO CONFORME ou NÃO SE APLICA.",ML+4,y,CW-4,9.5,4.5);
+  y+=3;
+  y=_pdfTextoBloco(pdf,"Para sua classificação, leva-se em conta que a maioria das irregularidades encontradas são falhas, com grau de manutenção crítica, média ou mínima, ou seja, referem-se à necessidade de manutenção. A ausência de manutenção é uma das razões para a situação crítica, pois através de atividades preventivas de manutenção os riscos oferecidos são minimizados.",ML+4,y,CW-4,9.5,4.5);
+  y+=5;
+  // Regra: Estado=Bom → CONFORME, demais → NÃO CONFORME
+  const estado=(v.estado||"").toLowerCase();
+  const classif=estado==="bom"?"CONFORME":"NÃO CONFORME";
+  pdf.setFont("helvetica","bold");pdf.setFontSize(10);
+  pdf.text("Portanto classificamos imóvel como: "+classif,ML+4,y);y+=12;
+  // CONCLUSÃO (gerada automaticamente)
+  y=_pdfGarantirEspaco(pdf,y,20,PH,MB,MT);
+  pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("8. CONCLUSÃO:",ML,y);y+=8;
+  const conclusao=gerarConclusaoAutomatica();
+  y=_pdfTextoBloco(pdf,conclusao,ML+4,y,CW-4,10,5);
+  _pdfRodapeCompleto(pdf,prest,PW,PH,ML,MR,MB,4,"X");
+
+  // ===== PÁGINA 5 — ENCERRAMENTO + ASSINATURAS =====
+  pdf.addPage();
+  y=_pdfNovaPagComCabecalho(pdf,ML,MT,MR,CW,PW);
+  pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("9. ENCERRAMENTO:",ML,y);y+=8;
+  y=_pdfTextoBloco(pdf,"O presente Laudo de Vistoria Cautelar possui numeração impressa em suas folhas e somente no anverso e esta última datada e assinada.",ML+4,y,CW-4,10,5);
+  y+=6;
+  const nomeEmpresaEnc=(prest&&prest.nome)||"CTB ENGENHARIA CAUTELAR";
+  y=_pdfTextoBloco(pdf,"Finalmente, declaramos que a "+nomeEmpresaEnc+" não tem nenhum vínculo com os proprietários dos bens inspecionados, não tendo, portanto, interesse pessoal ou financeiro nas recomendações ou valores resultantes deste laudo.",ML+4,y,CW-4,10,5);
+  y+=10; // espaço maior entre "resultantes deste laudo" e "Fazem parte..."
+  y=_pdfTextoBloco(pdf,"Fazem parte deste laudo os seguintes anexos:",ML+4,y,CW-4,10,5);
+  y+=4;
+  y=_pdfTextoBloco(pdf,"ANEXO I – Identificação do imóvel",ML+8,y,CW-8,10,5);
+  y=_pdfTextoBloco(pdf,"ANEXO II – Relatório fotográfico do imóvel vistoriado",ML+8,y,CW-8,10,5);
+  y+=15; // espaço grande antes da data — distribui melhor o conteúdo na página
+  pdf.setFont("helvetica","normal");pdf.setFontSize(10);
+  pdf.text((v.endereco&&v.endereco.cidade?v.endereco.cidade:"São Paulo")+", "+(v.dataCompleta||v.data||"")+".",ML+4,y);
+  y+=28; // espaço grande pra assinatura morador (deixar a linha bem abaixo da data)
+  // ASSINATURAS — esquerda: morador (assinatura na hora), direita: técnico (linha em branco para certificado digital)
+  const colSig=CW/2-6;
+  const xLeft=ML+3,xRight=ML+CW/2+3;
+  const sigY=y;
+  // Morador — assinatura coletada na tela de Finalização (passada como parâmetro)
+  if(assinaturaResp){
+    try{
+      pdf.addImage(assinaturaResp,"PNG",xLeft+(colSig-40)/2,sigY-14,40,14,"","FAST");
+    }catch(e){console.warn("Erro ao inserir assinatura do morador:",e);}
+  }
+  pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
+  pdf.line(xLeft,sigY,xLeft+colSig,sigY);
+  pdf.line(xRight,sigY,xRight+colSig,sigY);
+  pdf.setFont("helvetica","bold");pdf.setFontSize(9);
+  pdf.text(r.nome||"",xLeft+colSig/2,sigY+5,{align:"center"});
+  pdf.text("RONALDO PINTO",xRight+colSig/2,sigY+5,{align:"center"});
+  pdf.setFont("helvetica","normal");pdf.setFontSize(8);
+  pdf.text("Responsável pelo Imóvel",xLeft+colSig/2,sigY+9,{align:"center"});
+  pdf.text("CAU Nº A56568-7",xRight+colSig/2,sigY+9,{align:"center"});
+  pdf.text("Responsável Técnico",xRight+colSig/2,sigY+13,{align:"center"});
+  _pdfRodapeCompleto(pdf,prest,PW,PH,ML,MR,MB,5,"X");
+
+  // ===== PÁGINA 6 — Capa do Anexo I =====
+  pdf.addPage();
+  pdf.setFont("helvetica","bold");pdf.setFontSize(20);
+  pdf.text("- ANEXO I -",PW/2,130,{align:"center"});
+  pdf.setFontSize(16);
+  pdf.text("IDENTIFICAÇÃO DO IMÓVEL",PW/2,145,{align:"center"});
+  _pdfRodapeCompleto(pdf,prest,PW,PH,ML,MR,MB,6,"X");
+
+  // ===== PÁGINA 7 — Conteúdo do Anexo I (tabela) =====
+  pdf.addPage();
+  _pdfAnexoI(pdf,ML,MT,MR,CW,PW,PH,MB,v);
+  _pdfRodapeCompleto(pdf,prest,PW,PH,ML,MR,MB,7,"X");
+
+  // ===== PÁGINA 8 — Capa do Anexo II =====
+  pdf.addPage();
+  pdf.setFont("helvetica","bold");pdf.setFontSize(20);
+  pdf.text("- ANEXO II -",PW/2,130,{align:"center"});
+  pdf.setFontSize(16);
+  pdf.text("RELATÓRIO FOTOGRÁFICO DO IMÓVEL",PW/2,145,{align:"center"});
+  _pdfRodapeCompleto(pdf,prest,PW,PH,ML,MR,MB,8,"X");
+
+  // A próxima página em diante (fotos) é gerada pelo loop principal da finalizarVistoria
+  // usando _pdfHeaderFotosCompleto. O número total de páginas é corrigido depois.
+}
+
+// ============================================================================
+
+// Versão com 2 camadas Esri: imagery + Boundaries_and_Places (nomes de ruas/bairros sobrepostos).
+// Retorna {dataUrl, w, h} ou null em caso de tainted canvas/CORS.
+async function baixarMapaOSM(lat,lon,larguraPx,alturaPx){
+  if(!lat||!lon)return null;
+  const ZOOM=18;
+  const n=Math.pow(2,ZOOM);
+  const latRad=lat*Math.PI/180;
+  const xTileF=((lon+180)/360)*n;
+  const yTileF=(1-Math.log(Math.tan(latRad)+1/Math.cos(latRad))/Math.PI)/2*n;
+  const xTile=Math.floor(xTileF);
+  const yTile=Math.floor(yTileF);
+  const xPx=Math.floor((xTileF-xTile)*256);
+  const yPx=Math.floor((yTileF-yTile)*256);
+  const TILE=256,GRID=3;
+  const canvasFinal=document.createElement("canvas");
+  canvasFinal.width=GRID*TILE;canvasFinal.height=GRID*TILE;
+  const ctx=canvasFinal.getContext("2d");
+  ctx.fillStyle="#1e3a5f";ctx.fillRect(0,0,canvasFinal.width,canvasFinal.height);
+  const baixarCamada=(urlFn)=>{
+    const ps=[];
+    for(let dx=-1;dx<=1;dx++){
+      for(let dy=-1;dy<=1;dy++){
+        const tx=xTile+dx,ty=yTile+dy;
+        const px=(dx+1)*TILE,py=(dy+1)*TILE;
+        const url=urlFn(ZOOM,tx,ty);
+        ps.push(new Promise(res=>{
+          const img=new Image();
+          img.crossOrigin="anonymous";
+          const timer=setTimeout(()=>{img.src="";res(null);},10000);
+          img.onload=()=>{clearTimeout(timer);res({img,px,py});};
+          img.onerror=()=>{clearTimeout(timer);res(null);};
+          img.src=url;
+        }));
+      }
+    }
+    return Promise.all(ps);
+  };
+  try{
+    const sat=await baixarCamada((z,x,y)=>`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`);
+    sat.forEach(r=>{if(r)ctx.drawImage(r.img,r.px,r.py);});
+    const ref=await baixarCamada((z,x,y)=>`https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/${z}/${y}/${x}`);
+    ref.forEach(r=>{if(r)ctx.drawImage(r.img,r.px,r.py);});
+  }catch(e){console.warn("Erro nas camadas Esri:",e);}
+  const cx=TILE+xPx,cy=TILE+yPx;
+  ctx.beginPath();ctx.ellipse(cx,cy+2,9,4,0,0,Math.PI*2);
+  ctx.fillStyle="rgba(0,0,0,0.5)";ctx.fill();
+  ctx.beginPath();ctx.arc(cx,cy-14,10,0,Math.PI*2);
+  ctx.fillStyle="#dc2626";ctx.fill();
+  ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx-7,cy-10);ctx.lineTo(cx+7,cy-10);ctx.lineTo(cx,cy);ctx.closePath();
+  ctx.fillStyle="#dc2626";ctx.fill();
+  ctx.strokeStyle="#fff";ctx.lineWidth=1.5;ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy-14,3.5,0,Math.PI*2);
+  ctx.fillStyle="#fff";ctx.fill();
+  ctx.fillStyle="rgba(0,0,0,0.6)";
+  ctx.fillRect(canvasFinal.width-140,canvasFinal.height-16,138,14);
+  ctx.fillStyle="#fff";ctx.font="10px sans-serif";
+  ctx.fillText("© Esri, Maxar, Earthstar",canvasFinal.width-137,canvasFinal.height-5);
+  try{
+    const dataUrl=canvasFinal.toDataURL("image/jpeg",0.85);
+    return {dataUrl,w:canvasFinal.width,h:canvasFinal.height};
+  }catch(e){
+    console.warn("toDataURL falhou (canvas tainted):",e);
+    return null;
+  }
+}
+
+// Wrapper de compatibilidade: chamadas antigas a baixarMapaSatelite(lat,lng) continuam
+// funcionando — retornamos só o dataUrl pra manter a assinatura original.
+async function baixarMapaSatelite(lat,lng,zoom){
+  const r=await baixarMapaOSM(lat,lng);
+  return r?r.dataUrl:null;
 }
 
 function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
