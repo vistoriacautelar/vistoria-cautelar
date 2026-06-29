@@ -1548,8 +1548,12 @@ window.carregarResumo=async()=>{
       const v={id:d.id,...d.data()};
       const dfin=v.data_finalizacao&&v.data_finalizacao.seconds?v.data_finalizacao.seconds*1000:0;
       const dcri=v.criadoEm&&v.criadoEm.seconds?v.criadoEm.seconds*1000:0;
-      const ts=dfin||dcri;
-      if(ts>=tsIni&&ts<=tsFim)docs.push(v);
+      // FILTRO PERMISSIVO: inclui se QUALQUER uma das datas (1ª visita ou finalização)
+      // estiver no período. Isso garante que retornos finalizados no dia X apareçam
+      // quando o usuário filtra pelo dia X, mesmo se a 1ª visita tiver ocorrido antes.
+      const dcriIn=dcri>=tsIni&&dcri<=tsFim;
+      const dfinIn=dfin>=tsIni&&dfin<=tsFim;
+      if(dcriIn||dfinIn)docs.push(v);
     });
     _resumoVistoriasCache=docs;
     renderResumo(docs,de,ate);
@@ -1727,11 +1731,15 @@ window.exportarPlanilhaCliente=async()=>{
   const tsIniExp=new Date(expDe+"T00:00:00").getTime();
   const tsFimExp=new Date(expAte+"T23:59:59").getTime();
   // Aplica filtros: período da exportação + (opcional) cliente
+  // FILTRO PERMISSIVO: inclui se QUALQUER uma das datas (1ª visita ou finalização)
+  // estiver no período da exportação. Isso garante que retornos finalizados no dia X
+  // apareçam na planilha quando filtrada pelo dia X, mesmo se a 1ª visita foi antes.
   let docs=_resumoVistoriasCache.filter(v=>{
     const dfin=v.data_finalizacao&&v.data_finalizacao.seconds?v.data_finalizacao.seconds*1000:0;
     const dcri=v.criadoEm&&v.criadoEm.seconds?v.criadoEm.seconds*1000:0;
-    const ts=dfin||dcri;
-    return ts>=tsIniExp&&ts<=tsFimExp;
+    const dcriIn=dcri>=tsIniExp&&dcri<=tsFimExp;
+    const dfinIn=dfin>=tsIniExp&&dfin<=tsFimExp;
+    return dcriIn||dfinIn;
   });
   let clienteNome="Todos";
   if(clienteId){
