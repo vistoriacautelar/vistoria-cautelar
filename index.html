@@ -537,11 +537,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       </div>
     </div>
     <div class="card"><h2>Construção</h2>
-      <div class="field"><label>Garagem</label>
+      <div style="margin-bottom:14px"><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Garagem</label>
         <div style="display:flex;gap:14px;margin-top:4px;flex-wrap:wrap">
-          <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="id-garagem-r" value="Coberta" style="width:18px;height:18px">Coberta</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="id-garagem-r" value="Descoberta" style="width:18px;height:18px">Descoberta</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="id-garagem-r" value="Não tem" style="width:18px;height:18px">Não tem</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="id-garagem-r" value="Coberta" style="width:18px;height:18px;flex-shrink:0;margin:0;-webkit-appearance:radio;appearance:radio">Coberta</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="id-garagem-r" value="Descoberta" style="width:18px;height:18px;flex-shrink:0;margin:0;-webkit-appearance:radio;appearance:radio">Descoberta</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="id-garagem-r" value="Não tem" style="width:18px;height:18px;flex-shrink:0;margin:0;-webkit-appearance:radio;appearance:radio">Não tem</label>
         </div>
       </div>
       <div class="field"><label>Número de pavimentos <span style="color:#dc2626">*</span></label>
@@ -3172,28 +3172,43 @@ window.detectarBairroPorGPS=async()=>{
   const btn=document.getElementById("nv-detectar-bairro-btn");
   if(!navigator.geolocation){alert("Seu navegador não suporta geolocalização.");return;}
   if(btn){btn.disabled=true;btn.textContent="Buscando...";}
+  let lat=null,lon=null;
+  // ETAPA 1: obter GPS (separada da rede pra dar erro específico)
   try{
     const pos=await new Promise((resolve,reject)=>{
       navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
     });
-    const{latitude:lat,longitude:lon}=pos.coords;
+    lat=pos.coords.latitude;lon=pos.coords.longitude;
+    // Sempre salva as coordenadas — usadas pelo mapa do PDF do Laudo Completo,
+    // mesmo se o reverse geocoding (Nominatim) falhar.
+    window._coordenadasGPSAtuais={lat,lon};
+  }catch(eGPS){
+    if(btn){btn.disabled=false;btn.textContent="📍 Detectar";}
+    const msg=eGPS.code===1?"Permissão de localização negada. Habilite no Ajustes › Safari/Chrome › Localização.":
+              eGPS.code===2?"Localização indisponível. Verifique se o GPS está ligado.":
+              eGPS.code===3?"Tempo esgotado ao buscar localização. Tente em local mais aberto.":
+              "Erro ao buscar GPS: "+(eGPS.message||eGPS);
+    alert(msg);
+    return;
+  }
+  // ETAPA 2: reverse geocoding via Nominatim
+  try{
     const url=`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&accept-language=pt-BR`;
     const resp=await fetch(url);
-    if(!resp.ok)throw new Error("Falha na resposta do servidor de mapas");
+    if(!resp.ok)throw new Error("Servidor respondeu "+resp.status);
     const data=await resp.json();
     const a=data&&data.address||{};
     const bairro=a.suburb||a.neighbourhood||a.city_district||a.district||a.quarter||a.village||"";
-    if(!bairro){alert("Não foi possível identificar o bairro nesta localização.\n\nVocê pode preencher manualmente.");return;}
+    if(!bairro){
+      alert("GPS detectado, mas não foi possível identificar o bairro automaticamente.\n\nAs coordenadas foram salvas — o mapa funcionará. Preencha o bairro manualmente.");
+      return;
+    }
     document.getElementById("nv-bairro").value=bairro;
-    // Guarda coordenadas pra usar no mapa do PDF (Laudo Completo, página 2)
-    window._coordenadasGPSAtuais={lat,lon};
-  }catch(e){
-    console.warn("detectarBairroPorGPS:",e);
-    const msg=e.code===1?"Permissão de localização negada. Habilite no navegador.":
-              e.code===2?"Localização indisponível. Tente novamente em alguns segundos.":
-              e.code===3?"Tempo esgotado ao buscar localização.":
-              "Erro ao buscar localização: "+(e.message||e);
-    alert(msg);
+    showToast("Bairro detectado: "+bairro,2500);
+  }catch(eNet){
+    console.warn("Nominatim falhou:",eNet);
+    // GPS funcionou, só o serviço de bairro falhou. Avisa mas não bloqueia.
+    alert("GPS detectado e salvo (o mapa funcionará).\n\nNão foi possível buscar o bairro: "+(eNet.message||eNet.name||"erro de rede")+"\n\nPreencha manualmente.");
   }finally{
     if(btn){btn.disabled=false;btn.textContent="📍 Detectar";}
   }
@@ -3373,6 +3388,12 @@ function iniciarGPS(){
   const statusEl=document.getElementById("gps-status");
   navigator.geolocation.watchPosition(async pos=>{
     gpsAtual={lat:pos.coords.latitude,lng:pos.coords.longitude,acc:Math.round(pos.coords.accuracy)};
+    // Salva coordenadas em currentVistoria.gps pra usar no mapa do PDF do Laudo Completo.
+    // Só sobrescreve se ainda não há GPS — preserva o do "Detectar bairro" que pode ter
+    // sido feito antes de iniciar as fotos (provável que seja mais preciso, já é o endereço).
+    if(currentVistoria&&!currentVistoria.gps){
+      currentVistoria.gps={lat:gpsAtual.lat,lng:gpsAtual.lng,lon:gpsAtual.lng};
+    }
     if(statusEl)statusEl.textContent="GPS: "+gpsAtual.lat.toFixed(5)+"S "+Math.abs(gpsAtual.lng).toFixed(5)+"W";
     try{
       const r=await fetch("https://nominatim.openstreetmap.org/reverse?format=json&lat="+gpsAtual.lat+"&lon="+gpsAtual.lng+"&addressdetails=1");
@@ -5991,7 +6012,10 @@ window.finalizarVistoria=async()=>{
       pdfFooter(pdf,PW,PH,ML,MR,MB,prest);
     }
 
-    // === PAGINA CHECKLIST — página própria com constantes locais ===
+    // === PAGINA CHECKLIST — APENAS NO SIMPLIFICADO ===
+    // No Laudo Completo, a identificação de patologias é feita pela tabela 2.3 do
+    // Anexo I (gerada em gerarPDFCompletoPaginasContexto). Repetir aqui seria duplicar.
+    if(_tipoLaudoPDF!=="completo"){
     pdf.addPage();
     const CKH=297,CKML=12.7,CKMR=12.7,CKMB=12.7;
     const CKCW=210-CKML-CKMR;
@@ -6121,7 +6145,9 @@ window.finalizarVistoria=async()=>{
       });
       yc+=rowH;
     });
-    // === PÁGINA FINAL: CONCLUSÃO + ASSINATURA ===
+    // === PÁGINA FINAL: CONCLUSÃO + ASSINATURA — APENAS NO SIMPLIFICADO ===
+    // No Laudo Completo, a conclusão + encerramento + assinaturas são feitos nas
+    // páginas de contexto (gerarPDFCompletoPaginasContexto, páginas 4 e 5).
     pdf.addPage();
     const FLPW=210,FLPH=297,FLML=12.7,FLMT=12.7,FLMR=12.7,FLMB=12.7;
     const FLCW=FLPW-FLML-FLMR;
@@ -6170,6 +6196,7 @@ window.finalizarVistoria=async()=>{
     pdf.text(currentUserData&&currentUserData.nome||"Responsavel Tecnico",sigXR+sigW/2,yf+5,{align:"center"});
     pdf.text("Responsável Técnico",sigXR+sigW/2,yf+9.5,{align:"center"});
     pdfFooter(pdf,FLPW,FLPH,FLML,FLMR,FLMB,prest);
+    } // === fim do bloco simplificado (checklist + conclusão) ===
 
     // === MODO REGERAR: apenas gerar e baixar o PDF. Sem gravar Firestore, sem ZIP,
     // sem comprovante, sem mexer em fila/localStorage. Restaura fotos originais e termina.
@@ -7289,10 +7316,10 @@ async function gerarPDFCompletoPaginasContexto(pdf,v,prest,logoPrep,PW,PH,ML,MT,
   let mapaInserido=false;
   let mensagemErroMapa="";
   let coords=null;
-  if(v.gps&&v.gps.lat&&v.gps.lon){
-    coords={lat:v.gps.lat,lon:v.gps.lon};
-  } else if(v.gpsFoto&&v.gpsFoto.lat&&v.gpsFoto.lon){
-    coords={lat:v.gpsFoto.lat,lon:v.gpsFoto.lon};
+  if(v.gps&&v.gps.lat&&(v.gps.lon||v.gps.lng)){
+    coords={lat:v.gps.lat,lon:v.gps.lon||v.gps.lng};
+  } else if(v.gpsFoto&&v.gpsFoto.lat&&(v.gpsFoto.lon||v.gpsFoto.lng)){
+    coords={lat:v.gpsFoto.lat,lon:v.gpsFoto.lon||v.gpsFoto.lng};
   }
   if(coords){
     try{
