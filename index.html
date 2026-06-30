@@ -410,6 +410,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
         <div style="flex:1"><label>Numero *</label><input type="text" id="nv-num" placeholder="123" inputmode="numeric"></div>
         <button class="btn small" onclick="document.getElementById('nv-num').value='SN'" style="margin-bottom:0;white-space:nowrap">SN</button>
       </div>
+      <div class="field" style="display:flex;gap:8px;align-items:flex-end">
+        <div style="flex:1"><label>Bairro</label><input type="text" id="nv-bairro" placeholder="Bairro" oninput="capitalizarInput(this)"></div>
+        <button class="btn small" id="nv-detectar-bairro-btn" onclick="detectarBairroPorGPS()" style="margin-bottom:0;white-space:nowrap;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd">📍 Detectar</button>
+      </div>
       <div class="field"><label>Complemento</label><input type="text" id="nv-comp" placeholder="Casa 1, Ap 23..." oninput="capitalizarInput(this)"></div>
     </div>
     <div class="card"><h2>Tipo de laudo</h2>
@@ -471,9 +475,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
     <div id="fin-sucesso-banner" style="display:none">
       <div class="card" style="background:#ecfdf5;border:1px solid #6ee7b7">
         <h2 style="color:#065f46;margin-bottom:8px">✓ Vistoria finalizada</h2>
-        <p style="font-size:13px;color:#065f46;margin-bottom:14px">PDF e ZIP de fotos foram gerados. Agora você pode:</p>
+        <p style="font-size:13px;color:#065f46;margin-bottom:14px">PDF gerado. O comprovante (QR Code) aparece automaticamente. Você pode:</p>
         <button class="btn primary" onclick="acaoGerarPDFNovamente()" style="margin-bottom:8px">Gerar PDF Novamente</button>
-        <button class="btn" onclick="acaoEnviarComprovante(event)" style="background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;margin-bottom:8px">Enviar Comprovante</button>
+        <button class="btn" onclick="acaoEnviarComprovante(event)" style="background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;margin-bottom:8px">Reenviar Comprovante</button>
+        <button class="btn" id="fin-banner-btn-zip" onclick="acaoBaixarZIP()" disabled style="margin-bottom:8px;opacity:.5">⏳ Gerando ZIP das fotos...</button>
         <button class="btn" onclick="acaoNovaVistoria()" style="margin-bottom:0">Nova Vistoria</button>
       </div>
     </div>
@@ -533,12 +538,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
     </div>
     <div class="card"><h2>Construção</h2>
       <div class="field"><label>Garagem</label>
-        <select id="id-garagem">
-          <option value="">Selecione...</option>
-          <option value="Coberta">Coberta</option>
-          <option value="Descoberta">Descoberta</option>
-          <option value="Não tem">Não tem</option>
-        </select>
+        <div style="display:flex;gap:14px;margin-top:4px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="id-garagem-r" value="Coberta" style="width:18px;height:18px">Coberta</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="id-garagem-r" value="Descoberta" style="width:18px;height:18px">Descoberta</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="id-garagem-r" value="Não tem" style="width:18px;height:18px">Não tem</label>
+        </div>
       </div>
       <div class="field"><label>Número de pavimentos <span style="color:#dc2626">*</span></label>
         <input type="number" id="id-pavimentos" placeholder="Ex: 1, 2, 3..." min="1" max="50" inputmode="numeric">
@@ -3083,7 +3087,7 @@ async function loadNovVistoriaForm(){
     document.getElementById("nv-coletor").innerHTML='<option value="">Selecione o cliente primeiro...</option>';
   }
   // Campos pessoais: limpar mas oferecer reaproveitamento
-  ["nv-nome","nv-doc","nv-tel","nv-num","nv-comp"].forEach(id=>document.getElementById(id).value="");
+  ["nv-nome","nv-doc","nv-tel","nv-num","nv-comp","nv-bairro"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
   // Tipo de ocupação e construção: SEMPRE em branco (não persistir entre vistorias)
   document.getElementById("nv-ocupacao").value="";
   document.getElementById("nv-tipo").value="";
@@ -3111,7 +3115,7 @@ async function loadNovVistoriaForm(){
   } else {
     boxReap.style.display="none";
   }
-  setTipoLaudo(localStorage.getItem("lastTipoLaudo")||"simplificado");
+  setTipoLaudo("simplificado");
 }
 window.reaproveitarResponsavel=()=>{
   if(!ultimoResponsavel)return;
@@ -3161,10 +3165,45 @@ window.iniciarComoAusente=async()=>{
   }
 };
 
+// Detecta o bairro via Nominatim (OpenStreetMap, sem chave) e guarda as coordenadas
+// pra reuso no mapa do PDF (Laudo Completo). Em SP, o "bairro oficial" às vezes vem
+// como "suburb" e às vezes como "neighbourhood" — por isso tentamos múltiplos campos.
+window.detectarBairroPorGPS=async()=>{
+  const btn=document.getElementById("nv-detectar-bairro-btn");
+  if(!navigator.geolocation){alert("Seu navegador não suporta geolocalização.");return;}
+  if(btn){btn.disabled=true;btn.textContent="Buscando...";}
+  try{
+    const pos=await new Promise((resolve,reject)=>{
+      navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
+    });
+    const{latitude:lat,longitude:lon}=pos.coords;
+    const url=`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&accept-language=pt-BR`;
+    const resp=await fetch(url,{headers:{"User-Agent":"VistoriaCautelar/1.0"}});
+    if(!resp.ok)throw new Error("Falha na resposta do servidor de mapas");
+    const data=await resp.json();
+    const a=data&&data.address||{};
+    const bairro=a.suburb||a.neighbourhood||a.city_district||a.district||a.quarter||a.village||"";
+    if(!bairro){alert("Não foi possível identificar o bairro nesta localização.\n\nVocê pode preencher manualmente.");return;}
+    document.getElementById("nv-bairro").value=bairro;
+    // Guarda coordenadas pra usar no mapa do PDF (Laudo Completo, página 2)
+    window._coordenadasGPSAtuais={lat,lon};
+  }catch(e){
+    console.warn("detectarBairroPorGPS:",e);
+    const msg=e.code===1?"Permissão de localização negada. Habilite no navegador.":
+              e.code===2?"Localização indisponível. Tente novamente em alguns segundos.":
+              e.code===3?"Tempo esgotado ao buscar localização.":
+              "Erro ao buscar localização: "+(e.message||e);
+    alert(msg);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="📍 Detectar";}
+  }
+};
+
 window.criarVistoria=async()=>{
   const cId=document.getElementById("nv-cliente").value;const colId=document.getElementById("nv-coletor").value;
   const nome=document.getElementById("nv-nome").value.trim();const docR=document.getElementById("nv-doc").value.trim();const tel=document.getElementById("nv-tel").value.trim();
   const rua=document.getElementById("nv-rua").value.trim();const num=document.getElementById("nv-num").value.trim();const comp=document.getElementById("nv-comp").value.trim();
+  const bairro=(document.getElementById("nv-bairro")?document.getElementById("nv-bairro").value.trim():"");
   if(!cId||!colId)return alert("Selecione cliente e coletor");
   if(!rua||!num)return alert("Preencha rua e numero do imóvel");
   // Usa cache local em vez de buscar do Firestore (era a causa do "Iniciar Vistoria demora").
@@ -3190,7 +3229,11 @@ window.criarVistoria=async()=>{
   const activeCard=document.querySelector("#s-nova-vistoria .laudo-tipo-card.active");
   const tipoLaudo=(activeCard&&activeCard.dataset.tipo)||window._tipoLaudoAtual||localStorage.getItem("lastTipoLaudo")||"simplificado";
   localStorage.setItem("lastTipoLaudo",tipoLaudo);
-  currentVistoria={clienteId:cId,coletorId:colId,clienteNome:clD.nome,clienteRRT:clD.rrt,coletorNome:colD.nome,responsavel:{nome,doc:docR,tel},endereco:{rua,num,comp},ocupacao:document.getElementById("nv-ocupacao").value,tipo:document.getElementById("nv-tipo").value,tipoLaudo,data:now.toLocaleDateString("pt-BR"),dataCompleta:now.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}),userId:currentUser.uid,checklist:{},observacoes:"",estado:"",idade:"",status:"em_andamento"};
+  currentVistoria={clienteId:cId,coletorId:colId,clienteNome:clD.nome,clienteRRT:clD.rrt,coletorNome:colD.nome,responsavel:{nome,doc:docR,tel},endereco:{rua,num,comp,bairro},ocupacao:document.getElementById("nv-ocupacao").value,tipo:document.getElementById("nv-tipo").value,tipoLaudo,data:now.toLocaleDateString("pt-BR"),dataCompleta:now.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}),userId:currentUser.uid,checklist:{},observacoes:"",estado:"",idade:"",status:"em_andamento"};
+  // Se o usuário clicou "📍 Detectar bairro", aproveita as coordenadas pro mapa do PDF
+  if(window._coordenadasGPSAtuais){
+    currentVistoria.gps={lat:window._coordenadasGPSAtuais.lat,lng:window._coordenadasGPSAtuais.lon,lon:window._coordenadasGPSAtuais.lon};
+  }
   // RESET DEFENSIVO: limpa TODAS as variáveis globais que poderiam vazar de uma vistoria
   // anterior. Crítico após "Gerar PDF Novamente" ou banner pós-finalização — caminhos onde
   // _bkFotosPendentes do regeRarPDF poderia ter deixado lixo se houvesse erro.
@@ -4659,7 +4702,8 @@ function renderIdentificacao(){
   setck("id-sv-drenagem",sp.drenagem);
   // Zoneamento + Construção
   const z=document.getElementById("id-zoneamento");if(z)z.value=ident.zoneamento||"Misto";
-  const g=document.getElementById("id-garagem");if(g)g.value=ident.garagem||"";
+  const garagVal=ident.garagem||"";
+  document.querySelectorAll('input[name="id-garagem-r"]').forEach(r=>{r.checked=r.value===garagVal;});
   const p=document.getElementById("id-pavimentos");if(p)p.value=ident.pavimentos||"";
   // Materiais (arrays — múltipla seleção). Compatível com formato antigo (string única).
   const mc=ident.materiais&&ident.materiais.cobertura;
@@ -4696,7 +4740,7 @@ window.confirmarIdentificacao=()=>{
       drenagem:document.getElementById("id-sv-drenagem").checked
     },
     zoneamento:document.getElementById("id-zoneamento").value||"Misto",
-    garagem:document.getElementById("id-garagem").value||"",
+    garagem:(document.querySelector('input[name="id-garagem-r"]:checked')||{}).value||"",
     pavimentos:pavimentos,
     materiais:{
       cobertura:cobArr,
@@ -4716,6 +4760,15 @@ function renderFinalizacao(){
     if(blocosNormais)blocosNormais.style.display="none";
     // Botão Voltar muda para ir pro Dash (não pra Vistoria — que já não tem mais estado)
     if(btnBack)btnBack.setAttribute("onclick","goTo('s-dash')");
+    // Sincronizar estado do botão ZIP (caso o background tenha terminado antes de renderFinalizacao)
+    const btnZip=document.getElementById("fin-banner-btn-zip");
+    if(btnZip){
+      if(window._ultimaVistoriaFinalizada._zipPronto){
+        btnZip.disabled=false;btnZip.style.opacity="1";btnZip.textContent="📦 Baixar Fotos (ZIP)";
+      } else {
+        btnZip.disabled=true;btnZip.style.opacity=".5";btnZip.textContent="⏳ Gerando ZIP das fotos...";
+      }
+    }
     return;
   }
   // Caminho normal (vistoria em andamento): garantir UI normal visível
@@ -4773,6 +4826,14 @@ window.acaoEnviarComprovante=async(ev)=>{
   const u=window._ultimaVistoriaFinalizada;
   if(!u){alert("Sessão expirada.");return;}
   await enviarComprovanteVistoria(u.id,u.data,ev);
+};
+window.acaoBaixarZIP=async()=>{
+  const u=window._ultimaVistoriaFinalizada;
+  if(!u){alert("Sessão expirada.");return;}
+  if(!u._zipPronto||!u._zipBlob){alert("ZIP ainda está sendo gerado em background. Aguarde alguns segundos e tente de novo.");return;}
+  try{
+    await shareOrDownload(u._zipBlob,(u._zipNomeBase||"vistoria")+"_fotos.zip","application/zip");
+  }catch(e){console.error("acaoBaixarZIP:",e);alert("Erro ao baixar ZIP: "+(e.message||e));}
 };
 window.acaoNovaVistoria=()=>{
   // Limpa o estado de "última vistoria" e vai pra tela de nova vistoria
@@ -6148,17 +6209,9 @@ window.finalizarVistoria=async()=>{
     // Restaurar fotos originais (qualidade máxima) ANTES do ZIP — a recompressão só serve para o PDF
     fotosPendentes=_backupFotos;
 
-    if(window.JSZip){
-      try{
-        setStatus("Gerando ZIP...");
-        await yieldThread();
-        const zip=new window.JSZip();const folder=zip.folder("fotos_"+nomeBase);
-        Object.values(fotosPendentes).forEach(f=>{const b64=f.dataUrl.split(",")[1];folder.file(f.numero.replace(" ","_")+"_"+f.ambiente.replace(/\s+/g,"_")+"_"+f.tipo+".jpg",b64,{base64:true});});
-        const zBlob=await zip.generateAsync({type:"blob",compression:"DEFLATE",compressionOptions:{level:6}});
-        await shareOrDownload(zBlob,nomeBase+"_fotos.zip","application/zip");
-        showToast("Fotos salvas com sucesso!",3000);
-      }catch(e){console.error("ZIP:",e);}
-    }
+    // ZIP movido para DEPOIS do Firestore/comprovante. Isso garante que o QR Code
+    // do comprovante apareça em ~1-2s, sem ficar bloqueado pelo ZIP (que pode
+    // demorar 30s+ no iPhone com muitas fotos).
 
     // ===== AGORA SIM: persistência. Falhas aqui NÃO impedem o PDF (que já saiu). =====
     setStatus("Salvando...");
@@ -6204,10 +6257,6 @@ window.finalizarVistoria=async()=>{
       return; // sai sem limpar a sessão; o finally reabilita o botão
     }
 
-    // === COMPROVANTE: NÃO é mais gerado automaticamente. O cadastrador pode
-    // acionar manualmente pelo botão "Enviar Comprovante" no histórico (s-detalhe-vistoria).
-    // Isso evita o travamento que acontecia no fim da finalização ao tentar fazer upload
-    // pro Storage. ===
     // Salvar defaults ANTES de limpar parcialmente
     if(currentVistoria){
       localStorage.setItem("lastClienteId",currentVistoria.clienteId||"");
@@ -6215,19 +6264,59 @@ window.finalizarVistoria=async()=>{
       localStorage.setItem("lastSelecaoData",new Date().toISOString().slice(0,10));
       localStorage.setItem("lastRua",(currentVistoria.endereco&&currentVistoria.endereco.rua)||"");
     }
+    // Preserva fotos pra ZIP em background ANTES de limpar a sessão
+    const _fotosParaZIP=Object.values(fotosPendentes||{}).map(f=>({...f}));
+    const _vistoriaIdComprov=(vRef&&vRef.id)||null;
+    const _vDocComprov={...vDoc,id:_vistoriaIdComprov};
     // Em vez de limpar tudo e voltar pra Nova Vistoria, mantém os dados desta vistoria
     // disponíveis para o usuário acionar "Gerar PDF Novamente" e/ou "Enviar Comprovante".
-    // Os dados ficam guardados num objeto temporário (window._ultimaVistoriaFinalizada) que
-    // a tela de Finalização mostra como banner de sucesso com botões de ação.
     window._ultimaVistoriaFinalizada={
-      id:(vRef&&vRef.id)||null,
-      data:{...vDoc,id:(vRef&&vRef.id)||null},
-      criadoEmTs:Date.now()
+      id:_vistoriaIdComprov,
+      data:_vDocComprov,
+      criadoEmTs:Date.now(),
+      _zipPronto:false,
+      _zipBlob:null,
+      _zipNomeBase:nomeBase
     };
     currentVistoria=null;fotosPendentes={};assinaturaData=null;ambientesExtras=[];
     localApagarRascunho(); // vistoria finalizada: rascunho não é mais necessário
     // Recarrega a tela de Finalização para mostrar o estado de sucesso com botões
     renderFinalizacao();
+
+    // === AÇÕES EM BACKGROUND (não bloqueantes para o usuário) ===
+    // (1) Comprovante + QR Code AUTOMÁTICOS — usuário vê o QR sem precisar clicar
+    if(_vistoriaIdComprov){
+      (async()=>{
+        try{
+          setStatus("Gerando comprovante...");
+          await enviarComprovanteVistoria(_vistoriaIdComprov,_vDocComprov,null);
+        }catch(e){console.error("auto-comprovante:",e);showToast("Comprovante: erro automático. Tente o botão 'Enviar Comprovante'.",4500);}
+      })();
+    }
+
+    // (2) ZIP das fotos — gerado em background com compression:"STORE" (10x mais rápido
+    // que DEFLATE — JPEGs já são comprimidos, então DEFLATE só adiciona tempo sem reduzir
+    // tamanho). Quando pronto, fica disponível pelo botão "Baixar Fotos (ZIP)" do banner.
+    if(window.JSZip&&_fotosParaZIP.length){
+      (async()=>{
+        try{
+          const zip=new window.JSZip();const folder=zip.folder("fotos_"+nomeBase);
+          _fotosParaZIP.forEach(f=>{
+            if(!f.dataUrl)return;
+            const b64=f.dataUrl.split(",")[1];
+            folder.file((f.numero||"").replace(" ","_")+"_"+(f.ambiente||"").replace(/\s+/g,"_")+"_"+(f.tipo||"")+".jpg",b64,{base64:true});
+          });
+          const zBlob=await zip.generateAsync({type:"blob",compression:"STORE"});
+          if(window._ultimaVistoriaFinalizada){
+            window._ultimaVistoriaFinalizada._zipBlob=zBlob;
+            window._ultimaVistoriaFinalizada._zipPronto=true;
+            // Atualiza o banner se estiver visível
+            const btnZip=document.getElementById("fin-banner-btn-zip");
+            if(btnZip){btnZip.disabled=false;btnZip.style.opacity="1";btnZip.textContent="📦 Baixar Fotos (ZIP)";}
+          }
+        }catch(e){console.error("ZIP background:",e);}
+      })();
+    }
   }catch(e){
     console.error(e);
     // Restaurar estado: sessão de vistoria deve permanecer disponível para nova tentativa
