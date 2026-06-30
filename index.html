@@ -868,7 +868,7 @@ const LOGO_CONST="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgc
 import{initializeApp,deleteApp}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import{getAuth,signInWithEmailAndPassword,signOut,createUserWithEmailAndPassword,onAuthStateChanged,updatePassword,sendPasswordResetEmail}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import{getFirestore,initializeFirestore,persistentLocalCache,persistentMultipleTabManager,collection,doc,setDoc,getDoc,getDocs,addDoc,query,where,orderBy,serverTimestamp,deleteDoc,updateDoc,runTransaction}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import{getStorage,ref as storageRef,uploadBytes,getDownloadURL,deleteObject}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
+import{getStorage,ref as storageRef,uploadBytes,getDownloadURL,deleteObject,listAll,getMetadata}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
 
 const FC={apiKey:"AIzaSyAwwO2yLyNVnKMLFfmKKCx64zeh7Tbgrvc",authDomain:"vistoria-cautelar-71f6d.firebaseapp.com",projectId:"vistoria-cautelar-71f6d",storageBucket:"vistoria-cautelar-71f6d.firebasestorage.app",messagingSenderId:"157244396794",appId:"1:157244396794:web:c0b983583939e13e91a543"};
 const fbApp=initializeApp(FC);
@@ -2807,13 +2807,39 @@ async function _resolverNomes(colecao,ids,extrair){
 function _pendCardItem(v){
   const visitas=v.visitas||1,maxVisitas=3;
   const div=document.createElement("div");div.className="list-item";div.style.cursor="pointer";
+  // Master pode excluir pendente de qualquer cadastrador (botão ✕ no canto direito).
+  // Cadastrador NÃO vê o botão — só consegue excluir as próprias vistorias em "Minhas Vistorias"
+  // (esta tela é para AÇÃO de retomar/finalizar, não pra gerenciar exclusões).
+  const ehMaster=(currentRole||"").toLowerCase()==="master";
+  const btnExcluir=ehMaster?'<button class="hist-pend-del" onclick="excluirPendente(event,\''+v.id+'\',\''+(v.responsavel&&v.responsavel.nome||"").replace(/['"\\]/g,"")+'\')" style="background:transparent;border:none;color:#dc2626;font-size:18px;padding:4px 8px;cursor:pointer;margin-left:4px" title="Excluir (Master)">✕</button>':'';
   div.innerHTML='<div class="avatar" style="background:#fef2f2;color:#dc2626"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div>'
     +'<div class="info"><div class="title">'+(v.responsavel&&v.responsavel.nome||"--")+'</div>'
     +'<div class="sub">'+(v.endereco&&v.endereco.rua||"")+" "+(v.endereco&&v.endereco.num||"")+" | "+(v.coletorNome||"")+" | Visita "+visitas+"/"+maxVisitas+'</div></div>'
-    +'<span style="color:#dc2626;font-size:12px;font-weight:600">'+visitas+"/"+maxVisitas+'</span>';
-  div.onclick=()=>abrirRetorno(v.id,v);
+    +'<span style="color:#dc2626;font-size:12px;font-weight:600">'+visitas+"/"+maxVisitas+'</span>'
+    +btnExcluir;
+  // Click no card → retomar. Mas se o click foi no botão ✕, não dispara retomar.
+  div.onclick=(e)=>{
+    if(e.target.closest(".hist-pend-del"))return;
+    abrirRetorno(v.id,v);
+  };
   return div;
 }
+
+// Excluir pendente pela tela Ausentes Pendentes (Master only).
+// Apaga doc do Firestore + foto da visita anterior do IndexedDB.
+window.excluirPendente=async(ev,id,nome)=>{
+  ev.stopPropagation();
+  if(!confirm("Excluir definitivamente esta vistoria pendente de "+(nome||"morador")+"?\n\nA foto da visita anterior também será apagada do aparelho.\nEsta ação não pode ser desfeita."))return;
+  try{
+    await deleteDoc(doc(db,"vistorias",id));
+    try{await localApagarFotos(id);}catch(_){}
+    showToast("Pendente excluída.",3000);
+    loadPendentes();
+  }catch(e){
+    console.error("excluirPendente:",e);
+    alert("Erro ao excluir: "+(e.message||e));
+  }
+};
 
 // Renderiza a árvore Usuário → Cliente → Coletor, com todos os nós RECOLHIDOS por padrão.
 // Cada nível tem cabeçalho clicável com contador. Visual segue o padrão de coletor-group.
@@ -2943,12 +2969,49 @@ window.abrirRetorno=async(id,v)=>{
   _retornoId=id;_retornoData=v;
   window._ultimaVistoriaFinalizada=null;
   const visitas=v.visitas||1;
-  // Buscar fotos da visita anterior (IndexedDB local)
+  // Buscar fotos da visita anterior — primeiro local (IndexedDB), depois nuvem (Storage)
+  // como fallback se o usuário limpou os dados do navegador.
   let fotosAntigas=[];
   try{
     const arr=await localBuscarFotos(id);
     if(arr&&arr.length)fotosAntigas=arr;
-  }catch(e){console.warn("Falha ao buscar fotos antigas:",e);}
+  }catch(e){console.warn("Falha ao buscar fotos antigas local:",e);}
+  // Fallback de nuvem: se nada local, tenta baixar do Storage (resiliente a cache cleared)
+  if(!fotosAntigas.length&&fbStorage){
+    try{
+      const pasta="pendentes/"+(v.userId||currentUser.uid)+"/"+id;
+      const lista=await listAll(storageRef(fbStorage,pasta));
+      if(lista&&lista.items&&lista.items.length){
+        const baixadas=[];
+        for(const item of lista.items){
+          try{
+            const url=await getDownloadURL(item);
+            const respImg=await fetch(url);
+            const blob=await respImg.blob();
+            const dataUrl=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(r.error);r.readAsDataURL(blob);});
+            // Metadados (ambiente, tipo, legenda, numero, combinacoes) ficam no customMetadata
+            const meta=await getMetadata(item);
+            const cm=(meta&&meta.customMetadata)||{};
+            let combs=[];try{combs=JSON.parse(cm.combinacoes||"[]");}catch(_){}
+            baixadas.push({
+              dataUrl,
+              ambiente:cm.ambiente||"",
+              tipo:cm.tipo||"",
+              legenda:cm.legenda||"",
+              numero:cm.numero||"",
+              combinacoes:combs
+            });
+          }catch(eItem){console.warn("Falha baixar foto da nuvem:",eItem);}
+        }
+        if(baixadas.length){
+          fotosAntigas=baixadas;
+          // Repõe IndexedDB para próximas vezes
+          try{await localSalvarFotos(id,baixadas);}catch(_){}
+          showToast("Fotos da visita anterior baixadas da nuvem.",3000);
+        }
+      }
+    }catch(eNuvem){console.warn("Fallback nuvem falhou:",eNuvem);}
+  }
   if(!confirm((visitas+1)+"ª Visita — Retorno\n\n"
     +"Morador: "+(v.responsavel&&v.responsavel.nome||"(não informado)")+"\n"
     +"Endereço: "+(v.endereco&&v.endereco.rua||"")+" "+(v.endereco&&v.endereco.num||"")+"\n"
@@ -4716,10 +4779,41 @@ function salvarFotoFinal(dataUrl,patologias,combinacoes){
   // Corrigir orientação EXIF (iOS) e depois comprimir
   corrigirOrientacaoFoto(dataUrl).then(dataUrlFixed=>comprimirFoto(dataUrlFixed)).then(dataUrlComp=>{
     fotosPendentes[id]={id,dataUrl:dataUrlComp,ambiente:fotoAtualAmbiente,tipo:fotoAtualTipo,legenda,numero:"Foto "+String(num).padStart(2,"0"),patologias:patologias||[],combinacoes:combinacoes||[],timestamp:new Date().toISOString()};
-    if(patologias&&patologias.length&&currentVistoria){
+    // Atualiza checklist[amb][col] tanto pelo formato legado (patologias[]) quanto pelo
+    // formato novo (combinacoes[]). ESSENCIAL: o comprovante (QR Code) lê justamente desse
+    // checklist agregado, então sem essa sincronização as patologias marcadas via modal
+    // de combinacoes NÃO apareciam no comprovante (bug reportado).
+    if(currentVistoria){
       if(!currentVistoria.checklist)currentVistoria.checklist={};
       if(!currentVistoria.checklist[fotoAtualAmbiente])currentVistoria.checklist[fotoAtualAmbiente]={};
-      patologias.forEach(p=>{const arr=currentVistoria.checklist[fotoAtualAmbiente][p.col]||[];if(!arr.includes(p.pat))arr.push(p.pat);currentVistoria.checklist[fotoAtualAmbiente][p.col]=arr;});
+      const ckAmb=currentVistoria.checklist[fotoAtualAmbiente];
+      // Helper local: adiciona uma patologia em uma coluna (com dedup)
+      const addPat=(col,pat)=>{
+        if(!col||!pat)return;
+        if(!ckAmb[col])ckAmb[col]=[];
+        if(!ckAmb[col].includes(pat))ckAmb[col].push(pat);
+      };
+      // Helper: descobre a coluna do checklist a partir do nome do elemento
+      const colDoElem=(elem)=>ELEMENTO_TO_COL[elem]||(PATOLOGIAS_COMPLETO_MAP[elem]&&PATOLOGIAS_COMPLETO_MAP[elem].col)||null;
+      // Formato legado: patologias = [{col, pat}, ...]
+      (patologias||[]).forEach(p=>addPat(p.col,p.pat));
+      // Formato novo: combinacoes podem ter 3 modos
+      (combinacoes||[]).forEach(c=>{
+        if(c.modo==="agrupada"&&c.listaInternal){
+          c.listaInternal.forEach(sub=>{
+            const col=colDoElem(sub.elemento);
+            (sub.pats||[]).forEach(p=>addPat(col,p));
+          });
+        } else if(c.modo==="completo"&&c.subs){
+          // Completo: c.subs é a lista das patologias selecionadas. c.elemento vem do código A-L.
+          const col=colDoElem(c.elemento);
+          c.subs.forEach(s=>addPat(col,typeof s==="string"?s:(s&&s.t)));
+        } else if(c.elemento&&c.pats){
+          // Combo simples: {elemento, pats[]}
+          const col=colDoElem(c.elemento);
+          c.pats.forEach(p=>addPat(col,p));
+        }
+      });
     }
     renderFotos();showToast("Foto "+String(num).padStart(2,"0")+" salva!");
     agendarSalvarRascunho(); // protege contra reload: persiste estado da vistoria
@@ -5768,6 +5862,15 @@ window.enviarComprovanteVistoria=async(vistoriaId,vData,ev,opts)=>{
   // opts.silencioso=true → não baixa o PDF do comprovante no celular (usado no fluxo
   // automático pós-finalização, quando o PDF principal da vistoria já foi baixado).
   const silencioso=opts&&opts.silencioso;
+  const guardId=opts&&opts.guardVistoriaId; // se passado, só mostra modal QR se essa vistoria ainda for a "última finalizada"
+  // Helper: o modal QR só aparece automaticamente se o usuário ainda está no contexto
+  // da vistoria que gerou. Sem isso, o QR pode aparecer "no meio" de uma nova vistoria
+  // se o upload do Storage demorar (bug reportado em iPhone Chrome).
+  const podeMostrarQR=()=>{
+    if(!guardId)return true; // chamada manual: sempre mostra
+    const u=window._ultimaVistoriaFinalizada;
+    return !!(u&&u.id===guardId);
+  };
   // Estado visual de progresso no botão
   const btn=ev&&ev.currentTarget;
   const origTxt=btn&&btn.textContent;
@@ -5776,7 +5879,7 @@ window.enviarComprovanteVistoria=async(vistoriaId,vData,ev,opts)=>{
   try{
     // Se já temos URL ativa e não expirou, só mostra o QR
     if(vData.comprovanteUrl&&vData.comprovanteExpira&&vData.comprovanteExpira>Date.now()){
-      mostrarModalQRComprovante(vData.comprovanteUrl);
+      if(podeMostrarQR())mostrarModalQRComprovante(vData.comprovanteUrl);
       return;
     }
     if(!silencioso)showToast("Gerando comprovante...",2000);
@@ -5825,10 +5928,16 @@ window.enviarComprovanteVistoria=async(vistoriaId,vData,ev,opts)=>{
     if(btn)btn.textContent="Enviando...";
     try{
       const url=await uploadComprovante(blobGerado,vistoriaId);
-      mostrarModalQRComprovante(url);
+      // GUARD: só exibe o modal QR se o usuário ainda está no contexto desta vistoria
+      // (evita o modal aparecer "no meio" de uma nova vistoria iniciada durante o upload)
+      if(podeMostrarQR()){
+        mostrarModalQRComprovante(url);
+      } else {
+        console.log("Auto-comprovante concluído mas usuário saiu da vistoria — modal QR não exibido.");
+      }
     }catch(eUp){
       console.error("Falha upload Storage:",eUp);
-      showToast("Comprovante baixado no celular. Não foi possível gerar QR Code.",4000);
+      if(!silencioso)showToast("Comprovante baixado no celular. Não foi possível gerar QR Code.",4000);
     }
   }catch(e){
     console.error("enviarComprovanteVistoria:",e);
@@ -6391,12 +6500,16 @@ window.finalizarVistoria=async()=>{
 
     // === AÇÕES EM BACKGROUND (não bloqueantes para o usuário) ===
     // (1) Comprovante + QR Code AUTOMÁTICOS — modo silencioso (não baixa o PDF
-    // do comprovante de novo, só mostra o QR direto)
+    // do comprovante de novo, só mostra o QR direto).
+    // GUARD: a vistoria pode levar 10-30s para processar (upload Storage). Se o
+    // usuário já iniciou outra vistoria nesse meio-tempo, NÃO mostramos o modal QR
+    // (apareceria "no meio" da nova vistoria — bug reportado em iPhone Chrome).
     if(_vistoriaIdComprov){
+      const _guardId=_vistoriaIdComprov;
       (async()=>{
         try{
           setStatus("Gerando comprovante...");
-          await enviarComprovanteVistoria(_vistoriaIdComprov,_vDocComprov,null,{silencioso:true});
+          await enviarComprovanteVistoria(_vistoriaIdComprov,_vDocComprov,null,{silencioso:true,guardVistoriaId:_guardId});
         }catch(e){console.error("auto-comprovante:",e);showToast("Comprovante: erro automático. Tente o botão 'Reenviar Comprovante'.",4500);}
       })();
     }
@@ -6509,6 +6622,31 @@ window.marcarAusentePassivelRetorno=async()=>{
       }));
       if(fotosLocais.length>0)await localSalvarFotos(vRef.id,fotosLocais);
     }catch(eLocal){console.error("Falha ao salvar fotos local-only do ausente:",eLocal);}
+    // === BACKUP NA NUVEM (Firebase Storage) ===
+    // Crítico: as fotos da visita anterior PRECISAM sobreviver a "limpar dados do navegador"
+    // (que apaga IndexedDB). Sem backup, o cadastrador perderia a referência ao retornar.
+    // Upload em background — não bloqueia a UX. Cada foto vai como JPEG separado no Storage.
+    // Caminho: pendentes/{userId}/{vistoriaId}/foto_NN.jpg
+    (async()=>{
+      try{
+        if(!fbStorage)return;
+        const fotosArr=Object.values(fotosPendentes||{});
+        if(!fotosArr.length)return;
+        for(let i=0;i<fotosArr.length;i++){
+          const f=fotosArr[i];
+          if(!f.dataUrl)continue;
+          // Converte dataUrl → Blob
+          const resp=await fetch(f.dataUrl);
+          const blob=await resp.blob();
+          const path="pendentes/"+currentUser.uid+"/"+vRef.id+"/foto_"+String(i).padStart(2,"0")+".jpg";
+          try{
+            const ref=storageRef(fbStorage,path);
+            await uploadBytes(ref,blob,{contentType:"image/jpeg",customMetadata:{ambiente:f.ambiente||"",tipo:f.tipo||"",legenda:f.legenda||"",numero:f.numero||"",combinacoes:JSON.stringify(f.combinacoes||[])}});
+          }catch(eUpFoto){console.warn("Upload foto pendente "+i+":",eUpFoto);}
+        }
+        console.log("Backup nuvem: "+fotosArr.length+" fotos do ausente pendente.");
+      }catch(eBackup){console.warn("Backup nuvem do ausente falhou:",eBackup);}
+    })();
     showToast("Ausente registrado! Disponível em \"Ausentes Pendentes\" para retorno.",4500);
     // Limpar estado e voltar
     currentVistoria=null;fotosPendentes={};assinaturaData=null;ambientesExtras=[];
