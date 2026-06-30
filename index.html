@@ -3178,7 +3178,7 @@ window.detectarBairroPorGPS=async()=>{
     });
     const{latitude:lat,longitude:lon}=pos.coords;
     const url=`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&accept-language=pt-BR`;
-    const resp=await fetch(url,{headers:{"User-Agent":"VistoriaCautelar/1.0"}});
+    const resp=await fetch(url);
     if(!resp.ok)throw new Error("Falha na resposta do servidor de mapas");
     const data=await resp.json();
     const a=data&&data.address||{};
@@ -4848,7 +4848,12 @@ window.irParaFinalizacao=()=>{
   if(total===0){
     if(!confirm("Nenhuma foto registrada nesta vistoria.\n\nDeseja prosseguir para a Finalização mesmo assim?\n\nSe foi uma vistoria ausente, use o botão laranja \"Ausente — Passível de Retorno\" no fim da tela."))return;
   }
-  goTo("s-finalizacao");
+  // ROTEAMENTO POR TIPO DE LAUDO:
+  // - Simplificado → direto para Finalização
+  // - Completo     → passa pela tela de Identificação do Imóvel primeiro (serviços públicos,
+  //                  zoneamento, garagem, pavimentos, materiais), depois Finalização.
+  const tipoLaudo=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";
+  goTo(tipoLaudo==="completo"?"s-identificacao":"s-finalizacao");
 };
 
 // ===== HISTORICO COM DETALHE/EDITAR/EXCLUIR =====
@@ -5671,7 +5676,10 @@ window.compartilharComprovanteLink=async()=>{
 };
 
 // Envia comprovante de uma vistoria já existente no histórico (regera se preciso).
-window.enviarComprovanteVistoria=async(vistoriaId,vData,ev)=>{
+window.enviarComprovanteVistoria=async(vistoriaId,vData,ev,opts)=>{
+  // opts.silencioso=true → não baixa o PDF do comprovante no celular (usado no fluxo
+  // automático pós-finalização, quando o PDF principal da vistoria já foi baixado).
+  const silencioso=opts&&opts.silencioso;
   // Estado visual de progresso no botão
   const btn=ev&&ev.currentTarget;
   const origTxt=btn&&btn.textContent;
@@ -5683,11 +5691,11 @@ window.enviarComprovanteVistoria=async(vistoriaId,vData,ev)=>{
       mostrarModalQRComprovante(vData.comprovanteUrl);
       return;
     }
-    showToast("Gerando comprovante...",2000);
+    if(!silencioso)showToast("Gerando comprovante...",2000);
     // Para regerar, precisamos da assinatura do responsável (salva no Firestore quando finalizada)
     const assinaturaResp=vData.assinaturaResp||null;
     const assinaturaTec=(currentUserData&&currentUserData.assinatura)||vData.assinaturaTecnico||null;
-    if(!assinaturaResp){
+    if(!assinaturaResp&&!silencioso){
       // Vistoria sem assinatura (ausente/recusa): permitir gerar comprovante sem ela
       const seguir=confirm("Esta vistoria não tem a assinatura do responsável (pode ser ausente/recusa).\n\nGerar comprovante mesmo assim?");
       if(!seguir){if(btn){btn.disabled=false;btn.textContent=origTxt;}return;}
@@ -5713,14 +5721,18 @@ window.enviarComprovanteVistoria=async(vistoriaId,vData,ev)=>{
     }catch(e){}
     if(btn)btn.textContent="Gerando PDF...";
     blobGerado=await gerarComprovanteBlob(vData,conclusaoLinhas,assinaturaResp,assinaturaTec,vData.ambientesExtras||[],ambUtilizados);
-    // SEMPRE baixar o PDF local PRIMEIRO — assim o cadastrador tem o arquivo no celular
-    // para enviar manualmente, mesmo se o upload pra nuvem falhar.
-    const nomeArq=(vData.coletorNome||"vistoria").replace(/[^a-zA-Z0-9]/g,"_")+"_"
-      +((vData.endereco&&vData.endereco.rua||"").replace(/[^a-zA-Z0-9]/g,"_"))
-      +"_comprovante.pdf";
-    try{
-      await shareOrDownload(blobGerado,nomeArq,"application/pdf");
-    }catch(eDL){console.warn("Falha download local comprovante:",eDL);}
+    // Baixar o PDF local APENAS no modo manual (botão "Enviar Comprovante" do histórico).
+    // No modo automático pós-finalização, pulamos esse passo — o usuário já baixou o PDF
+    // principal da vistoria; baixar o comprovante automaticamente abriria o PDF e
+    // mascararia o QR Code que vamos exibir em seguida.
+    if(!silencioso){
+      const nomeArq=(vData.coletorNome||"vistoria").replace(/[^a-zA-Z0-9]/g,"_")+"_"
+        +((vData.endereco&&vData.endereco.rua||"").replace(/[^a-zA-Z0-9]/g,"_"))
+        +"_comprovante.pdf";
+      try{
+        await shareOrDownload(blobGerado,nomeArq,"application/pdf");
+      }catch(eDL){console.warn("Falha download local comprovante:",eDL);}
+    }
     // Em paralelo, tentar upload pro Storage para gerar o QR Code
     if(btn)btn.textContent="Enviando...";
     try{
@@ -5732,7 +5744,7 @@ window.enviarComprovanteVistoria=async(vistoriaId,vData,ev)=>{
     }
   }catch(e){
     console.error("enviarComprovanteVistoria:",e);
-    alert("Erro ao gerar comprovante: "+(e.message||e));
+    if(!silencioso)alert("Erro ao gerar comprovante: "+(e.message||e));
   } finally {
     if(btn){btn.disabled=false;btn.textContent=origTxt||"Enviar Comprovante";}
   }
@@ -6284,13 +6296,14 @@ window.finalizarVistoria=async()=>{
     renderFinalizacao();
 
     // === AÇÕES EM BACKGROUND (não bloqueantes para o usuário) ===
-    // (1) Comprovante + QR Code AUTOMÁTICOS — usuário vê o QR sem precisar clicar
+    // (1) Comprovante + QR Code AUTOMÁTICOS — modo silencioso (não baixa o PDF
+    // do comprovante de novo, só mostra o QR direto)
     if(_vistoriaIdComprov){
       (async()=>{
         try{
           setStatus("Gerando comprovante...");
-          await enviarComprovanteVistoria(_vistoriaIdComprov,_vDocComprov,null);
-        }catch(e){console.error("auto-comprovante:",e);showToast("Comprovante: erro automático. Tente o botão 'Enviar Comprovante'.",4500);}
+          await enviarComprovanteVistoria(_vistoriaIdComprov,_vDocComprov,null,{silencioso:true});
+        }catch(e){console.error("auto-comprovante:",e);showToast("Comprovante: erro automático. Tente o botão 'Reenviar Comprovante'.",4500);}
       })();
     }
 
