@@ -1,104 +1,118 @@
-// ===== SERVICE WORKER — Vistoria Cautelar =====
-// Objetivo: permitir que o app ABRA e funcione offline (app shell em cache).
-// NÃO cacheia chamadas ao Firebase/Firestore/Storage nem ao Nominatim — essas
-// precisam de rede e são tratadas pela própria lógica do app (persistência do
-// Firestore + IndexedDB local das fotos). Aqui só garantimos que o HTML/JS/CSS
-// e as libs (jsPDF, JSZip, XLSX, qrcode) carreguem sem conexão.
+// ============================================================================
+// Vistoria Cautelar - Service Worker
+// ============================================================================
+// Estratégia: NETWORK-FIRST com fallback para cache (uso offline)
+//
+// Por que network-first?
+// - O app é uma página única (index.html) que muda com frequência durante o
+//   desenvolvimento. Cache-first travaria o usuário em versões antigas.
+// - Em modo online: sempre busca a versão fresca do servidor. Atualizações
+//   aparecem imediatamente sem precisar limpar cache manualmente.
+// - Em modo offline: serve a última versão que conseguiu baixar (do cache).
+//
+// VERSIONAMENTO: incremente CACHE_VERSION sempre que houver mudanças relevantes
+// no index.html. Isso força todos os clientes a descartarem o cache antigo
+// no próximo carregamento.
+// ============================================================================
 
-const CACHE_NOME = "vistoria-cautelar-v1";
+const CACHE_VERSION = "v20260629-2";
+const CACHE_NAME = "vistoria-cautelar-" + CACHE_VERSION;
 
-// App shell: o próprio app + as libs externas usadas (CDN).
-// O "./" e "./index.html" cobrem o documento principal (start_url do manifest).
-const APP_SHELL = [
+// Arquivos do app shell que serão cacheados na instalação.
+// Em network-first eles servem como fallback offline.
+const SHELL_FILES = [
   "./",
   "./index.html",
-  "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
+  "./manifest.json"
 ];
 
-// Domínios que NUNCA devem ser servidos do cache (precisam de rede ao vivo).
-// Firebase faz seu próprio controle offline; cachear isso quebraria a sincronização.
-const REDE_SEMPRE = [
-  "firestore.googleapis.com",
-  "firebaseio.com",
-  "googleapis.com",
-  "gstatic.com",          // SDK do Firebase (módulos ESM)
-  "identitytoolkit",      // Firebase Auth
-  "securetoken",          // Firebase Auth refresh
-  "firebasestorage",
-  "nominatim.openstreetmap.org" // geocodificação do GPS
-];
-
-// ---- INSTALL: pré-cacheia o app shell ----
-self.addEventListener("install", event => {
+// === INSTALAÇÃO ===
+// Baixa o shell e ativa imediatamente (skipWaiting) — não espera abas antigas.
+self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NOME).then(cache =>
-      // addAll falha tudo-ou-nada; usamos add individual tolerante a falha de CDN
-      Promise.all(APP_SHELL.map(url =>
-        cache.add(url).catch(err =>
-          console.warn("[SW] não consegui cachear:", url, err)
-        )
-      ))
-    ).then(() => self.skipWaiting())
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(SHELL_FILES))
+      .catch((err) => console.warn("[SW] Cache install falhou:", err))
+      .then(() => self.skipWaiting())
   );
 });
 
-// ---- ACTIVATE: limpa caches antigos de versões anteriores ----
-self.addEventListener("activate", event => {
+// === ATIVAÇÃO ===
+// Apaga caches antigos (de versões anteriores) e assume controle de todas as abas.
+self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then(nomes =>
-      Promise.all(
-        nomes.filter(n => n !== CACHE_NOME).map(n => caches.delete(n))
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((k) => k.startsWith("vistoria-cautelar-") && k !== CACHE_NAME)
+            .map((k) => caches.delete(k))
+        )
       )
-    ).then(() => self.clients.claim())
+      .then(() => self.clients.claim())
   );
 });
 
-// ---- FETCH ----
-self.addEventListener("fetch", event => {
+// === FETCH ===
+// NETWORK-FIRST: tenta rede primeiro, cache só como fallback.
+// Ignora requisições não-GET, requisições do Firebase/Firestore (deixa o SDK
+// tratar) e requisições cross-origin de mapas/CDN (deixa o navegador cuidar).
+self.addEventListener("fetch", (event) => {
   const req = event.request;
-  const url = new URL(req.url);
 
-  // 1) Só lidamos com GET. POST/PUT (ex.: uploads) passam direto pra rede.
+  // Só intercepta GETs do MESMO domínio (PWA do app)
   if (req.method !== "GET") return;
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
 
-  // 2) Domínios que exigem rede ao vivo: nunca do cache, sempre rede.
-  if (REDE_SEMPRE.some(d => url.hostname.includes(d))) {
-    return; // deixa o navegador/Firebase cuidarem (com o offline próprio deles)
-  }
-
-  // 3) Navegação (abrir o app): network-first com fallback pro index em cache.
-  //    Assim, online o usuário pega a versão mais nova; offline, abre do cache.
-  if (req.mode === "navigate") {
-    event.respondWith(
-      fetch(req)
-        .then(resp => {
-          const copia = resp.clone();
-          caches.open(CACHE_NOME).then(c => c.put("./index.html", copia));
-          return resp;
-        })
-        .catch(() =>
-          caches.match("./index.html").then(r => r || caches.match("./"))
-        )
-    );
+  // Ignora chamadas a APIs externas que o app faz (Firebase, mapas, etc.)
+  if (
+    url.hostname.includes("googleapis.com") ||
+    url.hostname.includes("firebaseio.com") ||
+    url.hostname.includes("gstatic.com") ||
+    url.hostname.includes("nominatim.openstreetmap.org") ||
+    url.hostname.includes("arcgisonline.com") ||
+    url.hostname.includes("cdnjs.cloudflare.com")
+  ) {
     return;
   }
 
-  // 4) Demais assets (libs CDN, ícones): cache-first com atualização em 2º plano.
   event.respondWith(
-    caches.match(req).then(cacheado => {
-      const naRede = fetch(req)
-        .then(resp => {
-          if (resp && resp.status === 200) {
-            const copia = resp.clone();
-            caches.open(CACHE_NOME).then(c => c.put(req, copia));
+    fetch(req)
+      .then((response) => {
+        // Sucesso na rede: atualiza o cache em background e retorna a resposta
+        if (response && response.ok) {
+          const cloned = response.clone();
+          caches
+            .open(CACHE_NAME)
+            .then((cache) => cache.put(req, cloned))
+            .catch(() => {});
+        }
+        return response;
+      })
+      .catch(() => {
+        // Falha na rede: serve do cache se houver
+        return caches.match(req).then((cached) => {
+          if (cached) return cached;
+          // Se for navegação (HTML), fallback para index cacheado
+          if (req.mode === "navigate") {
+            return caches.match("./index.html");
           }
-          return resp;
-        })
-        .catch(() => cacheado); // offline e sem cache → falha silenciosa
-      return cacheado || naRede;
-    })
+          return new Response("Offline e sem cache disponível", {
+            status: 503,
+            statusText: "Offline",
+          });
+        });
+      })
   );
+});
+
+// === MENSAGEM: forçar atualização imediata vinda do app ===
+// O app pode enviar `{type: "SKIP_WAITING"}` pra forçar ativação do novo SW.
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
