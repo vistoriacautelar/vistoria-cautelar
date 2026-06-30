@@ -984,6 +984,8 @@ function _singularizarPat(s){
   if(s==="Rachaduras")return"Rachadura";
   if(s==="Telhas Quebradas")return"Telha Quebrada";
   if(s==="Telhas Faltando")return"Telha Faltando";
+  // Normaliza nomes antigos de desplacamento (vistorias gravadas antes da consolidação)
+  if(s==="Despl. de Pintura"||s==="Despl. de Revestimento")return"Desplacamento";
   return s;
 }
 
@@ -4297,20 +4299,41 @@ function renderCombinacoes(){
   });
 }
 
+// Normaliza nomes antigos de patologias para a forma consolidada atual.
+// Vistorias gravadas ANTES da consolidação têm "Despl. de Pintura" / "Despl. de Revestimento"
+// salvos no banco. Esta função as exibe sempre como "Desplacamento" no PDF, legendas e UI,
+// sem alterar os dados gravados (preservamos o histórico, normalizamos só a apresentação).
+function _normalizarPatNome(p){
+  if(p==="Despl. de Pintura"||p==="Despl. de Revestimento")return "Desplacamento";
+  return p;
+}
+// Aplica normalização e dedup numa lista de patologias (caso o nome antigo e o novo coexistam)
+function _normalizarPatLista(pats){
+  if(!pats||!pats.length)return [];
+  const seen=new Set();
+  const out=[];
+  pats.forEach(p=>{
+    const norm=_normalizarPatNome(p);
+    if(!seen.has(norm)){seen.add(norm);out.push(norm);}
+  });
+  return out;
+}
+
 function gerarLegendaCombo(c){
   // Mapa de preposições por elemento (para desplacamento: "na Parede", "no Piso", etc.)
   const PREPOSICAO={"Estruturas":"nas","Estrutura":"na","Parede":"na","Teto":"no","Forro":"no","Piso":"no","Calçada":"na","Porta":"na","Portas":"nas","Janela":"na","Esquadria":"na","Esquadrias":"nas","Portão":"no","Estr. Metálicas":"nas","Vidros":"nos","Telhados":"nos","Inst. Hidráulicas":"nas","Outros":"em"};
-  // Se TODAS as patologias são do tipo desplacamento, usa formato especial
-  // (aceita "Desplacamento" consolidado e os antigos "Despl. de Pintura/Revestimento")
-  const isDespl=c.pats&&c.pats.length&&c.pats.every(p=>p==="Desplacamento"||p.startsWith("Despl."));
+  // Normaliza nomes ANTES de qualquer renderização: garante que "Despl. de Pintura" virou
+  // "Desplacamento" no que sai pro usuário, mesmo em vistorias antigas.
+  const patsNorm=_normalizarPatLista(c.pats||[]);
+  // Se TODAS as patologias são desplacamento (que agora é sempre "Desplacamento"), usa
+  // formato especial: "Desplacamento na Parede" em vez de "Parede: Desplacamento".
+  const isDespl=patsNorm.length&&patsNorm.every(p=>p==="Desplacamento");
   if(isDespl&&c.elemento){
     const prep=PREPOSICAO[c.elemento]||"na";
-    // Ex: "Desplacamento na Parede"
-    return c.pats.join(" / ")+" "+prep+" "+c.elemento;
+    return patsNorm.join(" / ")+" "+prep+" "+c.elemento;
   }
   // Padrão: "Elemento: Patologia1 / Patologia2"
-  const patsStr=c.pats?c.pats.join(" / "):"";
-  return c.elemento+": "+patsStr;
+  return c.elemento+": "+patsNorm.join(" / ");
 }
 
 // Unifica várias combinações da MESMA foto numa legenda só, agrupando por elemento
@@ -4318,7 +4341,10 @@ function gerarLegendaCombo(c){
 // → "Parede: Trinca / Teto: Trinca" (sem repetição).
 function unificarLegendasCombos(combinacoes){
   if(!combinacoes||!combinacoes.length)return "";
-  // Agrupar por elemento, deduplicar patologias, preservar ordem
+  // Agrupar por elemento, deduplicar patologias, preservar ordem.
+  // Normaliza nomes antigos ("Despl. de Pintura/Revestimento" → "Desplacamento") já no
+  // momento da agregação — assim o set de deduplicação remove duplicatas que apareceriam
+  // se a vistoria antiga tivesse os 2 nomes do desplacamento.
   const ordemElem=[];
   const grupos={};
   combinacoes.forEach(c=>{
@@ -4326,13 +4352,19 @@ function unificarLegendasCombos(combinacoes){
       c.listaInternal.forEach(sub=>{
         if(!sub.elemento||!sub.pats)return;
         if(!grupos[sub.elemento]){grupos[sub.elemento]={pats:[],set:new Set()};ordemElem.push(sub.elemento);}
-        sub.pats.forEach(p=>{if(!grupos[sub.elemento].set.has(p)){grupos[sub.elemento].set.add(p);grupos[sub.elemento].pats.push(p);}});
+        sub.pats.forEach(p=>{
+          const norm=_normalizarPatNome(p);
+          if(!grupos[sub.elemento].set.has(norm)){grupos[sub.elemento].set.add(norm);grupos[sub.elemento].pats.push(norm);}
+        });
       });
       return;
     }
     if(!c.elemento||!c.pats)return;
     if(!grupos[c.elemento]){grupos[c.elemento]={pats:[],set:new Set()};ordemElem.push(c.elemento);}
-    c.pats.forEach(p=>{if(!grupos[c.elemento].set.has(p)){grupos[c.elemento].set.add(p);grupos[c.elemento].pats.push(p);}});
+    c.pats.forEach(p=>{
+      const norm=_normalizarPatNome(p);
+      if(!grupos[c.elemento].set.has(norm)){grupos[c.elemento].set.add(norm);grupos[c.elemento].pats.push(norm);}
+    });
   });
   // Gerar legenda por grupo usando gerarLegendaCombo (que já trata desplacamento)
   return ordemElem.map(el=>gerarLegendaCombo({pats:grupos[el].pats,elemento:el})).join(" / ");
