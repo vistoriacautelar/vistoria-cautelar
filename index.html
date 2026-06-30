@@ -1287,7 +1287,15 @@ function salvarRascunhoImediato(){
   try{
     if(typeof currentVistoria==="undefined"||!currentVistoria)return;
     if(currentVistoria.status&&currentVistoria.status!=="em_andamento")return;
-    if(!fotosPendentes||!Object.keys(fotosPendentes).length)return;
+    // Preserva também rascunhos com 0 fotos SE for retomada de pendente (_retornoId)
+    // ou se houver dados úteis (responsavel/endereço/checklist) — protege contra
+    // perda de retomadas que ainda não tiveram nenhuma foto nova tirada.
+    const temFotos=fotosPendentes&&Object.keys(fotosPendentes).length;
+    const temConteudoUtil=currentVistoria._retornoId
+      ||(currentVistoria.responsavel&&currentVistoria.responsavel.nome)
+      ||(currentVistoria.endereco&&currentVistoria.endereco.rua)
+      ||(currentVistoria.checklist&&Object.keys(currentVistoria.checklist).length);
+    if(!temFotos&&!temConteudoUtil)return;
     clearTimeout(_draftTimer);
     _draftSalvando=false; // força desbloqueio — em contexto de shutdown, não há concorrência
     localSalvarRascunho(currentVistoria,fotosPendentes);
@@ -1857,6 +1865,51 @@ function renderResumo(docs,deStr,ateStr){
     });
     html+='</tbody></table></div></div>';
   }
+  // === LISTA DETALHADA DAS VISTORIAS (data + hora) ===
+  // A usuária pediu 3x: vistorias listadas com data E hora da finalização,
+  // ordenadas do mais recente para o mais antigo.
+  const docsOrdenados=docs.slice().sort((a,b)=>{
+    const ta=(a.data_finalizacao&&a.data_finalizacao.seconds)||(a.criadoEm&&a.criadoEm.seconds)||0;
+    const tb=(b.data_finalizacao&&b.data_finalizacao.seconds)||(b.criadoEm&&b.criadoEm.seconds)||0;
+    return tb-ta;
+  });
+  const statusBadge=(v)=>{
+    let st=v.status||"concluida";
+    if(st==="ausente"&&v.pendente_retorno)st="pendente";
+    const labels={concluida:"Finalizado",parcial:"Parcial",externa:"Externa",recusa:"Recusa",ausente:"Ausente",pendente:"Pend. Retorno"};
+    const cores={concluida:"#065f46",parcial:"#92400e",externa:"#1d4ed8",recusa:"#991b1b",ausente:"#dc2626",pendente:"#be185d"};
+    return '<span style="font-size:11px;font-weight:600;color:'+(cores[st]||"#374151")+'">'+(labels[st]||st)+'</span>';
+  };
+  const fmtDataHora=(ts)=>{
+    if(!ts||!ts.seconds)return "—";
+    const d=new Date(ts.seconds*1000);
+    return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear()
+      +" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  };
+  html+='<div class="card" style="margin-top:14px"><h2>Vistorias do Período</h2>';
+  html+='<p style="font-size:13px;color:#666;margin-bottom:10px">Lista das '+docsOrdenados.length+' vistoria(s) no período, com data e hora de finalização (mais recente primeiro):</p>';
+  html+='<div style="max-height:480px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px">';
+  html+='<table style="width:100%;border-collapse:collapse;font-size:12px">';
+  html+='<thead style="background:#f9fafb;position:sticky;top:0"><tr>';
+  html+='<th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#374151">Endereço</th>';
+  html+='<th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#374151">Responsável</th>';
+  html+='<th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#374151">Cadastrador</th>';
+  html+='<th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#374151;white-space:nowrap">Finalizado em</th>';
+  html+='<th style="text-align:left;padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#374151">Status</th>';
+  html+='</tr></thead><tbody>';
+  docsOrdenados.forEach(v=>{
+    const ender=((v.endereco&&v.endereco.rua)||"")+" "+((v.endereco&&v.endereco.num)||"")
+      +((v.endereco&&v.endereco.comp)?(" "+v.endereco.comp):"");
+    const tsFinal=v.data_finalizacao||v.criadoEm;
+    html+='<tr>';
+    html+='<td style="padding:8px;border-bottom:1px solid #f3f4f6">'+ender+'</td>';
+    html+='<td style="padding:8px;border-bottom:1px solid #f3f4f6">'+((v.responsavel&&v.responsavel.nome)||"—")+'</td>';
+    html+='<td style="padding:8px;border-bottom:1px solid #f3f4f6;color:#6b7280">'+nomeUsuario(v.userId||"-")+'</td>';
+    html+='<td style="padding:8px;border-bottom:1px solid #f3f4f6;white-space:nowrap;font-variant-numeric:tabular-nums">'+fmtDataHora(tsFinal)+'</td>';
+    html+='<td style="padding:8px;border-bottom:1px solid #f3f4f6">'+statusBadge(v)+'</td>';
+    html+='</tr>';
+  });
+  html+='</tbody></table></div></div>';
   cont.innerHTML=html;
 }
 
@@ -1982,7 +2035,7 @@ window.exportarPlanilhaCliente=async()=>{
       v.ocupacao||v.tipo||"",
       data1?fmtDataExcel(data1):"",
       data2?fmtDataExcel(data2):"",
-      dataVist?fmtDataExcel(dataVist):"",
+      dataVist?fmtDataHoraExcel(dataVist):"",
       (v.responsavel&&v.responsavel.nome)||"",
       statusLabels[v.status]||v.status||"",
       (v.responsavel&&v.responsavel.tel)||"",
@@ -2017,6 +2070,16 @@ function fmtDataExcel(d){
   const mm=String(d.getMonth()+1).padStart(2,"0");
   const yy=d.getFullYear();
   return dd+"/"+mm+"/"+yy;
+}
+// Versão com hora (hh:mm) — usada na coluna "Data da vistoria" do XLSX
+function fmtDataHoraExcel(d){
+  if(!d)return"";
+  const dd=String(d.getDate()).padStart(2,"0");
+  const mm=String(d.getMonth()+1).padStart(2,"0");
+  const yy=d.getFullYear();
+  const hh=String(d.getHours()).padStart(2,"0");
+  const mi=String(d.getMinutes()).padStart(2,"0");
+  return dd+"/"+mm+"/"+yy+" "+hh+":"+mi;
 }
 
 window.doLogin=async()=>{const email=document.getElementById("login-email").value.trim();const pass=document.getElementById("login-pass").value;const err=document.getElementById("login-err");if(!email||!pass){err.textContent="Preencha e-mail e senha";err.style.display="block";return;}try{await signInWithEmailAndPassword(auth,email,pass);localStorage.setItem("lastLoginDate",new Date().toDateString());err.style.display="none";}catch(e){err.textContent="E-mail ou senha incorretos";err.style.display="block";}};
@@ -3073,15 +3136,37 @@ async function verificarRascunho(){
     const r=await localBuscarRascunho();
     if(!r||!r.vistoria)return;
     const numFotos=(r.fotos||[]).length;
-    // Só faz sentido oferecer retomada se havia conteúdo de fato.
-    if(numFotos===0&&!(r.vistoria.checklist&&Object.keys(r.vistoria.checklist).length))
-      {await localApagarRascunho();return;}
-    _rascunhoPendente=r;
     const v=r.vistoria;
+    // CRITÉRIO DE PRESERVAÇÃO DO RASCUNHO: muito mais permissivo que antes.
+    // Bug anterior: apagava o rascunho se numFotos===0 e checklist vazio. Mas uma
+    // retomada de "ausente pendente" começa com 0 fotos novas e checklist vazio — só
+    // tem o _retornoId apontando pra vistoria original. Se o usuário recarregar antes
+    // de tirar foto nova, o app apagava o rascunho silenciosamente e perdia a retomada.
+    // CONSEQUÊNCIA: vistorias perdidas (3 reportadas hoje).
+    // AGORA preservamos o rascunho se QUALQUER um destes for verdadeiro:
+    //   - tem fotos
+    //   - tem checklist preenchido
+    //   - é retomada de pendente (_retornoId)
+    //   - tem responsável identificado (nome OU doc OU tel)
+    //   - tem endereço preenchido (rua)
+    //   - foi marcado como vistoria externa
+    const temFotos=numFotos>0;
+    const temChecklist=v.checklist&&Object.keys(v.checklist).length>0;
+    const ehRetorno=!!v._retornoId;
+    const temResp=v.responsavel&&(v.responsavel.nome||v.responsavel.doc||v.responsavel.tel);
+    const temEnd=v.endereco&&v.endereco.rua;
+    const ehExterna=v.statusVistoria==="externa"||v.status==="externa";
+    if(!temFotos&&!temChecklist&&!ehRetorno&&!temResp&&!temEnd&&!ehExterna){
+      // De fato vazio — usuário começou a criar e abandonou sem nada
+      await localApagarRascunho();return;
+    }
+    _rascunhoPendente=r;
     const nome=(v.responsavel&&v.responsavel.nome)||"Morador não identificado";
     const quando=r.savedAt?new Date(r.savedAt).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"";
+    // Mensagem específica para retomadas de pendente
+    const tipoMsg=ehRetorno?"<span style='color:#dc2626;font-weight:600'>↻ Retomada de Ausente Pendente</span><br>":"";
     document.getElementById("rascunho-info").innerHTML=
-      "<b>"+nome+"</b><br>"+numFotos+" foto"+(numFotos===1?"":"s")+" salva"+(numFotos===1?"":"s")
+      tipoMsg+"<b>"+nome+"</b><br>"+numFotos+" foto"+(numFotos===1?"":"s")+" salva"+(numFotos===1?"":"s")
       +(quando?"<br><span style='font-size:12px;color:#aaa'>Último salvamento: "+quando+"</span>":"");
     showModal("modal-retomar-rascunho");
   }catch(e){console.warn("verificarRascunho:",e);}
