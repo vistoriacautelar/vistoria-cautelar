@@ -895,10 +895,12 @@ let AMBIENTES=[...AMBIENTES_BASE];
 let _ambientesCustomCache=[]; // [{id, nome}] do Firestore
 const PARTES=["Estrutura","Parede e muro","Cobertura e teto","Porta e esquadria","Piso e cal\xe7amento"];
 const COLS=["estrutura","paredes","cobertura","portas","piso"];
-const PATOLOGIAS=["Fissura","Trinca","Rachadura","Umidade","Infiltração","Despl. de Pintura","Despl. de Revestimento","Armadura Exposta","Danificado","Portão Desalinhado"];
+const PATOLOGIAS=["Fissura","Trinca","Rachadura","Umidade","Infiltração","Desplacamento","Armadura Exposta","Danificado","Portão Desalinhado"];
 // Grupos do checklist PDF (agrupado para economizar espaço)
-const PATOLOGIAS_CK=["Fissura/Trinca/Rachadura","Umidade/Infiltração","Despl. de Pintura","Despl. de Revestimento","Armadura Exposta","Danificado","Portão Desalinhado"];
-const PATOLOGIAS_CK_MAP={"Fissura/Trinca/Rachadura":["Fissura","Trinca","Rachadura"],"Umidade/Infiltração":["Umidade","Infiltração"],"Despl. de Pintura":["Despl. de Pintura"],"Despl. de Revestimento":["Despl. de Revestimento"],"Armadura Exposta":["Armadura Exposta"],"Danificado":["Danificado"],"Portão Desalinhado":["Portão Desalinhado"]};
+const PATOLOGIAS_CK=["Fissura/Trinca/Rachadura","Umidade/Infiltração","Desplacamento","Armadura Exposta","Danificado","Portão Desalinhado"];
+// Map: cada coluna do CK aceita várias patologias (inclui nomes antigos
+// "Despl. de Pintura"/"Despl. de Revestimento" pra preservar marcação em vistorias gravadas antes da consolidação).
+const PATOLOGIAS_CK_MAP={"Fissura/Trinca/Rachadura":["Fissura","Trinca","Rachadura"],"Umidade/Infiltração":["Umidade","Infiltração"],"Desplacamento":["Desplacamento","Despl. de Pintura","Despl. de Revestimento"],"Armadura Exposta":["Armadura Exposta"],"Danificado":["Danificado"],"Portão Desalinhado":["Portão Desalinhado"]};
 const ELEMENTOS=["Estrutura","Parede","Teto","Piso","Calçada","Porta","Janela","Esquadria","Portão"];
 // Mapeia elemento construtivo (passo 3 do modal simplificado, agora único) para a coluna do checklist
 const ELEMENTO_TO_COL={
@@ -916,12 +918,12 @@ const ELEMENTO_TO_COL={
 // ===== LAUDO COMPLETO: patologias por elemento =====
 const PATOLOGIAS_COMPLETO=[
   {elem:"Estruturas",col:"estrutura",pats:["Trincas","Fissuras","Rachaduras","Umidade","Infiltração","Danificado","Segregação","Armadura Exposta"]},
-  {elem:"Parede",col:"paredes",pats:["Trincas","Fissuras","Rachaduras","Umidade","Infiltração","Danificado","Eflorescência","Despl. de Pintura","Despl. de Revestimento"]},
-  {elem:"Teto",col:"cobertura",pats:["Trincas","Fissuras","Rachaduras","Umidade","Infiltração","Danificado","Eflorescência","Despl. de Pintura","Despl. de Revestimento"]},
-  {elem:"Forro",col:"cobertura",pats:["Trincas","Fissuras","Rachaduras","Umidade","Infiltração","Danificado","Deformado","Despl. de Pintura","Despl. de Revestimento"]},
+  {elem:"Parede",col:"paredes",pats:["Trincas","Fissuras","Rachaduras","Umidade","Infiltração","Danificado","Eflorescência","Desplacamento"]},
+  {elem:"Teto",col:"cobertura",pats:["Trincas","Fissuras","Rachaduras","Umidade","Infiltração","Danificado","Eflorescência","Desplacamento"]},
+  {elem:"Forro",col:"cobertura",pats:["Trincas","Fissuras","Rachaduras","Umidade","Infiltração","Danificado","Deformado","Desplacamento"]},
   {elem:"Estr. Metálicas",col:"estrutura",pats:["Trincas","Fissuras","Rachaduras","Oxidação","Danificado","Deformação"]},
   {elem:"Vidros",col:"portas",pats:["Trincado","Quebrado","Faltando"]},
-  {elem:"Piso",col:"piso",pats:["Trincas","Fissuras","Rachaduras","Umidade","Danificado","Recalque","Solapamento","Eflorescência","Despl. de Pintura","Despl. de Revestimento"]},
+  {elem:"Piso",col:"piso",pats:["Trincas","Fissuras","Rachaduras","Umidade","Danificado","Recalque","Solapamento","Eflorescência","Desplacamento"]},
   {elem:"Portas",col:"portas",pats:["Umidade","Danificado","Portão Desalinhado"]},
   {elem:"Esquadrias",col:"portas",pats:["Umidade","Danificado"]},
   {elem:"Telhados",col:"cobertura",pats:["Umidade","Telhas Quebradas","Telhas Faltando","Madeira Danificada"]},
@@ -1463,7 +1465,10 @@ onAuthStateChanged(auth,async user=>{
     loadPrestadorDefault().catch(e=>console.warn("loadPrestadorDefault bg:",e));
     loadAmbientesCustom().catch(e=>console.warn("loadAmbientesCustom bg:",e));
     if(snapUser.exists()){
-      currentUserData=snapUser.data();currentRole=currentUserData.role;assinaturaTecnico=currentUserData.assinatura||null;
+      currentUserData=snapUser.data();
+      // Normaliza pra lowercase — robusto contra docs gravados como "Master" ou "MASTER".
+      currentRole=(currentUserData.role||"").toLowerCase();
+      assinaturaTecnico=currentUserData.assinatura||null;
     } else {
       // Doc do usuário não existe. Dois cenários:
       //  (a) FUNDADOR: é o primeiríssimo acesso do sistema (coleção users vazia) → vira master.
@@ -2015,7 +2020,16 @@ function fmtDataExcel(d){
 window.doLogin=async()=>{const email=document.getElementById("login-email").value.trim();const pass=document.getElementById("login-pass").value;const err=document.getElementById("login-err");if(!email||!pass){err.textContent="Preencha e-mail e senha";err.style.display="block";return;}try{await signInWithEmailAndPassword(auth,email,pass);localStorage.setItem("lastLoginDate",new Date().toDateString());err.style.display="none";}catch(e){err.textContent="E-mail ou senha incorretos";err.style.display="block";}};
 window.doLogout=async()=>await signOut(auth);
 
-function loadDash(){const el=document.getElementById("dash-role");const roleLabel=currentRole==="master"?"Master":"Cadastrador";const roleCls=currentRole==="master"?"master":"cad";el.textContent=roleLabel;el.className="badge "+roleCls;document.getElementById("dash-master-section").style.display=currentRole==="master"?"block":"none";loadDashCount();loadPendentesCount();}
+function loadDash(){
+  const el=document.getElementById("dash-role");
+  // Comparação case-insensitive: aceita "master", "Master", "MASTER"
+  const isMaster=(currentRole||"").toLowerCase()==="master";
+  const roleLabel=isMaster?"Master":"Cadastrador";
+  const roleCls=isMaster?"master":"cad";
+  el.textContent=roleLabel;el.className="badge "+roleCls;
+  document.getElementById("dash-master-section").style.display=isMaster?"block":"none";
+  loadDashCount();loadPendentesCount();
+}
 async function loadDashCount(){try{const q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));const s=await getDocs(q);document.getElementById("dash-count").textContent=s.size+" vistoria(s)";}catch(e){}}
 
 function renderPerfil(){
@@ -3115,7 +3129,9 @@ async function loadNovVistoriaForm(){
   } else {
     boxReap.style.display="none";
   }
-  setTipoLaudo("simplificado");
+  // Default = simplificado na primeira vez. Depois que o cadastrador escolher Completo,
+  // fica memorizado e mantém esse modo até trocar novamente.
+  setTipoLaudo(localStorage.getItem("lastTipoLaudo")||"simplificado");
 }
 window.reaproveitarResponsavel=()=>{
   if(!ultimoResponsavel)return;
@@ -4285,10 +4301,11 @@ function gerarLegendaCombo(c){
   // Mapa de preposições por elemento (para desplacamento: "na Parede", "no Piso", etc.)
   const PREPOSICAO={"Estruturas":"nas","Estrutura":"na","Parede":"na","Teto":"no","Forro":"no","Piso":"no","Calçada":"na","Porta":"na","Portas":"nas","Janela":"na","Esquadria":"na","Esquadrias":"nas","Portão":"no","Estr. Metálicas":"nas","Vidros":"nos","Telhados":"nos","Inst. Hidráulicas":"nas","Outros":"em"};
   // Se TODAS as patologias são do tipo desplacamento, usa formato especial
-  const isDespl=c.pats&&c.pats.length&&c.pats.every(p=>p.startsWith("Despl."));
+  // (aceita "Desplacamento" consolidado e os antigos "Despl. de Pintura/Revestimento")
+  const isDespl=c.pats&&c.pats.length&&c.pats.every(p=>p==="Desplacamento"||p.startsWith("Despl."));
   if(isDespl&&c.elemento){
     const prep=PREPOSICAO[c.elemento]||"na";
-    // Ex: "Despl. de Pintura na Parede" ou "Despl. de Pintura / Despl. de Revestimento no Teto"
+    // Ex: "Desplacamento na Parede"
     return c.pats.join(" / ")+" "+prep+" "+c.elemento;
   }
   // Padrão: "Elemento: Patologia1 / Patologia2"
@@ -5016,7 +5033,7 @@ async function loadHistorico(){
             grpCli.innerHTML=_histCabecalho(idCli,cliKey,arr.length,"#0369a1","13",false,false);
             const corpoCli=document.createElement("div");
             corpoCli.style.display=_histGruposAbertos.has(idCli)?"block":"none";
-            arr.forEach(v=>corpoCli.appendChild(_histItemCard(v)));
+            _sortVistoriasRecente(arr).forEach(v=>corpoCli.appendChild(_histItemCard(v)));
             grpCli.appendChild(corpoCli);
             grpCli.children[0].onclick=()=>_histToggleGrupo(idCli,grpCli.children[0],corpoCli);
             corpoUser.appendChild(grpCli);
@@ -5078,7 +5095,7 @@ async function loadHistorico(){
             grpDt.innerHTML=_histCabecalho(idDt,dtKey,arr.length,"#0369a1","13",false,_histModoSelecao);
             const corpoDt=document.createElement("div");
             corpoDt.style.display=_histGruposAbertos.has(idDt)?"block":"none";
-            arr.forEach(v=>corpoDt.appendChild(_histItemCard(v)));
+            _sortVistoriasRecente(arr).forEach(v=>corpoDt.appendChild(_histItemCard(v)));
             grpDt.appendChild(corpoDt);
             grpDt.children[0].addEventListener("click",ev=>{
               if(ev.target.classList&&ev.target.classList.contains("hist-check-dia"))return;
@@ -5140,11 +5157,29 @@ function _histCabecalho(id,texto,total,cor,fonte,bold,incluirCheckboxDia){
 }
 
 // Item visual de uma vistoria. Reutiliza o markup que já existia, só extraído pra função.
+// Ordena vistorias por data mais recente primeiro (usa data_finalizacao, ou criadoEm
+// como fallback se a vistoria ainda não foi finalizada).
+function _sortVistoriasRecente(arr){
+  return arr.slice().sort((a,b)=>{
+    const aT=(a.data_finalizacao&&a.data_finalizacao.seconds)||(a.criadoEm&&a.criadoEm.seconds)||0;
+    const bT=(b.data_finalizacao&&b.data_finalizacao.seconds)||(b.criadoEm&&b.criadoEm.seconds)||0;
+    return bT-aT;
+  });
+}
+
 function _histItemCard(v){
   const div=document.createElement("div");div.className="list-item";div.style.cursor="pointer";
   const tipoBadge=v.tipoLaudo==="completo"?'<span class="badge laudo" style="margin-right:6px">Completo</span>':'';
   const statusBadge='<span class="badge '+({concluida:"ok",parcial:"cad",externa:"cad",recusa:"master",ausente:"com"}[v.status]||"ok")+'">'+({"concluida":"Finalizado","parcial":"Parcial","externa":"Externa","recusa":"Recusa","ausente":"Ausente"}[v.status]||"Finalizado")+'</span>';
-  const corpoItem='<div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></div><div class="info"><div class="title">'+(v.responsavel&&v.responsavel.nome||"--")+'</div><div class="sub">'+(v.endereco&&v.endereco.rua||"")+" "+(v.endereco&&v.endereco.num||"")+" | "+(v.totalFotos||0)+" fotos | "+(v.data||"")+'</div></div><div class="hist-actions">'+tipoBadge+statusBadge+'</div>';
+  // Hora da finalização (extrai HH:MM do timestamp). Se a vistoria não foi finalizada (pendente),
+  // pega criadoEm como referência. Se nenhum dos dois existir, omite a hora.
+  let horaTxt="";
+  const ts=(v.data_finalizacao&&v.data_finalizacao.seconds)?v.data_finalizacao:(v.criadoEm&&v.criadoEm.seconds?v.criadoEm:null);
+  if(ts){
+    const d=new Date(ts.seconds*1000);
+    horaTxt=" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  }
+  const corpoItem='<div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></div><div class="info"><div class="title">'+(v.responsavel&&v.responsavel.nome||"--")+'</div><div class="sub">'+(v.endereco&&v.endereco.rua||"")+" "+(v.endereco&&v.endereco.num||"")+" | "+(v.totalFotos||0)+" fotos | "+(v.data||"")+horaTxt+'</div></div><div class="hist-actions">'+tipoBadge+statusBadge+'</div>';
   if(_histModoSelecao){
     const isChecked=_histSelecionadas.has(v.id);
     div.innerHTML='<input type="checkbox" class="hist-check" data-id="'+v.id+'" '+(isChecked?"checked":"")+' style="width:20px;height:20px;margin-right:6px;flex-shrink:0;accent-color:#dc2626">'+corpoItem;
@@ -6350,11 +6385,16 @@ window.finalizarVistoria=async()=>{
           if(window._ultimaVistoriaFinalizada){
             window._ultimaVistoriaFinalizada._zipBlob=zBlob;
             window._ultimaVistoriaFinalizada._zipPronto=true;
-            // Atualiza o banner se estiver visível
+            // BAIXA AUTOMATICAMENTE quando pronto (não espera o usuário clicar no botão)
+            try{
+              await shareOrDownload(zBlob,nomeBase+"_fotos.zip","application/zip");
+              showToast("✅ Arquivos baixados com sucesso! (PDF + ZIP)",4500);
+            }catch(eDL){console.warn("Auto-download ZIP falhou:",eDL);}
+            // Atualiza banner pra permitir baixar novamente
             const btnZip=document.getElementById("fin-banner-btn-zip");
-            if(btnZip){btnZip.disabled=false;btnZip.style.opacity="1";btnZip.textContent="📦 Baixar Fotos (ZIP)";}
+            if(btnZip){btnZip.disabled=false;btnZip.style.opacity="1";btnZip.textContent="📦 Baixar Fotos (ZIP) novamente";}
           }
-        }catch(e){console.error("ZIP background:",e);}
+        }catch(e){console.error("ZIP background:",e);showToast("Erro ao gerar ZIP. Use o botão no banner pra tentar novamente.",4500);}
       })();
     }
   }catch(e){
@@ -6610,39 +6650,21 @@ function yieldThread(){return new Promise(res=>setTimeout(res,0));}
 
 function addImgPDF(pdf,dataUrl,x,y,w,h){return new Promise(async res=>{await yieldThread();try{pdf.addImage(dataUrl,"JPEG",x,y,w,h,"","FAST");}catch(e){}res();});}
 async function shareOrDownload(blob,nome,mime){
-  // iOS Safari: a.click() com blob URL é instável. Preferir navigator.share (que abre
-  // a sheet nativa de compartilhamento com opção "Salvar em Arquivos") quando disponível.
-  // Fallback 1: window.open (abre o blob numa aba nova, usuário pode salvar manualmente).
-  // Fallback 2: a.click() (funciona bem em Chrome Android).
-  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
-  // Tentar navigator.share primeiro no iOS (sheet nativa com "Salvar em Arquivos")
-  if(isIOS&&navigator.share&&navigator.canShare){
-    try{
-      const file=new File([blob],nome,{type:mime});
-      if(navigator.canShare({files:[file]})){
-        await navigator.share({files:[file],title:nome});
-        return; // sucesso
-      }
-    }catch(e){
-      if(e.name==="AbortError")return; // usuário cancelou o share — não é erro
-      console.warn("navigator.share falhou no iOS:",e);
-    }
-  }
-  // Android/Desktop: download direto funciona bem
+  // Download DIRETO em todos os SOs (Android, iOS, Desktop). No iOS Safari/Chrome
+  // recente o a.click() com a.download=nome salva direto na pasta Downloads do
+  // app Arquivos — não abre share sheet. É o que a usuária pediu: download
+  // automático sem interação extra, depois mostramos toast de sucesso.
   const url=URL.createObjectURL(blob);
-  if(isIOS){
-    // Fallback iOS: abrir em nova aba (Safari mostra preview do PDF com opção de compartilhar)
-    const win=window.open(url,"_blank");
-    if(!win){
-      // Popup bloqueado: tenta a.click() como último recurso
-      const a=document.createElement("a");
-      a.href=url;a.download=nome;a.rel="noopener";a.target="_self";
-      document.body.appendChild(a);a.click();document.body.removeChild(a);
-    }
-  }else{
+  try{
     const a=document.createElement("a");
     a.href=url;a.download=nome;a.rel="noopener";a.target="_self";
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }catch(e){
+    // Fallback raro: abre em nova aba (usuário consegue salvar manualmente)
+    try{window.open(url,"_blank");}catch(_){}
+    console.warn("shareOrDownload fallback:",e);
   }
   setTimeout(()=>URL.revokeObjectURL(url),5000);
 }
