@@ -449,6 +449,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <button id="btn-editar-resp-vistoria" class="btn small" onclick="abrirEditarRespVistoria()" style="display:none;margin-top:10px;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;font-size:12px;width:100%">✏️ Editar dados do responsável / endereço</button>
     </div>
     <div id="gps-status" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:8px 12px;font-size:12px;color:#0369a1">Aguardando GPS...</div>
+    <div id="draft-save-badge" style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:6px 12px;font-size:12px;color:#166534;display:flex;align-items:center;gap:6px;margin-top:4px">
+      <span id="draft-badge-icon">💾</span>
+      <span id="draft-badge-text">Nenhuma foto salva ainda</span>
+    </div>
     <div class="card"><h2>Capturar foto</h2>
       <div class="field"><label>Ambiente</label><select id="v-ambiente" onchange="onChangeAmbienteSelect(this)"><option value="">Selecione o ambiente...</option></select></div>
       <div class="field"><label>Tipo de foto</label><select id="v-tipo-foto"><option value="Vista">Vista - ambiente geral</option><option value="Detalhe">Detalhe - foco na patologia</option></select></div>
@@ -1346,6 +1350,32 @@ function logRascunhoSave(numFotos){
     if(logs.length>20)logs.splice(0,logs.length-20);
     localStorage.setItem("draftSaveLog",JSON.stringify(logs));
   }catch(_){}
+  // Atualiza badge em tempo real na tela de vistoria
+  atualizarBadgeRascunho(numFotos);
+}
+
+// Badge visual na tela de vistoria: mostra quantas fotos estão salvas no rascunho
+// e quando foi o último save. Dá confiança ao cadastrador de que seu trabalho está protegido.
+function atualizarBadgeRascunho(numFotos){
+  const badge=document.getElementById("draft-save-badge");
+  const icon=document.getElementById("draft-badge-icon");
+  const text=document.getElementById("draft-badge-text");
+  if(!badge||!text)return;
+  const agora=new Date();
+  const hora=String(agora.getHours()).padStart(2,"0")+":"+String(agora.getMinutes()).padStart(2,"0")+":"+String(agora.getSeconds()).padStart(2,"0");
+  if(numFotos>0){
+    badge.style.background="#f0fdf4";badge.style.borderColor="#86efac";badge.style.color="#166534";
+    if(icon)icon.textContent="✅";
+    text.textContent=numFotos+" foto"+(numFotos===1?"":"s")+" salva"+(numFotos===1?"":"s")+" no rascunho | "+hora;
+  } else {
+    badge.style.background="#fefce8";badge.style.borderColor="#fde047";badge.style.color="#854d0e";
+    if(icon)icon.textContent="💾";
+    text.textContent="Rascunho salvo (sem fotos) | "+hora;
+  }
+  // Feedback visual rápido: pisca verde por 600ms
+  badge.style.transition="box-shadow 0.3s";
+  badge.style.boxShadow="0 0 0 2px #22c55e";
+  setTimeout(()=>{badge.style.boxShadow="none";},600);
 }
 
 async function localSalvarFotos(vistoriaId,fotos){
@@ -3592,6 +3622,17 @@ window.onChangeAmbienteSelect=async(sel)=>{
 
 function renderFotos(){
   const c=document.getElementById("fotos-por-ambiente");c.innerHTML="";
+  // Atualiza badge com contagem atual (sem esperar um save)
+  const totalFotosAtual=Object.keys(fotosPendentes).length;
+  const badgeText=document.getElementById("draft-badge-text");
+  const badgeIcon=document.getElementById("draft-badge-icon");
+  if(badgeText&&totalFotosAtual>0){
+    badgeIcon.textContent="📷";
+    badgeText.textContent=totalFotosAtual+" foto"+(totalFotosAtual===1?"":"s")+" em memória";
+  } else if(badgeText){
+    badgeIcon.textContent="💾";
+    badgeText.textContent="Nenhuma foto ainda";
+  }
   const g={};Object.values(fotosPendentes).forEach(f=>{if(!g[f.ambiente])g[f.ambiente]=[];g[f.ambiente].push(f);});
   if(!Object.keys(g).length){c.innerHTML='<div class="card" style="text-align:center;color:#aaa;padding:24px">Nenhuma foto ainda</div>';return;}
   const ordered=[...AMBIENTES,...ambientesExtras].filter(a=>g[a]);
