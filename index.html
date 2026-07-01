@@ -16,7 +16,9 @@
 <style>
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{overscroll-behavior-y:none} /* CRÍTICO: impede pull-to-refresh no iOS Chrome/Safari */
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;color:#111;min-height:100vh;overflow-x:hidden;
+  overscroll-behavior-y:none; /* redundância pra browsers que checam no body */
   padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0)}
 .screen{display:none;min-height:100vh;flex-direction:column}.screen.active{display:flex}
 .topbar{background:#fff;border-bottom:1px solid #e5e5e5;padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
@@ -1236,7 +1238,7 @@ async function localSalvarRascunho(vistoria,fotos){
         fotos:fotosArr,
         savedAt:Date.now()
       });
-      tx.oncomplete=()=>res(true);
+      tx.oncomplete=()=>{logRascunhoSave(fotosArr.length);res(true);};
       tx.onerror=()=>rej(tx.error);
     });
   }catch(e){console.error("localSalvarRascunho:",e);return false;}
@@ -1321,7 +1323,30 @@ function salvarRascunhoImediato(){
 }
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")salvarRascunhoImediato();});
 window.addEventListener("pagehide",salvarRascunhoImediato);
-window.addEventListener("beforeunload",salvarRascunhoImediato);
+// beforeunload: salva rascunho E mostra alerta de confirmação pra impedir
+// refresh acidental (ex: arrastar pra baixo no iOS Chrome). O browser exibe
+// "Tem certeza que deseja sair?" — dá chance ao cadastrador de cancelar.
+window.addEventListener("beforeunload",(e)=>{
+  salvarRascunhoImediato();
+  // Alerta de confirmação: só aparece se tem vistoria em andamento com fotos
+  if(typeof currentVistoria!=="undefined"&&currentVistoria&&fotosPendentes&&Object.keys(fotosPendentes).length){
+    e.preventDefault();
+    e.returnValue=""; // obrigatório pra browsers mostrarem o diálogo
+  }
+});
+
+// === LOG DE DIAGNÓSTICO do rascunho ===
+// Registra em localStorage cada save do rascunho (timestamp + nº fotos).
+// Quando houver perda, podemos verificar: "o último save foi às XX:XX com N fotos".
+// Mantém só os últimos 20 registros pra não inflar o localStorage.
+function logRascunhoSave(numFotos){
+  try{
+    const logs=JSON.parse(localStorage.getItem("draftSaveLog")||"[]");
+    logs.push({t:new Date().toISOString(),n:numFotos});
+    if(logs.length>20)logs.splice(0,logs.length-20);
+    localStorage.setItem("draftSaveLog",JSON.stringify(logs));
+  }catch(_){}
+}
 
 async function localSalvarFotos(vistoriaId,fotos){
   try{
@@ -1474,30 +1499,45 @@ injetarLogoTopbars();
 
 onAuthStateChanged(auth,async user=>{
   if(user){
-    currentUser=user;
-    // === OTIMIZAÇÃO CRÍTICA DE LOGIN ===
-    // Ao invés de bloquear no getDoc(users/{uid}) — que em rede fraca leva 3-5s — usamos
-    // cache do último perfil no localStorage. O dashboard aparece INSTANTANEAMENTE com o
-    // perfil cacheado. Em paralelo, revalidamos no Firestore em background e atualizamos
-    // se algo mudou (ex: role alterado, assinatura atualizada).
-    const cacheKey="userProfileCache_"+user.uid;
-    const cached=localStorage.getItem(cacheKey);
-    let carregouDoCache=false;
-    if(cached){
-      try{
-        const c=JSON.parse(cached);
-        currentUserData=c;
-        currentRole=(c.role||"").toLowerCase();
-        assinaturaTecnico=c.assinatura||null;
-        carregouDoCache=true;
-        // Vai direto pro dashboard — sem esperar a rede
-        goTo("s-dash");
-        verificarRascunho();
-      }catch(_){}
+    // Verificar se o login foi feito hoje (forçar relogin diário)
+    // Isso zera cliente/coletor e força atenção no novo dia.
+    const lastLogin=localStorage.getItem("lastLoginDate");
+    const today=new Date().toDateString();
+    if(lastLogin!==today){
+      await signOut(auth);
+      goTo("s-login");
+      return;
     }
-    // Solicita persistência do storage (não bloqueia)
+    currentUser=user;
+    // Carrega perfil do Firestore (simples e confiável — como na versão estável)
+    const snapUser=await getDoc(doc(db,"users",user.uid));
+    // Background: carrega prestador padrão e ambientes custom sem bloquear o login
+    loadPrestadorDefault().catch(e=>console.warn("loadPrestadorDefault bg:",e));
+    loadAmbientesCustom().catch(e=>console.warn("loadAmbientesCustom bg:",e));
+    if(snapUser.exists()){
+      currentUserData=snapUser.data();
+      currentRole=(currentUserData.role||"").toLowerCase();
+      assinaturaTecnico=currentUserData.assinatura||null;
+    } else {
+      let ehFundador=false;
+      try{const todosUsers=await getDocs(collection(db,"users"));ehFundador=todosUsers.empty;}catch(_){ehFundador=false;}
+      if(ehFundador){
+        currentRole="master";
+        currentUserData={nome:"Admin",email:user.email,role:"master"};
+        try{await setDoc(doc(db,"users",user.uid),{...currentUserData,criadoEm:serverTimestamp()});}
+        catch(e){console.error("Falha ao criar doc do fundador:",e);}
+      }else{
+        currentRole="cadastrador";
+        currentUserData={nome:user.displayName||user.email||"Usuário",email:user.email,role:"cadastrador"};
+        try{await setDoc(doc(db,"users",user.uid),{...currentUserData,criadoEm:serverTimestamp(),autoRecuperado:true});}
+        catch(e){console.error("self-bootstrap:",e);alert("Sua conta está sem perfil cadastrado e não foi possível recuperá-la automaticamente. Peça ao administrador (Master) para recriar seu usuário em Usuários.");}
+      }
+    }
+    // Solicita persistência do storage em BACKGROUND (sem await)
     if(navigator.storage&&navigator.storage.persist){
-      navigator.storage.persisted().then(persisted=>{if(!persisted)navigator.storage.persist().catch(()=>{});}).catch(()=>{});
+      navigator.storage.persisted().then(persisted=>{
+        if(!persisted)navigator.storage.persist().catch(()=>{});
+      }).catch(()=>{});
     }
     // Recupera último morador do dia
     try{
@@ -1505,78 +1545,9 @@ onAuthStateChanged(auth,async user=>{
       const saved=localStorage.getItem("lastResponsavel"+hojeStr);
       if(saved)ultimoResponsavel=JSON.parse(saved);
     }catch(e){}
-    // === Background: revalida perfil e carrega recursos secundários ===
-    // Se ainda não temos cache válido, ESSAS chamadas bloqueiam. Se temos cache, elas
-    // rodam totalmente em background — o usuário já está usando o app.
-    const carregarPerfilPromise=(async()=>{
-      try{
-        const snapUser=await getDoc(doc(db,"users",user.uid));
-        if(snapUser.exists()){
-          const dados=snapUser.data();
-          currentUserData=dados;
-          currentRole=(dados.role||"").toLowerCase();
-          assinaturaTecnico=dados.assinatura||null;
-          // Atualiza cache pra próximo login
-          try{localStorage.setItem(cacheKey,JSON.stringify(dados));}catch(_){}
-          // Se veio do cache mas o role mudou, re-renderiza dash
-          if(carregouDoCache){
-            const el=document.getElementById("s-dash");
-            if(el&&el.classList.contains("active"))loadDash();
-          }
-          return true;
-        }else{
-          // Cenários: FUNDADOR (users vazia → master) ou CONTA ÓRFÃ (recriar como cadastrador)
-          let ehFundador=false;
-          try{const todosUsers=await getDocs(collection(db,"users"));ehFundador=todosUsers.empty;}catch(_){}
-          if(ehFundador){
-            currentRole="master";
-            currentUserData={nome:"Admin",email:user.email,role:"master"};
-            try{await setDoc(doc(db,"users",user.uid),{...currentUserData,criadoEm:serverTimestamp()});}catch(e){console.error("fundador:",e);}
-          }else{
-            currentRole="cadastrador";
-            currentUserData={nome:user.displayName||user.email||"Usuário",email:user.email,role:"cadastrador"};
-            try{await setDoc(doc(db,"users",user.uid),{...currentUserData,criadoEm:serverTimestamp(),autoRecuperado:true});}
-            catch(e){console.error("self-bootstrap:",e);alert("Sua conta está sem perfil cadastrado e não foi possível recuperá-la automaticamente. Peça ao administrador (Master) para recriar seu usuário em Usuários.");}
-          }
-          try{localStorage.setItem(cacheKey,JSON.stringify(currentUserData));}catch(_){}
-          return true;
-        }
-      }catch(e){console.warn("Falha ao carregar perfil online:",e);return false;}
-    })();
-    // Recursos secundários (não bloqueiam login mesmo sem cache)
-    loadPrestadorDefault().catch(e=>console.warn("loadPrestadorDefault bg:",e));
-    loadAmbientesCustom().catch(e=>console.warn("loadAmbientesCustom bg:",e));
-    // Se não veio do cache, precisa esperar o perfil antes de mostrar o dash
-    if(!carregouDoCache){
-      await carregarPerfilPromise;
-      goTo("s-dash");
-      verificarRascunho();
-    }
-  }else{
-    // Firebase Auth reportou user=null. Em condições normais, isso significa que o
-    // usuário deslogou. MAS em oscilações de rede/reload de página, o SDK pode disparar
-    // temporariamente com null antes de re-hidratar o token do cache local.
-    // PROTEÇÃO: se há rascunho salvo no IndexedDB, NÃO vamos pra login imediatamente —
-    // esperamos 2s e checamos de novo. Se ainda for null, aí sim vai pra login.
-    // Sem essa proteção, a página recarrega → auth=null transitório → goTo(s-login) →
-    // currentVistoria/fotosPendentes são destruídos → fotos perdidas.
-    let temRascunho=false;
-    try{const r=await localBuscarRascunho();temRascunho=!!(r&&r.vistoria);}catch(_){}
-    if(temRascunho){
-      // Espera 3s pra dar chance ao SDK de re-hidratar a sessão
-      console.log("Auth null com rascunho ativo — aguardando re-hidratação...");
-      await new Promise(r=>setTimeout(r,3000));
-      // Checa se o auth voltou nesse tempo (o listener de onAuthStateChanged
-      // teria setado currentUser se voltou — mas não temos como saber aqui).
-      // Alternativa: verificar diretamente
-      if(auth.currentUser){
-        console.log("Auth re-hidratou — continuando normalmente.");
-        return; // O outro listener já vai processar
-      }
-      console.log("Auth permanece null após 3s — indo pra login.");
-    }
-    goTo("s-login");
-  }
+    goTo("s-dash");
+    verificarRascunho();
+  }else{goTo("s-login");}
 });
 
 async function loadPrestadorDefault(){try{const q=query(collection(db,"prestadores"),where("isDefault","==",true));const s=await getDocs(q);if(!s.empty)prestadorDefault={id:s.docs[0].id,...s.docs[0].data()};}catch(e){}}
@@ -1995,26 +1966,20 @@ async function buscarNomeUsuario(uid){
   }
 }
 
-// Determina se uma vistoria foi Interna, Externa ou Ambos com base nos cômodos vistoriados
-// (usa o checklist gravado, que tem cômodos como chaves)
+// Determina se uma vistoria foi Interna, Externa ou Ambos com base no STATUS.
+// Regra acordada com cliente:
+//   Finalizado (concluida) → Interna + Externa
+//   Parcial                → Interna + Externa
+//   Externa                → apenas Externa
+//   Ausente                → apenas Externa
+//   Recusa                 → apenas Externa
 function classificarInternaExterna(vistoria){
-  // Se o status for "externa", marcação direta: só externa.
-  if(vistoria.status==="externa"){
+  const st=vistoria.status||"concluida";
+  if(st==="externa"||st==="ausente"||st==="recusa"){
     return{interna:false,externa:true};
   }
-  const checklist=vistoria.checklist||{};
-  let temInterno=false,temExterno=false;
-  Object.keys(checklist).forEach(amb=>{
-    const dadosAmb=checklist[amb]||{};
-    const teveAtividade=Object.keys(dadosAmb).length>0;
-    if(!teveAtividade)return;
-    if(AMBIENTES_EXTERNOS.has(amb))temExterno=true;
-    else temInterno=true;
-  });
-  if(!temInterno&&!temExterno){
-    return{interna:false,externa:true};
-  }
-  return{interna:temInterno,externa:temExterno};
+  // Finalizado, parcial ou qualquer outro status = ambos
+  return{interna:true,externa:true};
 }
 
 window.exportarPlanilhaCliente=async()=>{
@@ -3205,6 +3170,9 @@ window.abrirRetorno=async(id,v)=>{
     ...v,
     _retornoId:id, // marca que veio de pendente — usado na finalização para atualizar o doc original
     visitas:visitas+1,
+    status:"em_andamento", // CRÍTICO: sem isso, o status herdado do Firestore é "ausente",
+                           // e salvarRascunhoUrgente/salvarRascunhoImediato REJEITAM saves
+                           // para status !== "em_andamento". Fotos novas se perdem no reload.
     statusVistoria:null, // será definido na finalização
     pendente_retorno:false // reset; pode voltar pra true se ausente de novo
   };
@@ -3284,9 +3252,20 @@ async function verificarRascunho(){
     const quando=r.savedAt?new Date(r.savedAt).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"";
     // Mensagem específica para retomadas de pendente
     const tipoMsg=ehRetorno?"<span style='color:#dc2626;font-weight:600'>↻ Retomada de Ausente Pendente</span><br>":"";
+    // Log de diagnóstico: mostrar quando foi o último save e quantas fotos tinha
+    let logInfo="";
+    try{
+      const logs=JSON.parse(localStorage.getItem("draftSaveLog")||"[]");
+      if(logs.length){
+        const last=logs[logs.length-1];
+        const dt=new Date(last.t);
+        logInfo="<br><span style='font-size:11px;color:#6b7280'>Último backup: "+dt.toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"})+" ("+last.n+" foto"+(last.n===1?"":"s")+")</span>";
+      }
+    }catch(_){}
     document.getElementById("rascunho-info").innerHTML=
       tipoMsg+"<b>"+nome+"</b><br>"+numFotos+" foto"+(numFotos===1?"":"s")+" salva"+(numFotos===1?"":"s")
-      +(quando?"<br><span style='font-size:12px;color:#aaa'>Último salvamento: "+quando+"</span>":"");
+      +(quando?"<br><span style='font-size:12px;color:#aaa'>Último salvamento: "+quando+"</span>":"")
+      +logInfo;
     showModal("modal-retomar-rascunho");
   }catch(e){console.warn("verificarRascunho:",e);}
 }
@@ -3633,7 +3612,7 @@ function renderFotos(){
     s.appendChild(gd);c.appendChild(s);
   });
 }
-window.removerFoto=id=>{delete fotosPendentes[id];renderFotos();salvarRascunhoUrgente();};
+window.removerFoto=async(id)=>{delete fotosPendentes[id];renderFotos();await salvarRascunhoUrgente();};
 
 function gerarTextoConclusao(){
   // Agrupa por (ambiente, elemento) → conjunto único de patologias.
@@ -4654,7 +4633,7 @@ function unificarLegendasCombos(combinacoes){
 
 window.removerCombinacao=i=>{_patCombinacoes.splice(i,1);renderCombinacoes();};
 
-window.confirmarPatologias=()=>{
+window.confirmarPatologias=async()=>{
   const tipoLaudo=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";
   // Auto-adicionar seleção pendente, se houver
   if(tipoLaudo==="completo"){
@@ -5035,7 +5014,7 @@ function salvarFotoFinal(dataUrl,patologias,combinacoes){
       });
     }
     renderFotos();showToast("Foto "+String(num).padStart(2,"0")+" salva!");
-    salvarRascunhoUrgente(); // IMEDIATO — foto DEVE sobreviver a page kill/oscilação
+    await salvarRascunhoUrgente(); // AWAIT — garante que IndexedDB grava ANTES de devolver controle
   });
 }
 
