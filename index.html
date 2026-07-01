@@ -380,13 +380,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 <div id="s-metricas" class="screen">
   <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Métricas</h1></div>
   <div class="content">
-    <div style="display:flex;gap:6px;margin-bottom:12px" id="metricas-periodo">
+    <div style="display:flex;gap:6px;margin-bottom:8px" id="metricas-periodo">
       <button class="btn small" onclick="carregarMetricas('hoje')" data-p="hoje">Hoje</button>
       <button class="btn small" onclick="carregarMetricas('semana')" data-p="semana">Semana</button>
       <button class="btn small" onclick="carregarMetricas('mes')" data-p="mes" style="background:#1d4ed8;color:#fff">Mês</button>
       <button class="btn small" onclick="carregarMetricas('ano')" data-p="ano">Ano</button>
     </div>
-    <div id="metricas-conteudo"><p style="text-align:center;color:#aaa;padding:32px">Selecione um período</p></div>
+    <div id="metricas-mes-picker" style="display:flex;gap:6px;align-items:center;margin-bottom:12px">
+      <label style="font-size:13px;color:#666;flex-shrink:0">Mês:</label>
+      <input type="month" id="metricas-mes-input" style="flex:1;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px" onchange="carregarMetricas('mes')">
+    </div>
+    <div id="metricas-conteudo"><p style="text-align:center;color:#aaa;padding:32px">Carregando...</p></div>
   </div>
 </div>
 
@@ -7051,23 +7055,50 @@ async function shareOrDownload(blob,nome,mime){
 
 // ===== MÉTRICAS DA EQUIPE (Master) =====
 window.carregarMetricas=async(periodo)=>{
+  // Se não veio período, mantém o atual (ou default "mes")
+  if(!periodo)periodo="mes";
   // Highlight botão ativo
   document.querySelectorAll("#metricas-periodo button").forEach(b=>{
     b.style.background=b.dataset.p===periodo?"#1d4ed8":"";
     b.style.color=b.dataset.p===periodo?"#fff":"";
   });
+  // Mostra/esconde seletor de mês só quando período é "mes"
+  const mesPicker=document.getElementById("metricas-mes-picker");
+  const mesInput=document.getElementById("metricas-mes-input");
+  if(mesPicker)mesPicker.style.display=(periodo==="mes")?"flex":"none";
   const cont=document.getElementById("metricas-conteudo");
   cont.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Carregando métricas...</p>';
   try{
     // Calcular intervalo de datas
     const agora=new Date();
-    let inicio;
-    if(periodo==="hoje"){inicio=new Date(agora.getFullYear(),agora.getMonth(),agora.getDate());}
-    else if(periodo==="semana"){inicio=new Date(agora);inicio.setDate(agora.getDate()-agora.getDay());}
-    else if(periodo==="mes"){inicio=new Date(agora.getFullYear(),agora.getMonth(),1);}
-    else{inicio=new Date(agora.getFullYear(),0,1);}
-    // Buscar todas as vistorias do período (usa criadoEm OU data_finalizacao)
-    const q=query(collection(db,"vistorias"),where("criadoEm",">=",inicio));
+    let inicio,fim;
+    if(periodo==="hoje"){
+      inicio=new Date(agora.getFullYear(),agora.getMonth(),agora.getDate());
+      fim=new Date(agora.getFullYear(),agora.getMonth(),agora.getDate()+1);
+    } else if(periodo==="semana"){
+      inicio=new Date(agora);inicio.setDate(agora.getDate()-agora.getDay());inicio.setHours(0,0,0,0);
+      fim=new Date(inicio);fim.setDate(inicio.getDate()+7);
+    } else if(periodo==="mes"){
+      // Se o input do mês tem valor, usa ele; senão usa mês atual e preenche o input
+      let ano,mes;
+      if(mesInput&&mesInput.value){
+        const partes=mesInput.value.split("-");
+        ano=parseInt(partes[0]);mes=parseInt(partes[1])-1;
+      } else {
+        ano=agora.getFullYear();mes=agora.getMonth();
+        if(mesInput){
+          const mesStr=String(mes+1).padStart(2,"0");
+          mesInput.value=ano+"-"+mesStr;
+        }
+      }
+      inicio=new Date(ano,mes,1);
+      fim=new Date(ano,mes+1,1);
+    } else {
+      inicio=new Date(agora.getFullYear(),0,1);
+      fim=new Date(agora.getFullYear()+1,0,1);
+    }
+    // Buscar vistorias no intervalo
+    const q=query(collection(db,"vistorias"),where("criadoEm",">=",inicio),where("criadoEm","<",fim));
     const snap=await getDocs(q);
     const vistorias=[];
     snap.forEach(d=>{vistorias.push({id:d.id,...d.data()});});
