@@ -478,7 +478,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
         <p style="font-size:13px;color:#065f46;margin-bottom:14px">PDF gerado. O comprovante (QR Code) aparece automaticamente. Você pode:</p>
         <button class="btn primary" onclick="acaoGerarPDFNovamente()" style="margin-bottom:8px">Gerar PDF Novamente</button>
         <button class="btn" onclick="acaoEnviarComprovante(event)" style="background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;margin-bottom:8px">Reenviar Comprovante</button>
-        <button class="btn" id="fin-banner-btn-zip" onclick="acaoBaixarZIP()" disabled style="margin-bottom:8px;opacity:.5">⏳ Gerando ZIP das fotos...</button>
+        <button class="btn" id="fin-banner-btn-zip" onclick="acaoBaixarZIP()" style="margin-bottom:8px">📦 Baixar Fotos (ZIP) novamente</button>
         <button class="btn" onclick="acaoNovaVistoria()" style="margin-bottom:0">Nova Vistoria</button>
       </div>
     </div>
@@ -5133,17 +5133,7 @@ function renderFinalizacao(){
   if(window._ultimaVistoriaFinalizada){
     if(banner)banner.style.display="block";
     if(blocosNormais)blocosNormais.style.display="none";
-    // Botão Voltar muda para ir pro Dash (não pra Vistoria — que já não tem mais estado)
     if(btnBack)btnBack.setAttribute("onclick","goTo('s-dash')");
-    // Sincronizar estado do botão ZIP (caso o background tenha terminado antes de renderFinalizacao)
-    const btnZip=document.getElementById("fin-banner-btn-zip");
-    if(btnZip){
-      if(window._ultimaVistoriaFinalizada._zipPronto){
-        btnZip.disabled=false;btnZip.style.opacity="1";btnZip.textContent="📦 Baixar Fotos (ZIP)";
-      } else {
-        btnZip.disabled=true;btnZip.style.opacity=".5";btnZip.textContent="⏳ Gerando ZIP das fotos...";
-      }
-    }
     return;
   }
   // Caminho normal (vistoria em andamento): garantir UI normal visível
@@ -6635,9 +6625,29 @@ window.finalizarVistoria=async()=>{
     // Restaurar fotos originais (qualidade máxima) ANTES do ZIP — a recompressão só serve para o PDF
     fotosPendentes=_backupFotos;
 
-    // ZIP movido para DEPOIS do Firestore/comprovante. Isso garante que o QR Code
-    // do comprovante apareça em ~1-2s, sem ficar bloqueado pelo ZIP (que pode
-    // demorar 30s+ no iPhone com muitas fotos).
+    // === ZIP DAS FOTOS — gerado ANTES do Firestore ===
+    // Razão: o ZIP é 100% local (blob em memória). Não precisa de rede. Gerando ANTES
+    // do Firestore, o cadastrador já tem PDF + ZIP no celular mesmo se a rede estiver ruim.
+    // Antes, o ZIP era gerado DEPOIS — se o Firestore falhasse por falta de sinal,
+    // o código retornava e o ZIP nunca era gerado.
+    let _zipBlobGerado=null;
+    if(window.JSZip){
+      try{
+        setStatus("Gerando ZIP das fotos...");
+        const zip=new window.JSZip();const folder=zip.folder("fotos_"+nomeBase);
+        Object.values(fotosPendentes||{}).forEach(f=>{
+          if(!f.dataUrl)return;
+          const b64=f.dataUrl.split(",")[1];
+          folder.file((f.numero||"").replace(" ","_")+"_"+(f.ambiente||"").replace(/\s+/g,"_")+"_"+(f.tipo||"")+".jpg",b64,{base64:true});
+        });
+        _zipBlobGerado=await zip.generateAsync({type:"blob",compression:"STORE"});
+        await shareOrDownload(_zipBlobGerado,nomeBase+"_fotos.zip","application/zip");
+        showToast("✅ Arquivos baixados com sucesso! (PDF + ZIP)",4500);
+      }catch(eZip){
+        console.warn("ZIP falhou:",eZip);
+        showToast("PDF baixado. ZIP falhou — tente pelo botão depois.",3500);
+      }
+    }
 
     // ===== AGORA SIM: persistência. Falhas aqui NÃO impedem o PDF (que já saiu). =====
     setStatus("Salvando...");
@@ -6690,18 +6700,15 @@ window.finalizarVistoria=async()=>{
       localStorage.setItem("lastSelecaoData",new Date().toISOString().slice(0,10));
       localStorage.setItem("lastRua",(currentVistoria.endereco&&currentVistoria.endereco.rua)||"");
     }
-    // Preserva fotos pra ZIP em background ANTES de limpar a sessão
-    const _fotosParaZIP=Object.values(fotosPendentes||{}).map(f=>({...f}));
+    // Preserva referências pra comprovante
     const _vistoriaIdComprov=(vRef&&vRef.id)||null;
     const _vDocComprov={...vDoc,id:_vistoriaIdComprov};
-    // Em vez de limpar tudo e voltar pra Nova Vistoria, mantém os dados desta vistoria
-    // disponíveis para o usuário acionar "Gerar PDF Novamente" e/ou "Enviar Comprovante".
     window._ultimaVistoriaFinalizada={
       id:_vistoriaIdComprov,
       data:_vDocComprov,
       criadoEmTs:Date.now(),
-      _zipPronto:false,
-      _zipBlob:null,
+      _zipPronto:!!_zipBlobGerado,
+      _zipBlob:_zipBlobGerado,
       _zipNomeBase:nomeBase
     };
     currentVistoria=null;fotosPendentes={};assinaturaData=null;ambientesExtras=[];
@@ -6725,33 +6732,13 @@ window.finalizarVistoria=async()=>{
       })();
     }
 
-    // (2) ZIP das fotos — gerado em background com compression:"STORE" (10x mais rápido
-    // que DEFLATE — JPEGs já são comprimidos, então DEFLATE só adiciona tempo sem reduzir
-    // tamanho). Quando pronto, fica disponível pelo botão "Baixar Fotos (ZIP)" do banner.
-    if(window.JSZip&&_fotosParaZIP.length){
-      (async()=>{
-        try{
-          const zip=new window.JSZip();const folder=zip.folder("fotos_"+nomeBase);
-          _fotosParaZIP.forEach(f=>{
-            if(!f.dataUrl)return;
-            const b64=f.dataUrl.split(",")[1];
-            folder.file((f.numero||"").replace(" ","_")+"_"+(f.ambiente||"").replace(/\s+/g,"_")+"_"+(f.tipo||"")+".jpg",b64,{base64:true});
-          });
-          const zBlob=await zip.generateAsync({type:"blob",compression:"STORE"});
-          if(window._ultimaVistoriaFinalizada){
-            window._ultimaVistoriaFinalizada._zipBlob=zBlob;
-            window._ultimaVistoriaFinalizada._zipPronto=true;
-            // BAIXA AUTOMATICAMENTE quando pronto (não espera o usuário clicar no botão)
-            try{
-              await shareOrDownload(zBlob,nomeBase+"_fotos.zip","application/zip");
-              showToast("✅ Arquivos baixados com sucesso! (PDF + ZIP)",4500);
-            }catch(eDL){console.warn("Auto-download ZIP falhou:",eDL);}
-            // Atualiza banner pra permitir baixar novamente
-            const btnZip=document.getElementById("fin-banner-btn-zip");
-            if(btnZip){btnZip.disabled=false;btnZip.style.opacity="1";btnZip.textContent="📦 Baixar Fotos (ZIP) novamente";}
-          }
-        }catch(e){console.error("ZIP background:",e);showToast("Erro ao gerar ZIP. Use o botão no banner pra tentar novamente.",4500);}
-      })();
+    // (2) ZIP já foi gerado e baixado ANTES do Firestore (linha acima).
+    // Preservar o blob no banner pra permitir re-download pelo botão.
+    if(_zipBlobGerado&&window._ultimaVistoriaFinalizada){
+      window._ultimaVistoriaFinalizada._zipBlob=_zipBlobGerado;
+      window._ultimaVistoriaFinalizada._zipPronto=true;
+      const btnZip=document.getElementById("fin-banner-btn-zip");
+      if(btnZip){btnZip.disabled=false;btnZip.style.opacity="1";btnZip.textContent="📦 Baixar Fotos (ZIP) novamente";}
     }
   }catch(e){
     console.error(e);
