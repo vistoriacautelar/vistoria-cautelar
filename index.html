@@ -176,6 +176,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div class="list-item" onclick="goTo('s-coletores')"><div class="avatar" style="background:#e0f2fe;color:#0369a1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div><div class="info"><div class="title">Coletores</div><div class="sub">Bairros por cliente</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
       <div class="list-item" onclick="goTo('s-usuarios')"><div class="avatar" style="background:#d1fae5;color:#065f46"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg></div><div class="info"><div class="title">Usuarios</div><div class="sub">Tecnicos cadastradores</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
       <div class="list-item" onclick="goTo('s-gastos')"><div class="avatar" style="background:#fef3c7;color:#92400e"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div><div class="info"><div class="title">Gastos</div><div class="sub">Pedágio, alimentação, combustível</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
+      <div class="list-item" onclick="goTo('s-metricas')"><div class="avatar" style="background:#ede9fe;color:#5b21b6"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3v18h18"/><path d="M7 12l3-3 4 4 5-6"/></svg></div><div class="info"><div class="title">Métricas da Equipe</div><div class="sub">Produtividade, tempo médio, status</div></div><span style="color:#c7c7cc;font-size:20px">&#8250;</span></div>
       <div class="sep"></div>
     </div>
     <div id="dash-cadastrador-section">
@@ -375,6 +376,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 <div id="s-usuarios" class="screen">
   <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Usuarios</h1><button class="btn small primary" onclick="showModal('modal-usuario')">+ Novo</button></div>
   <div class="content" id="lista-usuarios"></div>
+</div>
+<div id="s-metricas" class="screen">
+  <div class="topbar"><button class="back" onclick="goTo('s-dash')">&#8249; Voltar</button><h1>Métricas</h1></div>
+  <div class="content">
+    <div style="display:flex;gap:6px;margin-bottom:12px" id="metricas-periodo">
+      <button class="btn small" onclick="carregarMetricas('hoje')" data-p="hoje">Hoje</button>
+      <button class="btn small" onclick="carregarMetricas('semana')" data-p="semana">Semana</button>
+      <button class="btn small" onclick="carregarMetricas('mes')" data-p="mes" style="background:#1d4ed8;color:#fff">Mês</button>
+      <button class="btn small" onclick="carregarMetricas('ano')" data-p="ano">Ano</button>
+    </div>
+    <div id="metricas-conteudo"><p style="text-align:center;color:#aaa;padding:32px">Selecione um período</p></div>
+  </div>
 </div>
 
 <div id="s-nova-vistoria" class="screen">
@@ -901,12 +914,12 @@ let AMBIENTES=[...AMBIENTES_BASE];
 let _ambientesCustomCache=[]; // [{id, nome}] do Firestore
 const PARTES=["Estrutura","Parede e muro","Cobertura e teto","Porta e esquadria","Piso e cal\xe7amento"];
 const COLS=["estrutura","paredes","cobertura","portas","piso"];
-const PATOLOGIAS=["Fissura","Trinca","Rachadura","Umidade","Infiltração","Desplacamento","Armadura Exposta","Danificado","Portão Desalinhado"];
+const PATOLOGIAS=["Fissura","Trinca","Rachadura","Umidade","Infiltração","Desplacamento de Pintura","Desplacamento de Revestimento","Armadura Exposta","Danificado","Portão Desalinhado"];
 // Grupos do checklist PDF (agrupado para economizar espaço)
-const PATOLOGIAS_CK=["Fissura/Trinca/Rachadura","Umidade/Infiltração","Desplacamento","Armadura Exposta","Danificado","Portão Desalinhado"];
-// Map: cada coluna do CK aceita várias patologias (inclui nomes antigos
-// "Despl. de Pintura"/"Despl. de Revestimento" pra preservar marcação em vistorias gravadas antes da consolidação).
-const PATOLOGIAS_CK_MAP={"Fissura/Trinca/Rachadura":["Fissura","Trinca","Rachadura"],"Umidade/Infiltração":["Umidade","Infiltração"],"Desplacamento":["Desplacamento","Despl. de Pintura","Despl. de Revestimento"],"Armadura Exposta":["Armadura Exposta"],"Danificado":["Danificado"],"Portão Desalinhado":["Portão Desalinhado"]};
+const PATOLOGIAS_CK=["Fissura/Trinca/Rachadura","Umidade/Infiltração","Desplacamento de Pintura","Desplacamento de Revestimento","Armadura Exposta","Danificado","Portão Desalinhado"];
+// Map: cada coluna do CK aceita as patologias correspondentes + nomes antigos abreviados
+// pra retrocompatibilidade com vistorias gravadas antes da mudança de nomenclatura.
+const PATOLOGIAS_CK_MAP={"Fissura/Trinca/Rachadura":["Fissura","Trinca","Rachadura"],"Umidade/Infiltração":["Umidade","Infiltração"],"Desplacamento de Pintura":["Desplacamento de Pintura","Despl. de Pintura","Desplacamento"],"Desplacamento de Revestimento":["Desplacamento de Revestimento","Despl. de Revestimento"],"Armadura Exposta":["Armadura Exposta"],"Danificado":["Danificado"],"Portão Desalinhado":["Portão Desalinhado"]};
 const ELEMENTOS=["Estrutura","Parede","Teto","Piso","Calçada","Porta","Janela","Esquadria","Portão"];
 // Mapeia elemento construtivo (passo 3 do modal simplificado, agora único) para a coluna do checklist
 const ELEMENTO_TO_COL={
@@ -924,12 +937,12 @@ const ELEMENTO_TO_COL={
 // ===== LAUDO COMPLETO: patologias por elemento =====
 const PATOLOGIAS_COMPLETO=[
   {elem:"Estruturas",col:"estrutura",pats:["Trincas","Fissuras","Rachaduras","Umidade","Infiltração","Danificado","Segregação","Armadura Exposta"]},
-  {elem:"Parede",col:"paredes",pats:["Trincas","Fissuras","Rachaduras","Umidade","Infiltração","Danificado","Eflorescência","Desplacamento"]},
-  {elem:"Teto",col:"cobertura",pats:["Trincas","Fissuras","Rachaduras","Umidade","Infiltração","Danificado","Eflorescência","Desplacamento"]},
-  {elem:"Forro",col:"cobertura",pats:["Trincas","Fissuras","Rachaduras","Umidade","Infiltração","Danificado","Deformado","Desplacamento"]},
+  {elem:"Parede",col:"paredes",pats:["Trincas","Fissuras","Rachaduras","Umidade","Infiltração","Danificado","Eflorescência","Desplacamento de Pintura","Desplacamento de Revestimento"]},
+  {elem:"Teto",col:"cobertura",pats:["Trincas","Fissuras","Rachaduras","Umidade","Infiltração","Danificado","Eflorescência","Desplacamento de Pintura","Desplacamento de Revestimento"]},
+  {elem:"Forro",col:"cobertura",pats:["Trincas","Fissuras","Rachaduras","Umidade","Infiltração","Danificado","Deformado","Desplacamento de Pintura","Desplacamento de Revestimento"]},
   {elem:"Estr. Metálicas",col:"estrutura",pats:["Trincas","Fissuras","Rachaduras","Oxidação","Danificado","Deformação"]},
   {elem:"Vidros",col:"portas",pats:["Trincado","Quebrado","Faltando"]},
-  {elem:"Piso",col:"piso",pats:["Trincas","Fissuras","Rachaduras","Umidade","Danificado","Recalque","Solapamento","Eflorescência","Desplacamento"]},
+  {elem:"Piso",col:"piso",pats:["Trincas","Fissuras","Rachaduras","Umidade","Danificado","Recalque","Solapamento","Eflorescência","Desplacamento de Pintura","Desplacamento de Revestimento"]},
   {elem:"Portas",col:"portas",pats:["Umidade","Danificado","Portão Desalinhado"]},
   {elem:"Esquadrias",col:"portas",pats:["Umidade","Danificado"]},
   {elem:"Telhados",col:"cobertura",pats:["Umidade","Telhas Quebradas","Telhas Faltando","Madeira Danificada"]},
@@ -990,8 +1003,9 @@ function _singularizarPat(s){
   if(s==="Rachaduras")return"Rachadura";
   if(s==="Telhas Quebradas")return"Telha Quebrada";
   if(s==="Telhas Faltando")return"Telha Faltando";
-  // Normaliza nomes antigos de desplacamento (vistorias gravadas antes da consolidação)
-  if(s==="Despl. de Pintura"||s==="Despl. de Revestimento")return"Desplacamento";
+  // Normaliza nomes antigos abreviados de desplacamento
+  if(s==="Despl. de Pintura")return"Desplacamento de Pintura";
+  if(s==="Despl. de Revestimento")return"Desplacamento de Revestimento";
   return s;
 }
 
@@ -1497,7 +1511,7 @@ window.goTo=(id)=>{
   }
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   document.getElementById(id).classList.add("active");window.scrollTo(0,0);
-  const m={"s-dash":loadDash,"s-prestadores":loadPrestadores,"s-clientes":loadClientes,"s-coletores":loadColetores,"s-usuarios":loadUsuarios,"s-nova-vistoria":loadNovVistoriaForm,"s-historico":loadHistorico,"s-finalizacao":renderFinalizacao,"s-identificacao":renderIdentificacao,"s-perfil":renderPerfil,"s-vistoria":iniciarGPS,"s-pendentes":loadPendentes,"s-editor-fotos":renderEditorFotos,"s-armazenamento":loadArmazenamento,"s-ambientes-custom":loadAmbientesCustomList,"s-resumo":loadResumo,"s-gastos":loadGastos};
+  const m={"s-dash":loadDash,"s-prestadores":loadPrestadores,"s-clientes":loadClientes,"s-coletores":loadColetores,"s-usuarios":loadUsuarios,"s-nova-vistoria":loadNovVistoriaForm,"s-historico":loadHistorico,"s-finalizacao":renderFinalizacao,"s-identificacao":renderIdentificacao,"s-perfil":renderPerfil,"s-vistoria":iniciarGPS,"s-pendentes":loadPendentes,"s-editor-fotos":renderEditorFotos,"s-armazenamento":loadArmazenamento,"s-ambientes-custom":loadAmbientesCustomList,"s-resumo":loadResumo,"s-gastos":loadGastos,"s-metricas":()=>carregarMetricas("mes")};
   if(m[id])m[id]();
 };
 window.showModal=(id)=>{if(id==="modal-coletor")populateClienteSelect("mcol-cliente");document.getElementById(id).style.display="flex";};
@@ -4606,7 +4620,9 @@ function renderCombinacoes(){
 // salvos no banco. Esta função as exibe sempre como "Desplacamento" no PDF, legendas e UI,
 // sem alterar os dados gravados (preservamos o histórico, normalizamos só a apresentação).
 function _normalizarPatNome(p){
-  if(p==="Despl. de Pintura"||p==="Despl. de Revestimento")return "Desplacamento";
+  if(p==="Despl. de Pintura")return "Desplacamento de Pintura";
+  if(p==="Despl. de Revestimento")return "Desplacamento de Revestimento";
+  // "Desplacamento" genérico (de vistorias gravadas durante a fase consolidada) → mantém como está
   return p;
 }
 // Aplica normalização e dedup numa lista de patologias (caso o nome antigo e o novo coexistam)
@@ -4627,9 +4643,9 @@ function gerarLegendaCombo(c){
   // Normaliza nomes ANTES de qualquer renderização: garante que "Despl. de Pintura" virou
   // "Desplacamento" no que sai pro usuário, mesmo em vistorias antigas.
   const patsNorm=_normalizarPatLista(c.pats||[]);
-  // Se TODAS as patologias são desplacamento (que agora é sempre "Desplacamento"), usa
-  // formato especial: "Desplacamento na Parede" em vez de "Parede: Desplacamento".
-  const isDespl=patsNorm.length&&patsNorm.every(p=>p==="Desplacamento");
+  // Se TODAS as patologias são desplacamento, usa formato especial:
+  // "Desplacamento de Pintura na Parede" em vez de "Parede: Desplacamento de Pintura"
+  const isDespl=patsNorm.length&&patsNorm.every(p=>p.startsWith("Desplacamento"));
   if(isDespl&&c.elemento){
     const prep=PREPOSICAO[c.elemento]||"na";
     return patsNorm.join(" / ")+" "+prep+" "+c.elemento;
@@ -7082,6 +7098,128 @@ async function shareOrDownload(blob,nome,mime){
   }
   setTimeout(()=>URL.revokeObjectURL(url),5000);
 }
+
+// ===== MÉTRICAS DA EQUIPE (Master) =====
+window.carregarMetricas=async(periodo)=>{
+  // Highlight botão ativo
+  document.querySelectorAll("#metricas-periodo button").forEach(b=>{
+    b.style.background=b.dataset.p===periodo?"#1d4ed8":"";
+    b.style.color=b.dataset.p===periodo?"#fff":"";
+  });
+  const cont=document.getElementById("metricas-conteudo");
+  cont.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Carregando métricas...</p>';
+  try{
+    // Calcular intervalo de datas
+    const agora=new Date();
+    let inicio;
+    if(periodo==="hoje"){inicio=new Date(agora.getFullYear(),agora.getMonth(),agora.getDate());}
+    else if(periodo==="semana"){inicio=new Date(agora);inicio.setDate(agora.getDate()-agora.getDay());}
+    else if(periodo==="mes"){inicio=new Date(agora.getFullYear(),agora.getMonth(),1);}
+    else{inicio=new Date(agora.getFullYear(),0,1);}
+    // Buscar todas as vistorias do período (usa criadoEm OU data_finalizacao)
+    const q=query(collection(db,"vistorias"),where("criadoEm",">=",inicio));
+    const snap=await getDocs(q);
+    const vistorias=[];
+    snap.forEach(d=>{vistorias.push({id:d.id,...d.data()});});
+    // Buscar nomes dos usuários
+    const userIds=new Set();
+    vistorias.forEach(v=>{if(v.userId)userIds.add(v.userId);});
+    const usersMap={};
+    for(const uid of userIds){
+      try{const s=await getDoc(doc(db,"users",uid));if(s.exists())usersMap[uid]=s.data().nome||s.data().email||uid;}catch(_){usersMap[uid]=uid;}
+    }
+    // === CÁLCULOS ===
+    const total=vistorias.length;
+    // Status breakdown
+    const statusCount={concluida:0,parcial:0,externa:0,ausente:0,recusa:0};
+    vistorias.forEach(v=>{const st=v.status||"concluida";if(statusCount[st]!==undefined)statusCount[st]++;else statusCount.concluida++;});
+    const finalizadas=statusCount.concluida+statusCount.parcial;
+    const taxaFin=total?Math.round((finalizadas/total)*100):0;
+    // Pendentes ativas (pode incluir fora do período)
+    let pendentesAtivas=0;
+    try{const pq=query(collection(db,"vistorias"),where("pendente_retorno","==",true));const ps=await getCountFromServer(pq);pendentesAtivas=ps.data().count;}catch(_){}
+    // Por cadastrador: contagem + tempo médio
+    const porCad={};
+    vistorias.forEach(v=>{
+      const uid=v.userId||"?";
+      if(!porCad[uid])porCad[uid]={total:0,tempos:[],nome:usersMap[uid]||uid};
+      porCad[uid].total++;
+      // Tempo médio: diferença entre criadoEm e data_finalizacao (em minutos)
+      if(v.criadoEm&&v.criadoEm.seconds&&v.data_finalizacao&&v.data_finalizacao.seconds){
+        const mins=Math.round((v.data_finalizacao.seconds-v.criadoEm.seconds)/60);
+        if(mins>0&&mins<480)porCad[uid].tempos.push(mins); // ignora outliers >8h
+      }
+    });
+    // Tempo médio global
+    const todosTempos=[];
+    Object.values(porCad).forEach(c=>todosTempos.push(...c.tempos));
+    const tempoMedioGlobal=todosTempos.length?Math.round(todosTempos.reduce((a,b)=>a+b,0)/todosTempos.length):0;
+    // Ordenar cadastradores por total desc
+    const cadRank=Object.entries(porCad).map(([uid,d])=>({uid,nome:d.nome,total:d.total,tempoMedio:d.tempos.length?Math.round(d.tempos.reduce((a,b)=>a+b,0)/d.tempos.length):0})).sort((a,b)=>b.total-a.total);
+    const maxCad=cadRank.length?cadRank[0].total:1;
+    // Coletores
+    const coletorCount={};
+    vistorias.forEach(v=>{
+      const c=v.coletorNome||"(sem coletor)";
+      coletorCount[c]=(coletorCount[c]||0)+1;
+    });
+    const coletorRank=Object.entries(coletorCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    // === RENDER ===
+    const cores=["#2a78d6","#1baf7a","#eda100","#4a3aa7","#e34948","#e87ba4","#eb6834","#008300"];
+    let html='';
+    // KPIs
+    html+='<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:14px">';
+    html+='<div class="card" style="padding:10px 12px;margin:0"><p style="font-size:11px;color:#888;margin:0">Vistorias realizadas</p><p style="font-size:22px;font-weight:600;margin:2px 0 0;color:#111">'+total+'</p></div>';
+    html+='<div class="card" style="padding:10px 12px;margin:0"><p style="font-size:11px;color:#888;margin:0">Taxa de finalização</p><p style="font-size:22px;font-weight:600;margin:2px 0 0;color:#111">'+taxaFin+'%</p></div>';
+    html+='<div class="card" style="padding:10px 12px;margin:0"><p style="font-size:11px;color:#888;margin:0">Ausentes pendentes</p><p style="font-size:22px;font-weight:600;margin:2px 0 0;color:#dc2626">'+pendentesAtivas+'</p></div>';
+    html+='<div class="card" style="padding:10px 12px;margin:0"><p style="font-size:11px;color:#888;margin:0">Tempo médio</p><p style="font-size:22px;font-weight:600;margin:2px 0 0;color:#111">'+(tempoMedioGlobal?tempoMedioGlobal+" min":"--")+'</p></div>';
+    html+='</div>';
+    // Produtividade por cadastrador (barras + tempo médio)
+    html+='<div class="card" style="margin-bottom:12px"><h2 style="font-size:14px;margin-bottom:10px">Produtividade por cadastrador</h2>';
+    if(!cadRank.length)html+='<p style="color:#aaa;font-size:13px">Sem dados no período</p>';
+    cadRank.forEach((c,i)=>{
+      const pct=Math.round((c.total/maxCad)*100);
+      const cor=cores[i%cores.length];
+      const tempoTxt=c.tempoMedio?c.tempoMedio+" min":"--";
+      html+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'
+        +'<span style="font-size:12px;color:#666;width:75px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+c.nome+'">'+c.nome.split(" ")[0]+'</span>'
+        +'<div style="flex:1;height:20px;background:#f3f4f6;border-radius:4px;overflow:hidden;position:relative">'
+        +'<div style="height:100%;width:'+pct+'%;background:'+cor+';border-radius:4px 0 0 4px;display:flex;align-items:center;padding-left:6px">'
+        +'<span style="font-size:11px;font-weight:600;color:#fff">'+c.total+'</span></div></div>'
+        +'<span style="font-size:11px;color:#888;width:48px;text-align:right;white-space:nowrap" title="Tempo médio">⏱ '+tempoTxt+'</span>'
+        +'</div>';
+    });
+    html+='</div>';
+    // Status das vistorias (mini donut em texto)
+    html+='<div class="card" style="margin-bottom:12px"><h2 style="font-size:14px;margin-bottom:10px">Status das vistorias</h2>';
+    const stLabels={concluida:"Finalizado",parcial:"Parcial",externa:"Externa",ausente:"Ausente",recusa:"Recusa"};
+    const stCores={concluida:"#2a78d6",parcial:"#1baf7a",externa:"#eda100",ausente:"#e34948",recusa:"#73726c"};
+    html+='<div style="display:flex;flex-wrap:wrap;gap:8px">';
+    Object.entries(statusCount).forEach(([st,n])=>{
+      if(!n)return;
+      const pct=total?Math.round((n/total)*100):0;
+      html+='<div style="background:#f9fafb;border-radius:8px;padding:8px 12px;flex:1;min-width:80px;text-align:center">'
+        +'<div style="font-size:18px;font-weight:600;color:'+(stCores[st]||"#111")+'">'+n+'</div>'
+        +'<div style="font-size:11px;color:#888">'+(stLabels[st]||st)+' ('+pct+'%)</div></div>';
+    });
+    html+='</div></div>';
+    // Coletores ranking
+    if(coletorRank.length&&coletorRank[0][0]!=="(sem coletor)"){
+      html+='<div class="card" style="margin-bottom:12px"><h2 style="font-size:14px;margin-bottom:10px">Vistorias por coletor</h2>';
+      coletorRank.forEach((c,i)=>{
+        html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f3f4f6">'
+          +'<span style="font-size:12px;font-weight:600;color:#888;width:16px">'+(i+1)+'</span>'
+          +'<span style="flex:1;font-size:13px;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+c[0]+'</span>'
+          +'<span style="font-size:13px;font-weight:600;color:#111">'+c[1]+'</span></div>';
+      });
+      html+='</div>';
+    }
+    cont.innerHTML=html;
+  }catch(e){
+    console.error("carregarMetricas:",e);
+    cont.innerHTML='<div class="card" style="text-align:center;color:#dc2626;padding:24px">Erro ao carregar métricas: '+(e.message||e)+'</div>';
+  }
+};
 
 // ===== GASTOS (Master) =====
 let _gastosData=[];
