@@ -4982,7 +4982,7 @@ function salvarFotoFinal(dataUrl,patologias,combinacoes){
   }
   // No modo completo: legenda da foto = "Vista" (sem patologia) ou "Detalhe" (com); código já está marcado na imagem.
   // Corrigir orientação EXIF (iOS) e depois comprimir
-  corrigirOrientacaoFoto(dataUrl).then(dataUrlFixed=>comprimirFoto(dataUrlFixed)).then(dataUrlComp=>{
+  corrigirOrientacaoFoto(dataUrl).then(dataUrlFixed=>comprimirFoto(dataUrlFixed)).then(async dataUrlComp=>{
     fotosPendentes[id]={id,dataUrl:dataUrlComp,ambiente:fotoAtualAmbiente,tipo:fotoAtualTipo,legenda,numero:"Foto "+String(num).padStart(2,"0"),patologias:patologias||[],combinacoes:combinacoes||[],timestamp:new Date().toISOString()};
     // Atualiza checklist[amb][col] tanto pelo formato legado (patologias[]) quanto pelo
     // formato novo (combinacoes[]). ESSENCIAL: o comprovante (QR Code) lê justamente desse
