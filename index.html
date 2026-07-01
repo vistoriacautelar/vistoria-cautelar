@@ -2095,7 +2095,7 @@ function fmtDataHoraExcel(d){
   return dd+"/"+mm+"/"+yy+" "+hh+":"+mi;
 }
 
-window.doLogin=async()=>{const email=document.getElementById("login-email").value.trim();const pass=document.getElementById("login-pass").value;const err=document.getElementById("login-err");if(!email||!pass){err.textContent="Preencha e-mail e senha";err.style.display="block";return;}try{await signInWithEmailAndPassword(auth,email,pass);localStorage.setItem("lastLoginDate",new Date().toDateString());err.style.display="none";}catch(e){err.textContent="E-mail ou senha incorretos";err.style.display="block";}};
+window.doLogin=async()=>{const email=document.getElementById("login-email").value.trim();const pass=document.getElementById("login-pass").value;const err=document.getElementById("login-err");if(!email||!pass){err.textContent="Preencha e-mail e senha";err.style.display="block";return;}try{localStorage.setItem("lastLoginDate",new Date().toDateString());await signInWithEmailAndPassword(auth,email,pass);err.style.display="none";}catch(e){localStorage.removeItem("lastLoginDate");err.textContent="E-mail ou senha incorretos";err.style.display="block";}};
 window.doLogout=async()=>await signOut(auth);
 
 function loadDash(){
