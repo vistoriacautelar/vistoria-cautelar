@@ -1269,6 +1269,8 @@ async function localApagarRascunho(){
 
 // Salva rascunho com pequeno debounce: chamadas em rajada (várias fotos rápidas)
 // viram uma só gravação, sem travar a UI.
+// ATENÇÃO: para FOTOS, usamos salvarRascunhoUrgente() que é IMEDIATO (sem debounce).
+// O debounce aqui é só para checklist e identificação que mudam pouco.
 let _draftTimer=null;
 function agendarSalvarRascunho(){
   if(typeof currentVistoria==="undefined"||!currentVistoria)return;
@@ -1277,6 +1279,22 @@ function agendarSalvarRascunho(){
   _draftTimer=setTimeout(()=>{
     try{localSalvarRascunho(currentVistoria,fotosPendentes);}catch(e){console.warn("agendarSalvarRascunho:",e);}
   },400);
+}
+
+// Salvamento IMEDIATO (sem debounce, sem esperar). Usado APÓS CADA FOTO.
+// Motivo: no iPhone/Chrome WebKit, o browser pode matar a aba a QUALQUER
+// momento (pressão de memória, trocar de app, oscilação de rede).
+// Se usarmos debounce de 400ms e a aba morre nesse intervalo, a foto se perde.
+// IndexedDB é assíncrono, mas ao iniciar a transação IMEDIATAMENTE, o browser
+// tem altíssima chance de completá-la antes de descartar a aba.
+async function salvarRascunhoUrgente(){
+  if(typeof currentVistoria==="undefined"||!currentVistoria)return;
+  if(currentVistoria.status&&currentVistoria.status!=="em_andamento")return;
+  clearTimeout(_draftTimer); // cancela qualquer debounce pendente — a urgente cobre
+  _draftSalvando=false; // força desbloqueio
+  try{
+    await localSalvarRascunho(currentVistoria,fotosPendentes);
+  }catch(e){console.warn("salvarRascunhoUrgente:",e);}
 }
 
 // REDE DE SEGURANÇA: quando o app vai pro background (trocar de app, abrir a câmera,
@@ -1535,6 +1553,28 @@ onAuthStateChanged(auth,async user=>{
       verificarRascunho();
     }
   }else{
+    // Firebase Auth reportou user=null. Em condições normais, isso significa que o
+    // usuário deslogou. MAS em oscilações de rede/reload de página, o SDK pode disparar
+    // temporariamente com null antes de re-hidratar o token do cache local.
+    // PROTEÇÃO: se há rascunho salvo no IndexedDB, NÃO vamos pra login imediatamente —
+    // esperamos 2s e checamos de novo. Se ainda for null, aí sim vai pra login.
+    // Sem essa proteção, a página recarrega → auth=null transitório → goTo(s-login) →
+    // currentVistoria/fotosPendentes são destruídos → fotos perdidas.
+    let temRascunho=false;
+    try{const r=await localBuscarRascunho();temRascunho=!!(r&&r.vistoria);}catch(_){}
+    if(temRascunho){
+      // Espera 3s pra dar chance ao SDK de re-hidratar a sessão
+      console.log("Auth null com rascunho ativo — aguardando re-hidratação...");
+      await new Promise(r=>setTimeout(r,3000));
+      // Checa se o auth voltou nesse tempo (o listener de onAuthStateChanged
+      // teria setado currentUser se voltou — mas não temos como saber aqui).
+      // Alternativa: verificar diretamente
+      if(auth.currentUser){
+        console.log("Auth re-hidratou — continuando normalmente.");
+        return; // O outro listener já vai processar
+      }
+      console.log("Auth permanece null após 3s — indo pra login.");
+    }
     goTo("s-login");
   }
 });
@@ -3585,7 +3625,7 @@ function renderFotos(){
     s.appendChild(gd);c.appendChild(s);
   });
 }
-window.removerFoto=id=>{delete fotosPendentes[id];renderFotos();agendarSalvarRascunho();};
+window.removerFoto=id=>{delete fotosPendentes[id];renderFotos();salvarRascunhoUrgente();};
 
 function gerarTextoConclusao(){
   // Agrupa por (ambiente, elemento) → conjunto único de patologias.
@@ -4987,7 +5027,7 @@ function salvarFotoFinal(dataUrl,patologias,combinacoes){
       });
     }
     renderFotos();showToast("Foto "+String(num).padStart(2,"0")+" salva!");
-    agendarSalvarRascunho(); // protege contra reload: persiste estado da vistoria
+    salvarRascunhoUrgente(); // IMEDIATO — foto DEVE sobreviver a page kill/oscilação
   });
 }
 
