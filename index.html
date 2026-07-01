@@ -867,7 +867,7 @@ const LOGO_CONST="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgc
 
 import{initializeApp,deleteApp}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import{getAuth,signInWithEmailAndPassword,signOut,createUserWithEmailAndPassword,onAuthStateChanged,updatePassword,sendPasswordResetEmail}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import{getFirestore,initializeFirestore,persistentLocalCache,persistentMultipleTabManager,collection,doc,setDoc,getDoc,getDocs,addDoc,query,where,orderBy,serverTimestamp,deleteDoc,updateDoc,runTransaction}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import{getFirestore,initializeFirestore,persistentLocalCache,persistentMultipleTabManager,collection,doc,setDoc,getDoc,getDocs,addDoc,query,where,orderBy,serverTimestamp,deleteDoc,updateDoc,runTransaction,getCountFromServer}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import{getStorage,ref as storageRef,uploadBytes,getDownloadURL,deleteObject,listAll,getMetadata}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
 
 const FC={apiKey:"AIzaSyAwwO2yLyNVnKMLFfmKKCx64zeh7Tbgrvc",authDomain:"vistoria-cautelar-71f6d.firebaseapp.com",projectId:"vistoria-cautelar-71f6d",storageBucket:"vistoria-cautelar-71f6d.firebasestorage.app",messagingSenderId:"157244396794",appId:"1:157244396794:web:c0b983583939e13e91a543"};
@@ -1456,73 +1456,87 @@ injetarLogoTopbars();
 
 onAuthStateChanged(auth,async user=>{
   if(user){
-    // Verificar se o login foi feito hoje (forçar relogin diário)
-    const lastLogin=localStorage.getItem("lastLoginDate");
-    const today=new Date().toDateString();
-    if(lastLogin!==today){
-      // Novo dia: fazer logout e pedir login novamente
-      await signOut(auth);
-      goTo("s-login");
-      return;
-    }
     currentUser=user;
-    // OTIMIZAÇÃO DE LOGIN: bloqueia APENAS no que é crítico pra exibir o dashboard.
-    // O getDoc do user é obrigatório (define o papel — master vs cadastrador, e isso muda a UI).
-    // Já loadPrestadorDefault() e loadAmbientesCustom() são usados só DEPOIS, quando o cadastrador
-    // entra em "Nova Vistoria". Disparamos em background — chegam enquanto o usuário olha o dash.
-    const snapUser=await getDoc(doc(db,"users",user.uid));
-    // Background: carrega prestador padrão e ambientes custom sem bloquear o login
-    loadPrestadorDefault().catch(e=>console.warn("loadPrestadorDefault bg:",e));
-    loadAmbientesCustom().catch(e=>console.warn("loadAmbientesCustom bg:",e));
-    if(snapUser.exists()){
-      currentUserData=snapUser.data();
-      // Normaliza pra lowercase — robusto contra docs gravados como "Master" ou "MASTER".
-      currentRole=(currentUserData.role||"").toLowerCase();
-      assinaturaTecnico=currentUserData.assinatura||null;
-    } else {
-      // Doc do usuário não existe. Dois cenários:
-      //  (a) FUNDADOR: é o primeiríssimo acesso do sistema (coleção users vazia) → vira master.
-      //  (b) CONTA ÓRFÃ: a conta existe no Auth mas perdeu o doc no Firestore (bug antigo de
-      //      cadastro, onde o Auth era criado mas o setDoc falhava). NÃO deve virar master —
-      //      recria o doc como "cadastrador" pra destravar o uso (gerar PDF etc.).
-      let ehFundador=false;
+    // === OTIMIZAÇÃO CRÍTICA DE LOGIN ===
+    // Ao invés de bloquear no getDoc(users/{uid}) — que em rede fraca leva 3-5s — usamos
+    // cache do último perfil no localStorage. O dashboard aparece INSTANTANEAMENTE com o
+    // perfil cacheado. Em paralelo, revalidamos no Firestore em background e atualizamos
+    // se algo mudou (ex: role alterado, assinatura atualizada).
+    const cacheKey="userProfileCache_"+user.uid;
+    const cached=localStorage.getItem(cacheKey);
+    let carregouDoCache=false;
+    if(cached){
       try{
-        const todosUsers=await getDocs(collection(db,"users"));
-        ehFundador=todosUsers.empty;
-      }catch(_){ehFundador=false;}
-      if(ehFundador){
-        currentRole="master";
-        currentUserData={nome:"Admin",email:user.email,role:"master"};
-        try{await setDoc(doc(db,"users",user.uid),{...currentUserData,criadoEm:serverTimestamp()});}
-        catch(e){console.error("Falha ao criar doc do fundador:",e);}
-      }else{
-        // Self-bootstrap como cadastrador (permitido pelas regras). Recupera a conta órfã.
-        currentRole="cadastrador";
-        currentUserData={nome:user.displayName||user.email||"Usuário",email:user.email,role:"cadastrador"};
-        try{
-          await setDoc(doc(db,"users",user.uid),{...currentUserData,criadoEm:serverTimestamp(),autoRecuperado:true});
-          assinaturaTecnico=null;
-        }catch(e){
-          console.error("Falha no self-bootstrap do usuário:",e);
-          alert("Sua conta está sem perfil cadastrado e não foi possível recuperá-la automaticamente. Peça ao administrador (Master) para recriar seu usuário em Usuários.");
-        }
-      }
+        const c=JSON.parse(cached);
+        currentUserData=c;
+        currentRole=(c.role||"").toLowerCase();
+        assinaturaTecnico=c.assinatura||null;
+        carregouDoCache=true;
+        // Vai direto pro dashboard — sem esperar a rede
+        goTo("s-dash");
+        verificarRascunho();
+      }catch(_){}
     }
-    // Solicita persistência do storage em BACKGROUND (sem await — não bloqueia login)
+    // Solicita persistência do storage (não bloqueia)
     if(navigator.storage&&navigator.storage.persist){
-      navigator.storage.persisted().then(persisted=>{
-        if(!persisted)navigator.storage.persist().catch(()=>{});
-      }).catch(()=>{});
+      navigator.storage.persisted().then(persisted=>{if(!persisted)navigator.storage.persist().catch(()=>{});}).catch(()=>{});
     }
-    // Recupera último morador do dia (para sugerir reaproveitamento na próxima vistoria)
+    // Recupera último morador do dia
     try{
       const hojeStr=new Date().toISOString().slice(0,10);
       const saved=localStorage.getItem("lastResponsavel"+hojeStr);
       if(saved)ultimoResponsavel=JSON.parse(saved);
     }catch(e){}
-    goTo("s-dash");
-    verificarRascunho(); // oferece retomar vistoria não finalizada (recuperação pós-reload)
-  }else{goTo("s-login");}
+    // === Background: revalida perfil e carrega recursos secundários ===
+    // Se ainda não temos cache válido, ESSAS chamadas bloqueiam. Se temos cache, elas
+    // rodam totalmente em background — o usuário já está usando o app.
+    const carregarPerfilPromise=(async()=>{
+      try{
+        const snapUser=await getDoc(doc(db,"users",user.uid));
+        if(snapUser.exists()){
+          const dados=snapUser.data();
+          currentUserData=dados;
+          currentRole=(dados.role||"").toLowerCase();
+          assinaturaTecnico=dados.assinatura||null;
+          // Atualiza cache pra próximo login
+          try{localStorage.setItem(cacheKey,JSON.stringify(dados));}catch(_){}
+          // Se veio do cache mas o role mudou, re-renderiza dash
+          if(carregouDoCache){
+            const el=document.getElementById("s-dash");
+            if(el&&el.classList.contains("active"))loadDash();
+          }
+          return true;
+        }else{
+          // Cenários: FUNDADOR (users vazia → master) ou CONTA ÓRFÃ (recriar como cadastrador)
+          let ehFundador=false;
+          try{const todosUsers=await getDocs(collection(db,"users"));ehFundador=todosUsers.empty;}catch(_){}
+          if(ehFundador){
+            currentRole="master";
+            currentUserData={nome:"Admin",email:user.email,role:"master"};
+            try{await setDoc(doc(db,"users",user.uid),{...currentUserData,criadoEm:serverTimestamp()});}catch(e){console.error("fundador:",e);}
+          }else{
+            currentRole="cadastrador";
+            currentUserData={nome:user.displayName||user.email||"Usuário",email:user.email,role:"cadastrador"};
+            try{await setDoc(doc(db,"users",user.uid),{...currentUserData,criadoEm:serverTimestamp(),autoRecuperado:true});}
+            catch(e){console.error("self-bootstrap:",e);alert("Sua conta está sem perfil cadastrado e não foi possível recuperá-la automaticamente. Peça ao administrador (Master) para recriar seu usuário em Usuários.");}
+          }
+          try{localStorage.setItem(cacheKey,JSON.stringify(currentUserData));}catch(_){}
+          return true;
+        }
+      }catch(e){console.warn("Falha ao carregar perfil online:",e);return false;}
+    })();
+    // Recursos secundários (não bloqueiam login mesmo sem cache)
+    loadPrestadorDefault().catch(e=>console.warn("loadPrestadorDefault bg:",e));
+    loadAmbientesCustom().catch(e=>console.warn("loadAmbientesCustom bg:",e));
+    // Se não veio do cache, precisa esperar o perfil antes de mostrar o dash
+    if(!carregouDoCache){
+      await carregarPerfilPromise;
+      goTo("s-dash");
+      verificarRascunho();
+    }
+  }else{
+    goTo("s-login");
+  }
 });
 
 async function loadPrestadorDefault(){try{const q=query(collection(db,"prestadores"),where("isDefault","==",true));const s=await getDocs(q);if(!s.empty)prestadorDefault={id:s.docs[0].id,...s.docs[0].data()};}catch(e){}}
@@ -2094,8 +2108,54 @@ function loadDash(){
   el.textContent=roleLabel;el.className="badge "+roleCls;
   document.getElementById("dash-master-section").style.display=isMaster?"block":"none";
   loadDashCount();loadPendentesCount();
+  // === AVISO DE NOVO DIA ===
+  // Sem o antigo logout diário, o cadastrador pode não perceber que virou o dia
+  // e cair na tentação de usar cliente/coletor da vistoria anterior. Mostramos
+  // UMA VEZ por dia um alerta claro no dashboard — a lógica interna já zera
+  // cliente/coletor no `mesmoDia` check, mas o aviso reforça a atenção.
+  try{
+    const hoje=new Date().toISOString().slice(0,10);
+    const ultimoAviso=localStorage.getItem("ultimoAvisoNovoDia_"+currentUser.uid)||"";
+    if(ultimoAviso!==hoje){
+      const bannerId="dash-aviso-novo-dia";
+      let banner=document.getElementById(bannerId);
+      if(!banner){
+        banner=document.createElement("div");
+        banner.id=bannerId;
+        banner.style.cssText="background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:12px 14px;margin-bottom:12px;color:#78350f;font-size:13px;line-height:1.4";
+        // Insere no topo do container do dash
+        const cont=document.getElementById("s-dash");
+        if(cont)cont.insertBefore(banner,cont.firstChild.nextSibling);
+      }
+      banner.innerHTML='<div style="display:flex;align-items:flex-start;gap:8px">'
+        +'<span style="font-size:18px;line-height:1">⚠️</span>'
+        +'<div style="flex:1"><b>Bom dia! É um novo dia de vistorias.</b><br>'
+        +'Ao criar a próxima vistoria, <b>confira o cliente e coletor</b> antes de prosseguir. Não é a mesma vistoria de ontem.'
+        +'<div style="margin-top:8px"><button onclick="confirmarAvisoNovoDia()" style="background:#f59e0b;color:#fff;border:0;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">Entendi</button></div>'
+        +'</div></div>';
+      banner.style.display="block";
+    }
+  }catch(_){}
 }
-async function loadDashCount(){try{const q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));const s=await getDocs(q);document.getElementById("dash-count").textContent=s.size+" vistoria(s)";}catch(e){}}
+// Fecha o aviso e marca como visto pra não voltar hoje
+window.confirmarAvisoNovoDia=()=>{
+  try{
+    const hoje=new Date().toISOString().slice(0,10);
+    localStorage.setItem("ultimoAvisoNovoDia_"+currentUser.uid,hoje);
+  }catch(_){}
+  const el=document.getElementById("dash-aviso-novo-dia");
+  if(el)el.style.display="none";
+};
+async function loadDashCount(){
+  try{
+    // getCountFromServer só traz o NÚMERO — não baixa os docs. É ~10x mais rápido
+    // que getDocs().size, especialmente com centenas de vistorias (600-800/mês da CTB).
+    const q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));
+    const s=await getCountFromServer(q);
+    const el=document.getElementById("dash-count");
+    if(el)el.textContent=s.data().count+" vistoria(s)";
+  }catch(e){console.warn("loadDashCount:",e);}
+}
 
 function renderPerfil(){
   document.getElementById("perfil-nome").value=currentUserData&&currentUserData.nome||"";
@@ -2744,13 +2804,12 @@ document.addEventListener("change",ev=>{
 
 async function loadPendentesCount(){
   try{
-    // Conta de pendentes mostrada no dash. Para cadastrador, conta só as próprias
-    // (alinhado com a regra "cadastrador só vê o que é dele"). Para master, conta tudo.
+    // Usa getCountFromServer — só traz o número, não baixa os docs (rápido em rede fraca).
     const filtros=[where("pendente_retorno","==",true)];
     if(currentRole==="cadastrador")filtros.push(where("userId","==",currentUser.uid));
     const q=query(collection(db,"vistorias"),...filtros);
-    const s=await getDocs(q);
-    const txt=s.size+" pendente(s)";
+    const s=await getCountFromServer(q);
+    const txt=s.data().count+" pendente(s)";
     ["dash-pendentes-count","dash-pendentes-count2"].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=txt;});
   }catch(e){console.warn("loadPendentesCount:",e);}
 }
@@ -3237,18 +3296,33 @@ async function loadNovVistoriaForm(){
   const lastClienteId=mesmoDia?(localStorage.getItem("lastClienteId")||""):"";
   const lastColetorId=mesmoDia?(localStorage.getItem("lastColetorId")||""):"";
   const lastRua=localStorage.getItem("lastRua")||"";
+  const nvCliente=document.getElementById("nv-cliente");
+  const nvColetor=document.getElementById("nv-coletor");
+  // Destaque visual: se NÃO É mesmo dia (cliente/coletor foram zerados), realça em laranja
+  // pra reforçar a atenção. Some sozinho quando o cadastrador selecionar algo.
+  if(!mesmoDia){
+    const highlight="border:2px solid #f59e0b !important;background:#fef3c7 !important";
+    if(nvCliente)nvCliente.style.cssText=highlight;
+    if(nvColetor)nvColetor.style.cssText=highlight;
+    // Remove destaque quando trocar
+    const clear=(el)=>{if(el)el.style.cssText="";};
+    if(nvCliente)nvCliente.addEventListener("change",()=>clear(nvCliente),{once:true});
+    if(nvColetor)nvColetor.addEventListener("change",()=>clear(nvColetor),{once:true});
+  } else {
+    // Mesmo dia: garante que estilos de destaque anteriores sejam limpos
+    if(nvCliente)nvCliente.style.cssText="";
+    if(nvColetor)nvColetor.style.cssText="";
+  }
   if(lastClienteId){
-    const sel=document.getElementById("nv-cliente");
-    sel.value=lastClienteId;
-    if(sel.value===lastClienteId){
+    nvCliente.value=lastClienteId;
+    if(nvCliente.value===lastClienteId){
       await loadColetoresByCliente();
       if(lastColetorId){
-        const cSel=document.getElementById("nv-coletor");
-        cSel.value=lastColetorId;
+        nvColetor.value=lastColetorId;
       }
     }
   } else {
-    document.getElementById("nv-coletor").innerHTML='<option value="">Selecione o cliente primeiro...</option>';
+    nvColetor.innerHTML='<option value="">Selecione o cliente primeiro...</option>';
   }
   // Campos pessoais: limpar mas oferecer reaproveitamento
   ["nv-nome","nv-doc","nv-tel","nv-num","nv-comp","nv-bairro"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
