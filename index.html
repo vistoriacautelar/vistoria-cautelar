@@ -1543,19 +1543,18 @@ injetarLogoTopbars();
 
 onAuthStateChanged(auth,async user=>{
   if(user){
-    // Verificar se o login foi feito hoje (forçar relogin diário)
-    // Isso zera cliente/coletor e força atenção no novo dia.
+    // Relogin diário: se não é do mesmo dia, mostra login IMEDIATAMENTE.
+    // O signOut roda em background sem bloquear — antes o await signOut travava
+    // 3-10s em rede fraca, deixando tela em branco.
     const lastLogin=localStorage.getItem("lastLoginDate");
     const today=new Date().toDateString();
     if(lastLogin!==today){
-      await signOut(auth);
       goTo("s-login");
+      signOut(auth).catch(()=>{});
       return;
     }
     currentUser=user;
-    // Carrega perfil do Firestore (simples e confiável — como na versão estável)
     const snapUser=await getDoc(doc(db,"users",user.uid));
-    // Background: carrega prestador padrão e ambientes custom sem bloquear o login
     loadPrestadorDefault().catch(e=>console.warn("loadPrestadorDefault bg:",e));
     loadAmbientesCustom().catch(e=>console.warn("loadAmbientesCustom bg:",e));
     if(snapUser.exists()){
@@ -1574,16 +1573,12 @@ onAuthStateChanged(auth,async user=>{
         currentRole="cadastrador";
         currentUserData={nome:user.displayName||user.email||"Usuário",email:user.email,role:"cadastrador"};
         try{await setDoc(doc(db,"users",user.uid),{...currentUserData,criadoEm:serverTimestamp(),autoRecuperado:true});}
-        catch(e){console.error("self-bootstrap:",e);alert("Sua conta está sem perfil cadastrado e não foi possível recuperá-la automaticamente. Peça ao administrador (Master) para recriar seu usuário em Usuários.");}
+        catch(e){console.error("self-bootstrap:",e);}
       }
     }
-    // Solicita persistência do storage em BACKGROUND (sem await)
     if(navigator.storage&&navigator.storage.persist){
-      navigator.storage.persisted().then(persisted=>{
-        if(!persisted)navigator.storage.persist().catch(()=>{});
-      }).catch(()=>{});
+      navigator.storage.persisted().then(persisted=>{if(!persisted)navigator.storage.persist().catch(()=>{});}).catch(()=>{});
     }
-    // Recupera último morador do dia
     try{
       const hojeStr=new Date().toISOString().slice(0,10);
       const saved=localStorage.getItem("lastResponsavel"+hojeStr);
