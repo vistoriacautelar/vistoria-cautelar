@@ -7752,7 +7752,7 @@ function _pdfAnexoI(pdf,ML,MT,MR,CW,PW,PH,MB,v){
   // Linhas da tabela: [label, valor/render]
   // Cobertura, Paredes vêm como arrays — juntam com vírgula
   const linhasDesc=[
-    {label:"Tipo da Edificação",render:yy=>renderOpcoes(["Térrea","Sobrado","Galpão","Soleira Negativa"],tipoSel,ML+coluna1W+2,yy)},
+    {label:"Tipo da Edificação",render:yy=>renderOpcoes(["Térrea","Sobrado","Galpão","Soleira Negativa","Outros"],tipoSel,ML+coluna1W+2,yy)},
     {label:"Garagem",render:yy=>renderOpcoes(["Coberta","Descoberta","Não tem"],garagSel,ML+coluna1W+2,yy)},
     {label:"Nº de Pavimentos",texto:id.pavimentos||""},
     {label:"Idade Aparente",texto:(v.idade||"")+(v.idade?" anos":"")},
