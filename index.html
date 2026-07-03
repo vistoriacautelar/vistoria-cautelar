@@ -6728,10 +6728,33 @@ window.finalizarVistoria=async()=>{
         const docRef=doc(db,"vistorias",currentVistoria._retornoId);
         const{criadoEm,...vDocUpd}=vDoc;
         vDocUpd.atualizadoEm=serverTimestamp();
-        await updateDoc(docRef,vDocUpd);
+        try{await updateDoc(docRef,vDocUpd);}catch(eUp){
+          // Client terminated → re-init e retry
+          if(/terminated/i.test(eUp.message||"")){_initDb();await updateDoc(doc(db,"vistorias",currentVistoria._retornoId),vDocUpd);}
+          else throw eUp;
+        }
         vRef={id:currentVistoria._retornoId};
       } else {
-        vRef=await addDoc(collection(db,"vistorias"),vDoc);
+        // OFFLINE-FIRST: gera o ID localmente ANTES de escrever. Com persistentLocalCache,
+        // setDoc enfileira a escrita se estiver offline — sincroniza quando o sinal voltar.
+        // Isso significa que a vistoria SEMPRE finaliza, mesmo sem sinal.
+        const novoRef=doc(collection(db,"vistorias"));
+        try{await setDoc(novoRef,vDoc);}catch(eAdd){
+          // Client terminated → re-init e retry
+          if(/terminated/i.test(eAdd.message||"")){
+            _initDb();
+            const novoRef2=doc(collection(db,"vistorias"));
+            await setDoc(novoRef2,vDoc);
+            vRef=novoRef2;
+          } else {
+            // Mesmo com erro (ex: rede), prossegue — persistentLocalCache enfileirou.
+            // Só lança se for erro de permissão (esse sim é real e não vai resolver sozinho).
+            if(eAdd.code==="permission-denied")throw eAdd;
+            console.warn("Firestore write enfileirado para sync posterior:",eAdd.message||eAdd);
+            vRef=novoRef; // usa o ID gerado localmente
+          }
+        }
+        if(!vRef)vRef=novoRef;
       }
     }catch(ePersist){
       console.error("Falha ao gravar vistoria no Firestore:",ePersist);
