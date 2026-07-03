@@ -3,7 +3,7 @@
 // ============================================================================
 // Estratégia: NETWORK-FIRST com fallback para cache (uso offline)
 //
-// Por que network-first?
+// Porque network-first?
 // - O app é uma página única (index.html) que muda com frequência durante o
 //   desenvolvimento. Cache-first travaria o usuário em versões antigas.
 // - Em modo online: sempre busca a versão fresca do servidor. Atualizações
