@@ -108,7 +108,7 @@ self.addEventListener("fetch", (event) => {
       })
   );
 });
-
+ 
 // === MENSAGEM: forçar atualização imediata vinda do app ===
 // O app pode enviar `{type: "SKIP_WAITING"}` pra forçar ativação do novo SW.
 self.addEventListener("message", (event) => {
