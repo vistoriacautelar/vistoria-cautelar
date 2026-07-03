@@ -451,26 +451,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div class="field"><label>Ocupacao</label><select id="nv-ocupacao"><option value="">Selecione...</option><option>Residencial</option><option>Comercial</option><option>Institucional</option><option>Religioso</option><option>Servicos</option><option>Outros</option></select></div>
       <div class="field"><label>Tipo de construcao</label><select id="nv-tipo"><option value="">Selecione...</option><option>Terrea</option><option>Sobrado</option><option>Galpao</option><option>Soleira Negativa</option><option>Outros</option></select></div>
     </div>
-    <div class="card"><h2>Terreno</h2>
-      <div class="field"><label>Formato</label>
-        <select id="nv-terreno-formato"><option value="Retangular" selected>Retangular</option><option>Trapezoidal</option><option>Irregular</option><option>Outros</option></select>
-      </div>
-      <div class="field"><label>Topografia</label>
-        <select id="nv-terreno-topografia"><option value="Em nível" selected>Em nível</option><option>Aclive</option><option>Declive</option><option>Outros</option></select>
-      </div>
-      <div class="field"><label>Situação</label>
-        <select id="nv-terreno-situacao"><option value="Meio de quadra" selected>Meio de quadra</option><option value="Nº de testadas">Nº de testadas</option><option>Esquina</option><option>Vila</option></select>
-      </div>
-    </div>
-    <div class="card"><h2>Padrão de Construção</h2>
-      <div class="field"><label>Padrão predominante</label>
-        <select id="nv-padrao">
-          <optgroup label="Alto"><option value="Luxo">Alto — Luxo</option><option value="Fino">Alto — Fino</option></optgroup>
-          <optgroup label="Normal"><option value="Superior">Normal — Superior</option><option value="Comum" selected>Normal — Comum</option></optgroup>
-          <optgroup label="Baixo"><option value="Modesto">Baixo — Modesto</option><option value="Pobre">Baixo — Pobre</option></optgroup>
-        </select>
-      </div>
-    </div>
     <button class="btn primary" onclick="criarVistoria()">Iniciar Vistoria</button>
     <div style="margin-top:18px;padding-top:14px;border-top:1px dashed #d4d4d8">
       <p style="font-size:12px;color:#888;text-align:center;margin-bottom:6px">Imóvel sem ninguém presente?</p>
@@ -532,6 +512,50 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div class="field" id="field-pendente" style="display:none"><label>Pendente de retorno?</label><select id="fin-pendente"><option value="nao" selected>Não — encerrar</option><option value="sim">Sim — retornar</option></select></div>
       <div class="field"><label>Estado de Conservacao</label><select id="fin-estado"><option>Bom</option><option selected>Regular</option><option>Ruim</option><option>Péssimo</option></select></div>
       <div class="field"><label>Idade Aparente do Imóvel (anos) *</label><input type="number" id="fin-idade" placeholder="Ex: 30" min="0" max="200" inputmode="numeric" required></div>
+    </div>
+    <div class="card"><h2>Terreno</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px">
+        <div style="padding:6px;border-right:1px solid #e5e7eb">
+          <p style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;text-align:center">Formato</p>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:4px;cursor:pointer"><input type="radio" name="fin-terreno-fmt" value="Retangular" checked style="width:16px;height:16px;-webkit-appearance:radio;appearance:radio;flex-shrink:0;margin:0">Retangular</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:4px;cursor:pointer"><input type="radio" name="fin-terreno-fmt" value="Trapezoidal" style="width:16px;height:16px;-webkit-appearance:radio;appearance:radio;flex-shrink:0;margin:0">Trapezoidal</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:4px;cursor:pointer"><input type="radio" name="fin-terreno-fmt" value="Irregular" style="width:16px;height:16px;-webkit-appearance:radio;appearance:radio;flex-shrink:0;margin:0">Irregular</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="radio" name="fin-terreno-fmt" value="Outros" style="width:16px;height:16px;-webkit-appearance:radio;appearance:radio;flex-shrink:0;margin:0">Outros</label>
+        </div>
+        <div style="padding:6px;border-right:1px solid #e5e7eb">
+          <p style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;text-align:center">Topografia</p>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:4px;cursor:pointer"><input type="radio" name="fin-terreno-topo" value="Em nível" checked style="width:16px;height:16px;-webkit-appearance:radio;appearance:radio;flex-shrink:0;margin:0">Em nível</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:4px;cursor:pointer"><input type="radio" name="fin-terreno-topo" value="Aclive" style="width:16px;height:16px;-webkit-appearance:radio;appearance:radio;flex-shrink:0;margin:0">Aclive</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:4px;cursor:pointer"><input type="radio" name="fin-terreno-topo" value="Declive" style="width:16px;height:16px;-webkit-appearance:radio;appearance:radio;flex-shrink:0;margin:0">Declive</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="radio" name="fin-terreno-topo" value="Outros" style="width:16px;height:16px;-webkit-appearance:radio;appearance:radio;flex-shrink:0;margin:0">Outros</label>
+        </div>
+        <div style="padding:6px">
+          <p style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;text-align:center">Situação</p>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:4px;cursor:pointer"><input type="radio" name="fin-terreno-sit" value="Meio de quadra" checked style="width:16px;height:16px;-webkit-appearance:radio;appearance:radio;flex-shrink:0;margin:0">Meio de quadra</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:4px;cursor:pointer"><input type="radio" name="fin-terreno-sit" value="Nº de testadas" style="width:16px;height:16px;-webkit-appearance:radio;appearance:radio;flex-shrink:0;margin:0">Nº de testadas</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:4px;cursor:pointer"><input type="radio" name="fin-terreno-sit" value="Esquina" style="width:16px;height:16px;-webkit-appearance:radio;appearance:radio;flex-shrink:0;margin:0">Esquina</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="radio" name="fin-terreno-sit" value="Vila" style="width:16px;height:16px;-webkit-appearance:radio;appearance:radio;flex-shrink:0;margin:0">Vila</label>
+        </div>
+      </div>
+    </div>
+    <div class="card"><h2>Padrão da Construção</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px">
+        <div style="padding:6px;border-right:1px solid #e5e7eb">
+          <p style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;text-align:center">Alto</p>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:4px;cursor:pointer"><input type="radio" name="fin-padrao" value="Luxo" style="width:16px;height:16px;-webkit-appearance:radio;appearance:radio;flex-shrink:0;margin:0">Luxo</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="radio" name="fin-padrao" value="Fino" style="width:16px;height:16px;-webkit-appearance:radio;appearance:radio;flex-shrink:0;margin:0">Fino</label>
+        </div>
+        <div style="padding:6px;border-right:1px solid #e5e7eb">
+          <p style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;text-align:center">Normal</p>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:4px;cursor:pointer"><input type="radio" name="fin-padrao" value="Superior" style="width:16px;height:16px;-webkit-appearance:radio;appearance:radio;flex-shrink:0;margin:0">Superior</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="radio" name="fin-padrao" value="Comum" checked style="width:16px;height:16px;-webkit-appearance:radio;appearance:radio;flex-shrink:0;margin:0">Comum</label>
+        </div>
+        <div style="padding:6px">
+          <p style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;text-align:center">Baixo</p>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:4px;cursor:pointer"><input type="radio" name="fin-padrao" value="Modesto" style="width:16px;height:16px;-webkit-appearance:radio;appearance:radio;flex-shrink:0;margin:0">Modesto</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="radio" name="fin-padrao" value="Pobre" style="width:16px;height:16px;-webkit-appearance:radio;appearance:radio;flex-shrink:0;margin:0">Pobre</label>
+        </div>
+      </div>
     </div>
     <div class="card" id="card-assinatura-resp"><h2>Assinatura do responsavel pelo imovel</h2>
       <div id="assin-info" style="font-size:13px;color:#555;line-height:1.8;margin-bottom:14px;padding:12px;background:#f9f9f9;border-radius:8px"></div>
@@ -3584,14 +3608,7 @@ window.criarVistoria=async()=>{
   const activeCard=document.querySelector("#s-nova-vistoria .laudo-tipo-card.active");
   const tipoLaudo=(activeCard&&activeCard.dataset.tipo)||window._tipoLaudoAtual||localStorage.getItem("lastTipoLaudo")||"simplificado";
   localStorage.setItem("lastTipoLaudo",tipoLaudo);
-  currentVistoria={clienteId:cId,coletorId:colId,clienteNome:clD.nome,clienteRRT:clD.rrt,coletorNome:colD.nome,responsavel:{nome,doc:docR,tel},endereco:{rua,num,comp,bairro},ocupacao:document.getElementById("nv-ocupacao").value,tipo:document.getElementById("nv-tipo").value,tipoLaudo,data:now.toLocaleDateString("pt-BR"),dataCompleta:now.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}),userId:currentUser.uid,checklist:{},observacoes:"",estado:"",idade:"",status:"em_andamento",
-    terreno:{
-      formato:document.getElementById("nv-terreno-formato").value||"Retangular",
-      topografia:document.getElementById("nv-terreno-topografia").value||"Em nível",
-      situacao:document.getElementById("nv-terreno-situacao").value||"Meio de quadra"
-    },
-    padrao:document.getElementById("nv-padrao").value||"Comum"
-  };
+  currentVistoria={clienteId:cId,coletorId:colId,clienteNome:clD.nome,clienteRRT:clD.rrt,coletorNome:colD.nome,responsavel:{nome,doc:docR,tel},endereco:{rua,num,comp,bairro},ocupacao:document.getElementById("nv-ocupacao").value,tipo:document.getElementById("nv-tipo").value,tipoLaudo,data:now.toLocaleDateString("pt-BR"),dataCompleta:now.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}),userId:currentUser.uid,checklist:{},observacoes:"",estado:"",idade:"",status:"em_andamento"};
   // Se o usuário clicou "📍 Detectar bairro", aproveita as coordenadas pro mapa do PDF
   if(window._coordenadasGPSAtuais){
     currentVistoria.gps={lat:window._coordenadasGPSAtuais.lat,lng:window._coordenadasGPSAtuais.lon,lon:window._coordenadasGPSAtuais.lon};
@@ -6274,6 +6291,13 @@ window.finalizarVistoria=async()=>{
     currentVistoria.estado=document.getElementById("fin-estado").value;
     currentVistoria.idade=document.getElementById("fin-idade").value;
     currentVistoria.statusVistoria=document.getElementById("fin-status-vistoria").value||"concluida";
+    // Terreno e Padrão (radio buttons na tela de finalização)
+    currentVistoria.terreno={
+      formato:(document.querySelector('input[name="fin-terreno-fmt"]:checked')||{}).value||"Retangular",
+      topografia:(document.querySelector('input[name="fin-terreno-topo"]:checked')||{}).value||"Em nível",
+      situacao:(document.querySelector('input[name="fin-terreno-sit"]:checked')||{}).value||"Meio de quadra"
+    };
+    currentVistoria.padrao=(document.querySelector('input[name="fin-padrao"]:checked')||{}).value||"Comum";
   }
   const isPendente=!window._modoRegerar&&currentVistoria.statusVistoria==="ausente"&&document.getElementById("fin-pendente")&&document.getElementById("fin-pendente").value==="sim";
   currentVistoria.pendente_retorno=isPendente;
@@ -7119,23 +7143,25 @@ function yieldThread(){return new Promise(res=>setTimeout(res,0));}
 
 function addImgPDF(pdf,dataUrl,x,y,w,h){return new Promise(async res=>{await yieldThread();try{pdf.addImage(dataUrl,"JPEG",x,y,w,h,"","FAST");}catch(e){}res();});}
 async function shareOrDownload(blob,nome,mime){
-  // Download DIRETO em todos os SOs (Android, iOS, Desktop). No iOS Safari/Chrome
-  // recente o a.click() com a.download=nome salva direto na pasta Downloads do
-  // app Arquivos — não abre share sheet. É o que a usuária pediu: download
-  // automático sem interação extra, depois mostramos toast de sucesso.
   const url=URL.createObjectURL(blob);
   try{
-    const a=document.createElement("a");
-    a.href=url;a.download=nome;a.rel="noopener";a.target="_self";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    // PDFs: abre no navegador em nova aba — o usuário vê o PDF e pode
+    // compartilhar via botão nativo do iOS (⬆️) ou "Abrir em..." do Android.
+    // ZIPs e outros: download direto via a.click() (vai pro app Arquivos).
+    if(mime==="application/pdf"){
+      window.open(url,"_blank");
+    } else {
+      const a=document.createElement("a");
+      a.href=url;a.download=nome;a.rel="noopener";a.target="_self";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
   }catch(e){
-    // Fallback raro: abre em nova aba (usuário consegue salvar manualmente)
     try{window.open(url,"_blank");}catch(_){}
     console.warn("shareOrDownload fallback:",e);
   }
-  setTimeout(()=>URL.revokeObjectURL(url),5000);
+  setTimeout(()=>URL.revokeObjectURL(url),30000); // 30s pra dar tempo de visualizar
 }
 
 // ===== MÉTRICAS DA EQUIPE (Master) =====

@@ -3,7 +3,7 @@
 // ============================================================================
 // Estratégia: NETWORK-FIRST com fallback para cache (uso offline)
 //
-// Porque network-first?
+// Por que network-first?
 // - O app é uma página única (index.html) que muda com frequência durante o
 //   desenvolvimento. Cache-first travaria o usuário em versões antigas.
 // - Em modo online: sempre busca a versão fresca do servidor. Atualizações
@@ -15,7 +15,7 @@
 // no próximo carregamento.
 // ============================================================================
 
-const CACHE_VERSION = "v20260701-17";
+const CACHE_VERSION = "v20260703-1";
 const CACHE_NAME = "vistoria-cautelar-" + CACHE_VERSION;
 
 // Arquivos do app shell que serão cacheados na instalação.
@@ -108,7 +108,7 @@ self.addEventListener("fetch", (event) => {
       })
   );
 });
- 
+
 // === MENSAGEM: forçar atualização imediata vinda do app ===
 // O app pode enviar `{type: "SKIP_WAITING"}` pra forçar ativação do novo SW.
 self.addEventListener("message", (event) => {
