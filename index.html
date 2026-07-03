@@ -6791,13 +6791,14 @@ window.finalizarVistoria=async()=>{
     // já foram baixados, e a sessão é mantida pra nova tentativa de salvar.
     if(erroPersistencia){
       const msgPerm=(erroPersistencia.code==="permission-denied"||/insufficient permissions/i.test(erroPersistencia.message||""))
-        ?"\n\n⚠️ Seu usuário está sem permissão para salvar no servidor. O PDF e as fotos JÁ foram baixados no celular — guarde-os. Avise o administrador para verificar seu cadastro (peça para sair e entrar novamente no app)."
-        :"\n\nO PDF e as fotos já foram baixados no celular. Tente finalizar novamente para salvar no servidor.";
-      // Mantém a sessão viva pra nova tentativa
+        ?"⚠️ Sem permissão para salvar no servidor. PDF e fotos foram baixados no celular. Avise o administrador."
+        :"⚠️ PDF e ZIP baixados! Falha ao salvar no servidor (sinal fraco). Toque em 'Gerar PDF + ZIP' novamente quando tiver sinal.";
+      // Toast NÃO BLOQUEANTE: o usuário vê a mensagem mas NÃO fica preso.
+      // A sessão é mantida pra nova tentativa.
       if(_backupVistoria)currentVistoria=_backupVistoria;
       if(_backupFotos)fotosPendentes=_backupFotos;
-      alert("PDF gerado com sucesso e baixado no celular!"+msgPerm);
-      return; // sai sem limpar a sessão; o finally reabilita o botão
+      showToast(msgPerm,8000);
+      return;
     }
 
     // Salvar defaults ANTES de limpar parcialmente
@@ -7145,23 +7146,16 @@ function addImgPDF(pdf,dataUrl,x,y,w,h){return new Promise(async res=>{await yie
 async function shareOrDownload(blob,nome,mime){
   const url=URL.createObjectURL(blob);
   try{
-    // PDFs: abre no navegador em nova aba — o usuário vê o PDF e pode
-    // compartilhar via botão nativo do iOS (⬆️) ou "Abrir em..." do Android.
-    // ZIPs e outros: download direto via a.click() (vai pro app Arquivos).
-    if(mime==="application/pdf"){
-      window.open(url,"_blank");
-    } else {
-      const a=document.createElement("a");
-      a.href=url;a.download=nome;a.rel="noopener";a.target="_self";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
+    const a=document.createElement("a");
+    a.href=url;a.download=nome;a.rel="noopener";a.target="_self";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }catch(e){
     try{window.open(url,"_blank");}catch(_){}
     console.warn("shareOrDownload fallback:",e);
   }
-  setTimeout(()=>URL.revokeObjectURL(url),30000); // 30s pra dar tempo de visualizar
+  setTimeout(()=>URL.revokeObjectURL(url),10000);
 }
 
 // ===== MÉTRICAS DA EQUIPE (Master) =====
@@ -7949,10 +7943,17 @@ function _pdfAnexoI(pdf,ML,MT,MR,CW,PW,PH,MB,v){
   y+=6;
 
   // === 2.3 PADRÃO DA CONSTRUÇÃO — Elemento | Danos | Alto | Normal | Baixo ===
+  // Garantir espaço: a tabela 2.3 precisa de ~53mm. Se não cabe, nova página com cabeçalho.
+  const altCab1=6,altCab2=5,altLinha=7;
+  const linhasChk=_CHECKLIST_LINHAS;
+  const altTabela2_3=altCab1+altCab2+linhasChk.length*altLinha+10;
+  if(y+altTabela2_3>PH-MB-12){
+    pdf.addPage();
+    y=_pdfNovaPagComCabecalho(pdf,ML,MT,MR,CW,PW);
+  }
   pdf.setFont("helvetica","bold");pdf.setFontSize(9.5);
   pdf.text("2.3 Padrão da Construção",ML,y);y+=5;
   const danos=calcularChecklistDanos(fotosPendentes);
-  const linhasChk=_CHECKLIST_LINHAS;
   const padraoSel=_semAcento(id.padrao||v.padrao||"Comum");
   // Layout de colunas:
   // Elemento (48%) | Danos [Sim|Não] (12%) | Alto [Luxo|Fino] (14%) | Normal [Sup|Com] (14%) | Baixo [Mod|Pobre] (12%)
@@ -7961,7 +7962,6 @@ function _pdfAnexoI(pdf,ML,MT,MR,CW,PW,PH,MB,v){
   const wAlto=CW*0.14;  // Luxo | Fino
   const wNormal=CW*0.14;// Sup° | Com.
   const wBaixo=CW*0.12; // Mod. | Pobre
-  const altCab1=6,altCab2=5,altLinha=7;
   const totalChkH=altCab1+altCab2+linhasChk.length*altLinha;
   // === Cabeçalho de 2 níveis (com "Elemento Construtivo" mesclado nos 2) ===
   pdf.setFillColor(245,247,250);
