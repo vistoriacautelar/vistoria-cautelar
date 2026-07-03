@@ -451,6 +451,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div class="field"><label>Ocupacao</label><select id="nv-ocupacao"><option value="">Selecione...</option><option>Residencial</option><option>Comercial</option><option>Institucional</option><option>Religioso</option><option>Servicos</option><option>Outros</option></select></div>
       <div class="field"><label>Tipo de construcao</label><select id="nv-tipo"><option value="">Selecione...</option><option>Terrea</option><option>Sobrado</option><option>Galpao</option><option>Soleira Negativa</option><option>Outros</option></select></div>
     </div>
+    <div class="card"><h2>Terreno</h2>
+      <div class="field"><label>Formato</label>
+        <select id="nv-terreno-formato"><option value="Retangular" selected>Retangular</option><option>Trapezoidal</option><option>Irregular</option><option>Outros</option></select>
+      </div>
+      <div class="field"><label>Topografia</label>
+        <select id="nv-terreno-topografia"><option value="Em nível" selected>Em nível</option><option>Aclive</option><option>Declive</option><option>Outros</option></select>
+      </div>
+      <div class="field"><label>Situação</label>
+        <select id="nv-terreno-situacao"><option value="Meio de quadra" selected>Meio de quadra</option><option value="Nº de testadas">Nº de testadas</option><option>Esquina</option><option>Vila</option></select>
+      </div>
+    </div>
+    <div class="card"><h2>Padrão de Construção</h2>
+      <div class="field"><label>Padrão predominante</label>
+        <select id="nv-padrao">
+          <optgroup label="Alto"><option value="Luxo">Alto — Luxo</option><option value="Fino">Alto — Fino</option></optgroup>
+          <optgroup label="Normal"><option value="Superior">Normal — Superior</option><option value="Comum" selected>Normal — Comum</option></optgroup>
+          <optgroup label="Baixo"><option value="Modesto">Baixo — Modesto</option><option value="Pobre">Baixo — Pobre</option></optgroup>
+        </select>
+      </div>
+    </div>
     <button class="btn primary" onclick="criarVistoria()">Iniciar Vistoria</button>
     <div style="margin-top:18px;padding-top:14px;border-top:1px dashed #d4d4d8">
       <p style="font-size:12px;color:#888;text-align:center;margin-bottom:6px">Imóvel sem ninguém presente?</p>
@@ -3564,7 +3584,14 @@ window.criarVistoria=async()=>{
   const activeCard=document.querySelector("#s-nova-vistoria .laudo-tipo-card.active");
   const tipoLaudo=(activeCard&&activeCard.dataset.tipo)||window._tipoLaudoAtual||localStorage.getItem("lastTipoLaudo")||"simplificado";
   localStorage.setItem("lastTipoLaudo",tipoLaudo);
-  currentVistoria={clienteId:cId,coletorId:colId,clienteNome:clD.nome,clienteRRT:clD.rrt,coletorNome:colD.nome,responsavel:{nome,doc:docR,tel},endereco:{rua,num,comp,bairro},ocupacao:document.getElementById("nv-ocupacao").value,tipo:document.getElementById("nv-tipo").value,tipoLaudo,data:now.toLocaleDateString("pt-BR"),dataCompleta:now.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}),userId:currentUser.uid,checklist:{},observacoes:"",estado:"",idade:"",status:"em_andamento"};
+  currentVistoria={clienteId:cId,coletorId:colId,clienteNome:clD.nome,clienteRRT:clD.rrt,coletorNome:colD.nome,responsavel:{nome,doc:docR,tel},endereco:{rua,num,comp,bairro},ocupacao:document.getElementById("nv-ocupacao").value,tipo:document.getElementById("nv-tipo").value,tipoLaudo,data:now.toLocaleDateString("pt-BR"),dataCompleta:now.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}),userId:currentUser.uid,checklist:{},observacoes:"",estado:"",idade:"",status:"em_andamento",
+    terreno:{
+      formato:document.getElementById("nv-terreno-formato").value||"Retangular",
+      topografia:document.getElementById("nv-terreno-topografia").value||"Em nível",
+      situacao:document.getElementById("nv-terreno-situacao").value||"Meio de quadra"
+    },
+    padrao:document.getElementById("nv-padrao").value||"Comum"
+  };
   // Se o usuário clicou "📍 Detectar bairro", aproveita as coordenadas pro mapa do PDF
   if(window._coordenadasGPSAtuais){
     currentVistoria.gps={lat:window._coordenadasGPSAtuais.lat,lng:window._coordenadasGPSAtuais.lon,lon:window._coordenadasGPSAtuais.lon};
@@ -5122,12 +5149,14 @@ function renderIdentificacao(){
   document.querySelectorAll('input[name="id-garagem-r"]').forEach(r=>{r.checked=r.value===garagVal;});
   const p=document.getElementById("id-pavimentos");if(p)p.value=ident.pavimentos||"";
   // Terreno (novo): formato, topografia, situação
-  const terr=ident.terreno||{};
+  // Pode vir de ident.terreno (se já editou na Identificação) ou de currentVistoria.terreno
+  // (se preencheu na Nova Vistoria e é a primeira vez na Identificação)
+  const terr=ident.terreno||(currentVistoria&&currentVistoria.terreno)||{};
   const tf=document.getElementById("id-terreno-formato");if(tf)tf.value=terr.formato||"Retangular";
   const tt=document.getElementById("id-terreno-topografia");if(tt)tt.value=terr.topografia||"Em nível";
   const ts=document.getElementById("id-terreno-situacao");if(ts)ts.value=terr.situacao||"Meio de quadra";
   // Padrão de construção
-  const padr=document.getElementById("id-padrao");if(padr)padr.value=ident.padrao||"Comum";
+  const padr=document.getElementById("id-padrao");if(padr)padr.value=ident.padrao||(currentVistoria&&currentVistoria.padrao)||"Comum";
   // Materiais (arrays — múltipla seleção). Compatível com formato antigo (string única).
   const mc=ident.materiais&&ident.materiais.cobertura;
   const mp=ident.materiais&&ident.materiais.paredes;
@@ -7782,7 +7811,7 @@ function _pdfAnexoI(pdf,ML,MT,MR,CW,PW,PH,MB,v){
   // === 2.1 TERRENO — Formato | Topografia | Situação (3 colunas com [X] nas opções) ===
   pdf.setFont("helvetica","bold");pdf.setFontSize(9.5);
   pdf.text("2.1 Terreno",ML,y);y+=5;
-  const terreno=id.terreno||{};
+  const terreno=id.terreno||v.terreno||{};
   const fmtSel=_semAcento(terreno.formato||"Retangular");
   const topoSel=_semAcento(terreno.topografia||"Em nivel");
   const sitSel=_semAcento(terreno.situacao||"Meio de quadra");
@@ -7898,7 +7927,7 @@ function _pdfAnexoI(pdf,ML,MT,MR,CW,PW,PH,MB,v){
   pdf.text("2.3 Padrão da Construção",ML,y);y+=5;
   const danos=calcularChecklistDanos(fotosPendentes);
   const linhasChk=_CHECKLIST_LINHAS;
-  const padraoSel=_semAcento(id.padrao||"Comum");
+  const padraoSel=_semAcento(id.padrao||v.padrao||"Comum");
   // Layout de colunas:
   // Elemento (48%) | Danos [Sim|Não] (12%) | Alto [Luxo|Fino] (14%) | Normal [Sup|Com] (14%) | Baixo [Mod|Pobre] (12%)
   const colElem2=CW*0.48;
