@@ -989,12 +989,21 @@ const auth=getAuth(fbApp);
 // falhar (navegador sem suporte, modo privado etc.), cai pro getFirestore padrão — o app
 // continua funcionando, só sem o cache offline do banco.
 let db;
-try{
-  db=initializeFirestore(fbApp,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})});
-}catch(e){
-  console.warn("[Firestore] persistência offline indisponível, usando modo padrão:",e);
-  db=getFirestore(fbApp);
+function _initDb(){
+  try{
+    db=initializeFirestore(fbApp,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})});
+  }catch(e){
+    // "already initialized" ou sem suporte → usa instância existente
+    try{db=getFirestore(fbApp);}catch(_){console.warn("[Firestore] fallback getFirestore:",_);}
+  }
 }
+_initDb();
+// Recuperação automática: se o client foi "terminated" (acontece após signOut diário
+// com persistentLocalCache), re-inicializa transparentemente.
+// Wrapping as queries internas já lidam, mas pra segurança extra:
+window.addEventListener("pageshow",()=>{
+  try{if(db&&db._terminated){console.warn("[Firestore] client terminated, re-init...");_initDb();}}catch(_){}
+});
 const fbStorage=getStorage(fbApp);
 
 // AMBIENTES é uma lista dinâmica: começa com a base fixa, e recebe cômodos custom carregados
@@ -1896,7 +1905,17 @@ window.carregarResumo=async()=>{
     let q;
     if(currentRole==="master"){q=query(collection(db,"vistorias"));}
     else{q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));}
-    const snap=await getDocs(q);
+    let snap;
+    try{snap=await getDocs(q);}catch(eDb){
+      // "client has already been terminated" → re-inicializa e tenta de novo
+      if(/terminated/i.test(eDb.message||"")){
+        console.warn("[Resumo] Client terminated, re-init...");
+        _initDb();
+        if(currentRole==="master"){q=query(collection(db,"vistorias"));}
+        else{q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));}
+        snap=await getDocs(q);
+      } else throw eDb;
+    }
     const docs=[];
     snap.forEach(d=>{
       const v={id:d.id,...d.data()};
