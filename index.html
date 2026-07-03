@@ -615,49 +615,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
         <input type="number" id="id-pavimentos" placeholder="Ex: 1, 2, 3..." min="1" max="50" inputmode="numeric">
       </div>
     </div>
-    <div class="card"><h2>Terreno</h2>
-      <div style="margin-bottom:12px"><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Formato</label>
-        <select id="id-terreno-formato" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px">
-          <option value="Retangular" selected>Retangular</option>
-          <option value="Trapezoidal">Trapezoidal</option>
-          <option value="Irregular">Irregular</option>
-          <option value="Outros">Outros</option>
-        </select>
-      </div>
-      <div style="margin-bottom:12px"><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Topografia</label>
-        <select id="id-terreno-topografia" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px">
-          <option value="Em nível" selected>Em nível</option>
-          <option value="Aclive">Aclive</option>
-          <option value="Declive">Declive</option>
-          <option value="Outros">Outros</option>
-        </select>
-      </div>
-      <div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Situação</label>
-        <select id="id-terreno-situacao" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px">
-          <option value="Meio de quadra" selected>Meio de quadra</option>
-          <option value="Nº de testadas">Nº de testadas</option>
-          <option value="Esquina">Esquina</option>
-          <option value="Vila">Vila</option>
-        </select>
-      </div>
-    </div>
-    <div class="card"><h2>Padrão de Construção</h2>
-      <p style="font-size:12px;color:#888;margin-bottom:10px">Padrão predominante do imóvel.</p>
-      <select id="id-padrao" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px">
-        <optgroup label="Alto">
-          <option value="Luxo">Alto — Luxo</option>
-          <option value="Fino">Alto — Fino</option>
-        </optgroup>
-        <optgroup label="Normal">
-          <option value="Superior">Normal — Superior</option>
-          <option value="Comum" selected>Normal — Comum</option>
-        </optgroup>
-        <optgroup label="Baixo">
-          <option value="Modesto">Baixo — Modesto</option>
-          <option value="Pobre">Baixo — Pobre</option>
-        </optgroup>
-      </select>
-    </div>
     <div class="card"><h2>Materiais</h2>
       <p style="font-size:12px;color:#888;margin-bottom:10px">Marque todas as opções que se aplicam. <span style="color:#dc2626">*</span></p>
       <div style="margin-bottom:14px">
@@ -5184,15 +5141,6 @@ function renderIdentificacao(){
   const garagVal=ident.garagem||"";
   document.querySelectorAll('input[name="id-garagem-r"]').forEach(r=>{r.checked=r.value===garagVal;});
   const p=document.getElementById("id-pavimentos");if(p)p.value=ident.pavimentos||"";
-  // Terreno (novo): formato, topografia, situação
-  // Pode vir de ident.terreno (se já editou na Identificação) ou de currentVistoria.terreno
-  // (se preencheu na Nova Vistoria e é a primeira vez na Identificação)
-  const terr=ident.terreno||(currentVistoria&&currentVistoria.terreno)||{};
-  const tf=document.getElementById("id-terreno-formato");if(tf)tf.value=terr.formato||"Retangular";
-  const tt=document.getElementById("id-terreno-topografia");if(tt)tt.value=terr.topografia||"Em nível";
-  const ts=document.getElementById("id-terreno-situacao");if(ts)ts.value=terr.situacao||"Meio de quadra";
-  // Padrão de construção
-  const padr=document.getElementById("id-padrao");if(padr)padr.value=ident.padrao||(currentVistoria&&currentVistoria.padrao)||"Comum";
   // Materiais (arrays — múltipla seleção). Compatível com formato antigo (string única).
   const mc=ident.materiais&&ident.materiais.cobertura;
   const mp=ident.materiais&&ident.materiais.paredes;
@@ -5230,12 +5178,6 @@ window.confirmarIdentificacao=()=>{
     zoneamento:document.getElementById("id-zoneamento").value||"Misto",
     garagem:(document.querySelector('input[name="id-garagem-r"]:checked')||{}).value||"",
     pavimentos:pavimentos,
-    terreno:{
-      formato:document.getElementById("id-terreno-formato").value||"Retangular",
-      topografia:document.getElementById("id-terreno-topografia").value||"Em nível",
-      situacao:document.getElementById("id-terreno-situacao").value||"Meio de quadra"
-    },
-    padrao:document.getElementById("id-padrao").value||"Comum",
     materiais:{
       cobertura:cobArr,
       paredes:parArr
@@ -7798,7 +7740,7 @@ function _pdfAnexoI(pdf,ML,MT,MR,CW,PW,PH,MB,v){
   const zoneSel=_semAcento(id.zoneamento);
   const colW=CW/3;
   // Cabeçalho da tabela (linha cinza claro)
-  const cabH=7;
+  const cabH=6;
   pdf.setFillColor(245,247,250);
   pdf.rect(ML,y,CW,cabH,"F");
   pdf.setDrawColor(180,180,180);pdf.setLineWidth(0.2);
@@ -7813,7 +7755,7 @@ function _pdfAnexoI(pdf,ML,MT,MR,CW,PW,PH,MB,v){
   pdf.setTextColor(0,0,0);
   y+=cabH;
   // Corpo da tabela
-  const altInfo=55;
+  const altInfo=48;
   pdf.rect(ML,y,CW,altInfo,"S");
   pdf.line(ML+colW,y,ML+colW,y+altInfo);
   pdf.line(ML+2*colW,y,ML+2*colW,y+altInfo);
@@ -7854,8 +7796,8 @@ function _pdfAnexoI(pdf,ML,MT,MR,CW,PW,PH,MB,v){
   const fmtSel=_semAcento(terreno.formato||"Retangular");
   const topoSel=_semAcento(terreno.topografia||"Em nivel");
   const sitSel=_semAcento(terreno.situacao||"Meio de quadra");
-  const terrCabH=6;
-  const terrColH=6*4; // 4 opções × 6mm cada
+  const terrCabH=5;
+  const terrColH=5*4; // 4 opções × 5mm cada
   const terrTotalH=terrCabH+terrColH;
   const terrColW=CW/3;
   // Cabeçalho azul: Formato | Topografia | Situação
@@ -7889,7 +7831,7 @@ function _pdfAnexoI(pdf,ML,MT,MR,CW,PW,PH,MB,v){
     const m=_semAcento(o)===sitSel;
     pdf.text((m?"[X] ":"[ ] ")+o,ML+2*terrColW+2,yBase+4+i*6);
   });
-  y+=terrTotalH+4;
+  y+=terrTotalH+3;
 
   // === 2.2 CARACTERÍSTICAS DO IMÓVEL — Característica | Detalhe Identificado ===
   pdf.setFont("helvetica","bold");pdf.setFontSize(9.5);
@@ -7933,7 +7875,7 @@ function _pdfAnexoI(pdf,ML,MT,MR,CW,PW,PH,MB,v){
     {label:"Paredes",texto:parArr.join(", ")},
     {label:"Estado de Conservação",render:yy=>renderOpcoes(["Bom","Regular","Ruim","Péssimo"],estadoSel,ML+coluna1W+2,yy)}
   ];
-  const linhaH2=7;
+  const linhaH2=6;
   const totalDescH=cabH+linhasDesc.length*linhaH2;
   // Cabeçalho
   pdf.setFillColor(245,247,250);
@@ -7959,11 +7901,11 @@ function _pdfAnexoI(pdf,ML,MT,MR,CW,PW,PH,MB,v){
     else pdf.text(l.texto||"",ML+coluna1W+2,y+4.7);
     y+=linhaH2;
   });
-  y+=6;
+  y+=4;
 
   // === 2.3 PADRÃO DA CONSTRUÇÃO — Elemento | Danos | Alto | Normal | Baixo ===
   // Garantir espaço: a tabela 2.3 precisa de ~53mm. Se não cabe, nova página com cabeçalho.
-  const altCab1=6,altCab2=5,altLinha=7;
+  const altCab1=5,altCab2=4,altLinha=6;
   const linhasChk=_CHECKLIST_LINHAS;
   const altTabela2_3=altCab1+altCab2+linhasChk.length*altLinha+10;
   if(y+altTabela2_3>PH-MB-12){
