@@ -571,6 +571,49 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
         <input type="number" id="id-pavimentos" placeholder="Ex: 1, 2, 3..." min="1" max="50" inputmode="numeric">
       </div>
     </div>
+    <div class="card"><h2>Terreno</h2>
+      <div style="margin-bottom:12px"><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Formato</label>
+        <select id="id-terreno-formato" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px">
+          <option value="Retangular" selected>Retangular</option>
+          <option value="Trapezoidal">Trapezoidal</option>
+          <option value="Irregular">Irregular</option>
+          <option value="Outros">Outros</option>
+        </select>
+      </div>
+      <div style="margin-bottom:12px"><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Topografia</label>
+        <select id="id-terreno-topografia" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px">
+          <option value="Em nível" selected>Em nível</option>
+          <option value="Aclive">Aclive</option>
+          <option value="Declive">Declive</option>
+          <option value="Outros">Outros</option>
+        </select>
+      </div>
+      <div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Situação</label>
+        <select id="id-terreno-situacao" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px">
+          <option value="Meio de quadra" selected>Meio de quadra</option>
+          <option value="Nº de testadas">Nº de testadas</option>
+          <option value="Esquina">Esquina</option>
+          <option value="Vila">Vila</option>
+        </select>
+      </div>
+    </div>
+    <div class="card"><h2>Padrão de Construção</h2>
+      <p style="font-size:12px;color:#888;margin-bottom:10px">Padrão predominante do imóvel.</p>
+      <select id="id-padrao" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px">
+        <optgroup label="Alto">
+          <option value="Luxo">Alto — Luxo</option>
+          <option value="Fino">Alto — Fino</option>
+        </optgroup>
+        <optgroup label="Normal">
+          <option value="Superior">Normal — Superior</option>
+          <option value="Comum" selected>Normal — Comum</option>
+        </optgroup>
+        <optgroup label="Baixo">
+          <option value="Modesto">Baixo — Modesto</option>
+          <option value="Pobre">Baixo — Pobre</option>
+        </optgroup>
+      </select>
+    </div>
     <div class="card"><h2>Materiais</h2>
       <p style="font-size:12px;color:#888;margin-bottom:10px">Marque todas as opções que se aplicam. <span style="color:#dc2626">*</span></p>
       <div style="margin-bottom:14px">
@@ -5078,6 +5121,13 @@ function renderIdentificacao(){
   const garagVal=ident.garagem||"";
   document.querySelectorAll('input[name="id-garagem-r"]').forEach(r=>{r.checked=r.value===garagVal;});
   const p=document.getElementById("id-pavimentos");if(p)p.value=ident.pavimentos||"";
+  // Terreno (novo): formato, topografia, situação
+  const terr=ident.terreno||{};
+  const tf=document.getElementById("id-terreno-formato");if(tf)tf.value=terr.formato||"Retangular";
+  const tt=document.getElementById("id-terreno-topografia");if(tt)tt.value=terr.topografia||"Em nível";
+  const ts=document.getElementById("id-terreno-situacao");if(ts)ts.value=terr.situacao||"Meio de quadra";
+  // Padrão de construção
+  const padr=document.getElementById("id-padrao");if(padr)padr.value=ident.padrao||"Comum";
   // Materiais (arrays — múltipla seleção). Compatível com formato antigo (string única).
   const mc=ident.materiais&&ident.materiais.cobertura;
   const mp=ident.materiais&&ident.materiais.paredes;
@@ -5115,6 +5165,12 @@ window.confirmarIdentificacao=()=>{
     zoneamento:document.getElementById("id-zoneamento").value||"Misto",
     garagem:(document.querySelector('input[name="id-garagem-r"]:checked')||{}).value||"",
     pavimentos:pavimentos,
+    terreno:{
+      formato:document.getElementById("id-terreno-formato").value||"Retangular",
+      topografia:document.getElementById("id-terreno-topografia").value||"Em nível",
+      situacao:document.getElementById("id-terreno-situacao").value||"Meio de quadra"
+    },
+    padrao:document.getElementById("id-padrao").value||"Comum",
     materiais:{
       cobertura:cobArr,
       paredes:parArr
@@ -7662,8 +7718,8 @@ function _pdfAnexoI(pdf,ML,MT,MR,CW,PW,PH,MB,v){
   y+=linhaH+4;
 
   // === 1.0 INFORMAÇÕES GERAIS — TABELA com 3 colunas e cabeçalho ===
-  pdf.setFont("helvetica","bold");pdf.setFontSize(10);
-  pdf.text("1.0 INFORMAÇÕES GERAIS",ML,y);y+=6;
+  pdf.setFont("helvetica","bold");pdf.setFontSize(9.5);
+  pdf.text("1.0 INFORMAÇÕES GERAIS",ML,y);y+=5;
   const id=v.identificacao||{};
   const sp=id.servicosPublicos||{};
   // Normalização sem acento — o select da Nova Vistoria usa "Servicos", "Terrea", "Galpao"
@@ -7720,8 +7776,57 @@ function _pdfAnexoI(pdf,ML,MT,MR,CW,PW,PH,MB,v){
   y+=altInfo+6;
 
   // === 2.0 DESCRIÇÃO DO IMÓVEL — TABELA de 2 colunas (Característica | Detalhe) ===
-  pdf.setFont("helvetica","bold");pdf.setFontSize(10);
-  pdf.text("2.0 DESCRIÇÃO DO IMÓVEL",ML,y);y+=6;
+  pdf.setFont("helvetica","bold");pdf.setFontSize(9.5);
+  pdf.text("2.0 DESCRIÇÃO DO IMÓVEL",ML,y);y+=5;
+
+  // === 2.1 TERRENO — Formato | Topografia | Situação (3 colunas com [X] nas opções) ===
+  pdf.setFont("helvetica","bold");pdf.setFontSize(9.5);
+  pdf.text("2.1 Terreno",ML,y);y+=5;
+  const terreno=id.terreno||{};
+  const fmtSel=_semAcento(terreno.formato||"Retangular");
+  const topoSel=_semAcento(terreno.topografia||"Em nivel");
+  const sitSel=_semAcento(terreno.situacao||"Meio de quadra");
+  const terrCabH=6;
+  const terrColH=6*4; // 4 opções × 6mm cada
+  const terrTotalH=terrCabH+terrColH;
+  const terrColW=CW/3;
+  // Cabeçalho azul: Formato | Topografia | Situação
+  pdf.setFillColor(245,247,250);
+  pdf.rect(ML,y,CW,terrCabH,"F");
+  pdf.setDrawColor(180,180,180);pdf.setLineWidth(0.2);
+  pdf.rect(ML,y,CW,terrTotalH,"S");
+  pdf.line(ML+terrColW,y,ML+terrColW,y+terrTotalH);
+  pdf.line(ML+2*terrColW,y,ML+2*terrColW,y+terrTotalH);
+  pdf.line(ML,y+terrCabH,ML+CW,y+terrCabH);
+  pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.setTextColor(60,60,60);
+  pdf.text("Formato",ML+terrColW/2,y+4,{align:"center"});
+  pdf.text("Topografia",ML+terrColW+terrColW/2,y+4,{align:"center"});
+  pdf.text("Situação",ML+2*terrColW+terrColW/2,y+4,{align:"center"});
+  pdf.setTextColor(0,0,0);
+  const yBase=y+terrCabH;
+  // Opções por coluna
+  const optsFmt=["Retangular","Trapezoidal","Irregular","Outros"];
+  const optsTop=["Em nível","Aclive","Declive","Outros"];
+  const optsSit=["Nº de testadas","Esquina","Meio de quadra","Vila"];
+  pdf.setFont("helvetica","normal");pdf.setFontSize(9);
+  optsFmt.forEach((o,i)=>{
+    const m=_semAcento(o)===fmtSel;
+    pdf.text((m?"[X] ":"[ ] ")+o,ML+2,yBase+4+i*6);
+  });
+  optsTop.forEach((o,i)=>{
+    const m=_semAcento(o)===topoSel;
+    pdf.text((m?"[X] ":"[ ] ")+o,ML+terrColW+2,yBase+4+i*6);
+  });
+  optsSit.forEach((o,i)=>{
+    const m=_semAcento(o)===sitSel;
+    pdf.text((m?"[X] ":"[ ] ")+o,ML+2*terrColW+2,yBase+4+i*6);
+  });
+  y+=terrTotalH+4;
+
+  // === 2.2 CARACTERÍSTICAS DO IMÓVEL — Característica | Detalhe Identificado ===
+  pdf.setFont("helvetica","bold");pdf.setFontSize(9.5);
+  pdf.text("2.2 Características do Imóvel",ML,y);y+=5;
+
   // Materiais agora são arrays. Compat: aceita string antiga. JUNTA COM VÍRGULA pra exibição.
   const _mc=id.materiais&&id.materiais.cobertura;
   const _mp=id.materiais&&id.materiais.paredes;
@@ -7788,36 +7893,79 @@ function _pdfAnexoI(pdf,ML,MT,MR,CW,PW,PH,MB,v){
   });
   y+=6;
 
-  // === 2.3 LISTA DE VERIFICAÇÃO — TABELA com Elemento | Apresenta Danos? ===
-  pdf.setFont("helvetica","bold");pdf.setFontSize(10);
-  pdf.text("2.3 LISTA DE VERIFICAÇÃO DE ELEMENTOS CONSTRUTIVOS",ML,y);y+=6;
+  // === 2.3 PADRÃO DA CONSTRUÇÃO — Elemento | Danos | Alto | Normal | Baixo ===
+  pdf.setFont("helvetica","bold");pdf.setFontSize(9.5);
+  pdf.text("2.3 Padrão da Construção",ML,y);y+=5;
   const danos=calcularChecklistDanos(fotosPendentes);
   const linhasChk=_CHECKLIST_LINHAS;
-  const colElem=CW*0.6,colDano=CW*0.4;
-  const altCab=7,altLinha=7;
-  const totalChkH=altCab+linhasChk.length*altLinha;
-  // Cabeçalho
+  const padraoSel=_semAcento(id.padrao||"Comum");
+  // Layout de colunas:
+  // Elemento (48%) | Danos [Sim|Não] (12%) | Alto [Luxo|Fino] (14%) | Normal [Sup|Com] (14%) | Baixo [Mod|Pobre] (12%)
+  const colElem2=CW*0.48;
+  const wDanos=CW*0.12; // Sim | Não
+  const wAlto=CW*0.14;  // Luxo | Fino
+  const wNormal=CW*0.14;// Sup° | Com.
+  const wBaixo=CW*0.12; // Mod. | Pobre
+  const altCab1=6,altCab2=5,altLinha=7;
+  const totalChkH=altCab1+altCab2+linhasChk.length*altLinha;
+  // === Cabeçalho de 2 níveis (com "Elemento Construtivo" mesclado nos 2) ===
   pdf.setFillColor(245,247,250);
-  pdf.rect(ML,y,CW,altCab,"F");
+  pdf.rect(ML,y,CW,altCab1+altCab2,"F");
   pdf.setDrawColor(180,180,180);pdf.setLineWidth(0.2);
-  pdf.rect(ML,y,CW,altCab,"S");
-  pdf.line(ML+colElem,y,ML+colElem,y+totalChkH);
-  pdf.setFont("helvetica","bold");pdf.setFontSize(9);
-  pdf.setTextColor(60,60,60);
-  pdf.text("Elemento Construtivo",ML+2,y+4.7);
-  pdf.text("Apresenta Danos?",ML+colElem+colDano/2,y+4.7,{align:"center"});
+  pdf.rect(ML,y,CW,totalChkH,"S");
+  // Linhas verticais principais (dividem os grupos)
+  const xDanos=ML+colElem2;
+  const xAlto=xDanos+wDanos;
+  const xNormal=xAlto+wAlto;
+  const xBaixo=xNormal+wNormal;
+  [xDanos,xAlto,xNormal,xBaixo].forEach(x=>pdf.line(x,y,x,y+totalChkH));
+  // Linha horizontal entre cabeçalho nível 1 e nível 2 — SÓ a partir de xDanos
+  // (a coluna "Elemento Construtivo" tem uma célula mesclada dos 2 níveis).
+  pdf.line(xDanos,y+altCab1,ML+CW,y+altCab1);
+  // "Elemento Construtivo" centralizado verticalmente nos 2 níveis
+  pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.setTextColor(60,60,60);
+  const yMerged=y+(altCab1+altCab2)/2+1.5;
+  pdf.text("Especificação",ML+2,yMerged);
+  // Cabeçalho nível 1 dos outros grupos
+  pdf.text("Danos",xDanos+wDanos/2,y+4.2,{align:"center"});
+  pdf.text("Alto",xAlto+wAlto/2,y+4.2,{align:"center"});
+  pdf.text("Normal",xNormal+wNormal/2,y+4.2,{align:"center"});
+  pdf.text("Baixo",xBaixo+wBaixo/2,y+4.2,{align:"center"});
+  // Cabeçalho nível 2: sub-colunas
+  pdf.setFontSize(7.5);
+  const yy2=y+altCab1+3.5;
+  pdf.text("Sim",xDanos+wDanos/4,yy2,{align:"center"});
+  pdf.text("Não",xDanos+3*wDanos/4,yy2,{align:"center"});
+  pdf.text("Luxo",xAlto+wAlto/4,yy2,{align:"center"});
+  pdf.text("Fino",xAlto+3*wAlto/4,yy2,{align:"center"});
+  pdf.text("Sup°",xNormal+wNormal/4,yy2,{align:"center"});
+  pdf.text("Com.",xNormal+3*wNormal/4,yy2,{align:"center"});
+  pdf.text("Mod.",xBaixo+wBaixo/4,yy2,{align:"center"});
+  pdf.text("Pobre",xBaixo+3*wBaixo/4,yy2,{align:"center"});
+  // Linhas verticais das sub-colunas (dentro de cada grupo)
+  pdf.line(xDanos+wDanos/2,y+altCab1,xDanos+wDanos/2,y+totalChkH);
+  pdf.line(xAlto+wAlto/2,y+altCab1,xAlto+wAlto/2,y+totalChkH);
+  pdf.line(xNormal+wNormal/2,y+altCab1,xNormal+wNormal/2,y+totalChkH);
+  pdf.line(xBaixo+wBaixo/2,y+altCab1,xBaixo+wBaixo/2,y+totalChkH);
   pdf.setTextColor(0,0,0);
-  y+=altCab;
-  // Linhas
-  pdf.setFontSize(8.5);
+  y+=altCab1+altCab2;
+  // === Linhas do checklist ===
+  // Mapa nome opção → coluna do padrão
+  const padraoOpts={"Luxo":xAlto+wAlto/4,"Fino":xAlto+3*wAlto/4,"Superior":xNormal+wNormal/4,"Comum":xNormal+3*wNormal/4,"Modesto":xBaixo+wBaixo/4,"Pobre":xBaixo+3*wBaixo/4};
+  const padraoNorm={"luxo":"Luxo","fino":"Fino","superior":"Superior","comum":"Comum","modesto":"Modesto","pobre":"Pobre"};
+  const padraoColX=padraoOpts[padraoNorm[padraoSel]]||padraoOpts["Comum"];
+  pdf.setFont("helvetica","normal");pdf.setFontSize(8.5);
   linhasChk.forEach(l=>{
     pdf.setDrawColor(180,180,180);pdf.setLineWidth(0.2);
-    pdf.rect(ML,y,CW,altLinha,"S");
-    pdf.line(ML+colElem,y,ML+colElem,y+altLinha);
-    pdf.setFont("helvetica","normal");
+    // Linhas horizontais internas
+    pdf.line(ML,y,ML+CW,y);
     pdf.text(l,ML+2,y+4.7);
     const temDano=danos[l]===true;
-    pdf.text(temDano?"Sim":"Não",ML+colElem+colDano/2,y+4.7,{align:"center"});
+    // "X" no sim ou no não conforme o dano
+    if(temDano)pdf.text("X",xDanos+wDanos/4,y+4.7,{align:"center"});
+    else pdf.text("X",xDanos+3*wDanos/4,y+4.7,{align:"center"});
+    // "X" na coluna do padrão selecionado (mesmo padrão pra todas as linhas)
+    pdf.text("X",padraoColX,y+4.7,{align:"center"});
     y+=altLinha;
   });
 }
