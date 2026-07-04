@@ -1878,12 +1878,17 @@ window.carregarResumo=async()=>{
       const v={id:d.id,...d.data()};
       const dfin=v.data_finalizacao&&v.data_finalizacao.seconds?v.data_finalizacao.seconds*1000:0;
       const dcri=v.criadoEm&&v.criadoEm.seconds?v.criadoEm.seconds*1000:0;
-      // FILTRO PERMISSIVO: inclui se QUALQUER uma das datas (1ª visita ou finalização)
-      // estiver no período. Isso garante que retornos finalizados no dia X apareçam
-      // quando o usuário filtra pelo dia X, mesmo se a 1ª visita tiver ocorrido antes.
+      // Fallback: se timestamps do Firestore não estão disponíveis (vistoria salva
+      // offline com serverTimestamp pendente), usa o campo v.data (string "03/07/2026")
+      let dstr=0;
+      if(!dcri&&!dfin&&v.data){
+        const p=v.data.split("/");
+        if(p.length===3)dstr=new Date(p[2]+"-"+p[1]+"-"+p[0]+"T12:00:00").getTime();
+      }
       const dcriIn=dcri>=tsIni&&dcri<=tsFim;
       const dfinIn=dfin>=tsIni&&dfin<=tsFim;
-      if(dcriIn||dfinIn)docs.push(v);
+      const dstrIn=dstr>=tsIni&&dstr<=tsFim;
+      if(dcriIn||dfinIn||dstrIn)docs.push(v);
     });
     _resumoVistoriasCache=docs;
     renderResumo(docs,de,ate);
@@ -6663,7 +6668,7 @@ window.finalizarVistoria=async()=>{
     }
     // Salvar Firebase (sem fotos — fotos vão para IndexedDB local-only) + download
     // OBS: assinaturaResp gravada no Firestore (necessária para regerar comprovante depois).
-    const vDoc={clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,coletorNome:currentVistoria.coletorNome,responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,ocupacao:currentVistoria.ocupacao,tipo:currentVistoria.tipo,tipoLaudo:currentVistoria.tipoLaudo||"simplificado",estado:currentVistoria.estado,idade:currentVistoria.idade,data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,userId:currentUser.uid,checklist:currentVistoria.checklist,ambientesExtras:ambientesExtras||[],observacoes:currentVistoria.observacoes,totalFotos:Object.keys(fotosPendentes).length,status:currentVistoria.statusVistoria||"concluida",pendente_retorno:isPendente,visitas:currentVistoria.visitas||1,criadoEm:serverTimestamp(),assinaturaResp:assinaturaData||null,identificacao:currentVistoria.identificacao||null,gps:currentVistoria.gps||null};
+    const vDoc={clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,coletorNome:currentVistoria.coletorNome,responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,ocupacao:currentVistoria.ocupacao,tipo:currentVistoria.tipo,tipoLaudo:currentVistoria.tipoLaudo||"simplificado",estado:currentVistoria.estado,idade:currentVistoria.idade,data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,userId:currentUser.uid,checklist:currentVistoria.checklist,ambientesExtras:ambientesExtras||[],observacoes:currentVistoria.observacoes,totalFotos:Object.keys(fotosPendentes).length,status:currentVistoria.statusVistoria||"concluida",pendente_retorno:isPendente,visitas:currentVistoria.visitas||1,criadoEm:serverTimestamp(),assinaturaResp:assinaturaData||null,identificacao:currentVistoria.identificacao||null,gps:currentVistoria.gps||null,terreno:currentVistoria.terreno||null,padrao:currentVistoria.padrao||null};
     // data_finalizacao: gravada apenas quando a vistoria está sendo finalizada (não pendente).
     // Esse campo serve à coluna "Data da vistoria" da planilha do cliente e nunca deve ser
     // sobrescrito em edições posteriores — preserva o momento real da finalização.
@@ -6728,31 +6733,39 @@ window.finalizarVistoria=async()=>{
         const docRef=doc(db,"vistorias",currentVistoria._retornoId);
         const{criadoEm,...vDocUpd}=vDoc;
         vDocUpd.atualizadoEm=serverTimestamp();
-        try{await updateDoc(docRef,vDocUpd);}catch(eUp){
-          // Client terminated → re-init e retry
-          if(/terminated/i.test(eUp.message||"")){_initDb();await updateDoc(doc(db,"vistorias",currentVistoria._retornoId),vDocUpd);}
-          else throw eUp;
+        try{
+          await Promise.race([
+            updateDoc(docRef,vDocUpd),
+            new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),5000))
+          ]);
+        }catch(eUp){
+          if(/terminated/i.test(eUp.message||"")){
+            try{_initDb();await Promise.race([updateDoc(doc(db,"vistorias",currentVistoria._retornoId),vDocUpd),new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),5000))]);}
+            catch(_){console.warn("Firestore update enfileirado (offline/timeout)");}
+          } else if(eUp.message==="timeout"){
+            console.warn("Firestore update timeout — escrita enfileirada no cache local");
+          } else if(eUp.code==="permission-denied"){throw eUp;}
+          else{console.warn("Firestore update enfileirado:",eUp.message||eUp);}
         }
         vRef={id:currentVistoria._retornoId};
       } else {
-        // OFFLINE-FIRST: gera o ID localmente ANTES de escrever. Com persistentLocalCache,
-        // setDoc enfileira a escrita se estiver offline — sincroniza quando o sinal voltar.
-        // Isso significa que a vistoria SEMPRE finaliza, mesmo sem sinal.
+        // OFFLINE-FIRST: gera o ID localmente. Com persistentLocalCache,
+        // setDoc enfileira a escrita offline — sincroniza quando o sinal voltar.
         const novoRef=doc(collection(db,"vistorias"));
-        try{await setDoc(novoRef,vDoc);}catch(eAdd){
-          // Client terminated → re-init e retry
+        try{
+          await Promise.race([
+            setDoc(novoRef,vDoc),
+            new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),5000))
+          ]);
+        }catch(eAdd){
           if(/terminated/i.test(eAdd.message||"")){
-            _initDb();
-            const novoRef2=doc(collection(db,"vistorias"));
-            await setDoc(novoRef2,vDoc);
-            vRef=novoRef2;
-          } else {
-            // Mesmo com erro (ex: rede), prossegue — persistentLocalCache enfileirou.
-            // Só lança se for erro de permissão (esse sim é real e não vai resolver sozinho).
-            if(eAdd.code==="permission-denied")throw eAdd;
-            console.warn("Firestore write enfileirado para sync posterior:",eAdd.message||eAdd);
-            vRef=novoRef; // usa o ID gerado localmente
-          }
+            try{_initDb();const r2=doc(collection(db,"vistorias"));await Promise.race([setDoc(r2,vDoc),new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),5000))]);vRef=r2;}
+            catch(_){console.warn("Firestore add enfileirado (offline/timeout)");vRef=novoRef;}
+          } else if(eAdd.message==="timeout"){
+            console.warn("Firestore add timeout — escrita enfileirada no cache local");
+            vRef=novoRef;
+          } else if(eAdd.code==="permission-denied"){throw eAdd;}
+          else{console.warn("Firestore add enfileirado:",eAdd.message||eAdd);vRef=novoRef;}
         }
         if(!vRef)vRef=novoRef;
       }
