@@ -648,6 +648,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
     <button id="hist-btn-selecionar" class="btn small" onclick="histToggleSelecao(true)" style="margin-right:4px">Selecionar</button>
     <button id="hist-btn-cancelar" class="btn small" onclick="histToggleSelecao(false)" style="display:none;margin-right:4px">Cancelar</button>
   </div>
+  <div id="hist-filtro-master" style="display:none;padding:8px 16px;background:#f9fafb;border-bottom:1px solid #e5e7eb">
+    <div style="display:flex;gap:8px">
+      <button class="btn small" onclick="_histSetModo('todos')" id="hist-btn-todos" style="flex:1;background:#1d4ed8;color:#fff">Todos</button>
+      <button class="btn small" onclick="_histSetModo('meus')" id="hist-btn-meus" style="flex:1">Apenas meus</button>
+    </div>
+  </div>
   <div id="hist-bulk-bar" style="display:none;background:#fff0f0;border-bottom:1px solid #fca5a5;padding:10px 16px;align-items:center;gap:10px;position:sticky;top:53px;z-index:90">
     <span id="hist-bulk-count" style="flex:1;font-size:13px;color:#7f1d1d;font-weight:500">0 selecionadas</span>
     <button class="btn small" onclick="histSelecionarTodas()" style="background:#fff;border-color:#fca5a5;color:#7f1d1d">Todas</button>
@@ -5361,15 +5367,41 @@ window.excluirSelecionadas=async()=>{
 let _histGruposAbertos=new Set();
 let _histScrollY=0;
 
+let _histModoMaster="todos";
+window._histSetModo=(modo)=>{
+  _histModoMaster=modo;
+  document.getElementById("hist-btn-todos").style.background=modo==="todos"?"#1d4ed8":"";
+  document.getElementById("hist-btn-todos").style.color=modo==="todos"?"#fff":"";
+  document.getElementById("hist-btn-meus").style.background=modo==="meus"?"#1d4ed8":"";
+  document.getElementById("hist-btn-meus").style.color=modo==="meus"?"#fff":"";
+  loadHistorico();
+};
+
 async function loadHistorico(){
   const el=document.getElementById("lista-historico");
   el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Carregando...</p>';
+  // Toggle visível só pra Master
+  const filtroDiv=document.getElementById("hist-filtro-master");
+  if(filtroDiv)filtroDiv.style.display=(currentRole==="master")?"block":"none";
   try{
-    const q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));
-    // OBS: query original buscava só do próprio user (cadastrador) — mesmo para Master.
-    // Mantive esse comportamento porque a tela se chama "Minhas vistorias". Master que
-    // queira ver as de outros usa o relatório/dashboard. (Confirmar com Thamyres se mudar.)
-    const snap=await getDocs(q);
+    // Master modo "todos": busca todas as vistorias da equipe
+    // Master modo "meus" e Cadastrador: só as próprias
+    let q;
+    const verTodos=(currentRole==="master"&&_histModoMaster==="todos");
+    if(verTodos){
+      q=query(collection(db,"vistorias"));
+    } else {
+      q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));
+    }
+    let snap;
+    try{snap=await getDocs(q);}catch(eDb){
+      if(/terminated/i.test(eDb.message||"")){
+        _initDb();
+        if(verTodos)q=query(collection(db,"vistorias"));
+        else q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));
+        snap=await getDocs(q);
+      } else throw eDb;
+    }
     if(snap.size===0){
       el.innerHTML='<div style="text-align:center;padding:48px 24px;color:#9ca3af"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="margin-bottom:12px;opacity:0.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg><p style="font-size:14px;margin:0">Nenhuma vistoria registrada</p></div>';
       return;
