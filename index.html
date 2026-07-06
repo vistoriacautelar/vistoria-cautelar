@@ -893,7 +893,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>{
     navigator.serviceWorker.register("sw.js",{scope:"./"})
-      .then(reg=>console.log("[PWA] Service Worker registrado:",reg.scope))
+      .then(reg=>{
+        console.log("[PWA] Service Worker registrado:",reg.scope);
+        // FORÇAR verificação de atualização a cada abertura do app.
+        // iOS Safari só checa automaticamente a cada 24h — insuficiente pra deploys frequentes.
+        // reg.update() força o browser a buscar o sw.js no servidor AGORA.
+        // Se o CACHE_VERSION mudou, o novo SW instala, skipWaiting ativa, e na próxima
+        // navegação (ou reload) o app já está atualizado.
+        reg.update().catch(()=>{});
+        // Detectar quando um novo SW está pronto e recarregar automaticamente
+        reg.addEventListener("updatefound",()=>{
+          const newSW=reg.installing;
+          if(!newSW)return;
+          newSW.addEventListener("statechange",()=>{
+            if(newSW.state==="activated"){
+              // Novo SW ativo — recarrega pra pegar a versão nova
+              // Só recarrega se NÃO estiver no meio de uma vistoria (pra não perder fotos)
+              if(!currentVistoria||!Object.keys(fotosPendentes||{}).length){
+                console.log("[PWA] Nova versão detectada, recarregando...");
+                window.location.reload();
+              } else {
+                console.log("[PWA] Nova versão disponível — será aplicada na próxima abertura (vistoria em andamento).");
+                showToast("Nova versão disponível! Será aplicada ao terminar a vistoria.",5000);
+              }
+            }
+          });
+        });
+      })
       .catch(e=>console.warn("[PWA] Falha ao registrar SW:",e));
   });
 }
