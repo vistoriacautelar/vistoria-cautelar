@@ -433,7 +433,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
         <div style="flex:1"><label>Bairro</label><input type="text" id="nv-bairro" placeholder="Bairro" oninput="capitalizarInput(this)"></div>
         <button class="btn small" id="nv-detectar-bairro-btn" onclick="detectarBairroPorGPS()" style="margin-bottom:0;white-space:nowrap;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd">📍 Detectar</button>
       </div>
-      <div class="field"><label>Complemento</label><input type="text" id="nv-comp" placeholder="Casa 1, Ap 23..." oninput="capitalizarInput(this)"></div>
+      <div class="field"><label>Complemento</label><input type="text" id="nv-comp" placeholder="Casa 1, Ap 23..." maxlength="30" oninput="capitalizarInput(this)"></div>
     </div>
     <div class="card"><h2>Tipo de laudo</h2>
       <div class="laudo-tipo-grid">
@@ -5047,13 +5047,20 @@ function desenharComOrientacao(img,w,h,orientation,quality){
 
 function recomprimirParaPDF(dataUrl,maxDim,quality){
   return new Promise((res,rej)=>{
+    if(!dataUrl||dataUrl.length<100){rej(new Error("dataUrl vazio"));return;}
     const orientation=lerEXIFOrientation(dataUrl);
     if(orientation!==1){
       console.log("[PDF-FOTO] EXIF orientation:",orientation);
     }
     const dimsBin=lerDimensoesJPEG(dataUrl);
     const img=new Image();
+    // Timeout: se a imagem não carregar em 10s, usa o dataUrl original
+    const timeout=setTimeout(()=>{
+      console.warn("[PDF-FOTO] Timeout ao carregar imagem — usando original");
+      res(dataUrl);
+    },10000);
     img.onload=()=>{
+      clearTimeout(timeout);
       try{
         const nW=img.naturalWidth,nH=img.naturalHeight;
         const binW=(dimsBin&&dimsBin.w>0)?dimsBin.w:nW;
@@ -5067,9 +5074,16 @@ function recomprimirParaPDF(dataUrl,maxDim,quality){
         const aplicarRotacaoManual=(orientation!==1)&&!navegadorRotacionou;
         const c=desenharComOrientacao(img,w,h,aplicarRotacaoManual?orientation:1,quality);
         res(c.toDataURL("image/jpeg",quality));
-      }catch(e){rej(e);}
+      }catch(e){
+        console.warn("[PDF-FOTO] Erro ao recomprimir — usando original:",e.message);
+        res(dataUrl); // fallback: usa a foto sem recompressão
+      }
     };
-    img.onerror=()=>rej(new Error("Falha ao carregar imagem"));
+    img.onerror=()=>{
+      clearTimeout(timeout);
+      console.warn("[PDF-FOTO] Erro ao carregar imagem — usando original");
+      res(dataUrl); // fallback: usa a foto sem recompressão
+    };
     img.src=dataUrl;
   });
 }
@@ -7197,7 +7211,20 @@ function getImgDims(dataUrl){
 // yield para liberar thread entre fotos pesadas
 function yieldThread(){return new Promise(res=>setTimeout(res,0));}
 
-function addImgPDF(pdf,dataUrl,x,y,w,h){return new Promise(async res=>{await yieldThread();try{pdf.addImage(dataUrl,"JPEG",x,y,w,h,"","FAST");}catch(e){}res();});}
+function addImgPDF(pdf,dataUrl,x,y,w,h){
+  return new Promise(async res=>{
+    await yieldThread();
+    if(!dataUrl||dataUrl.length<100){console.warn("[PDF] dataUrl vazio/inválido");res();return;}
+    try{
+      pdf.addImage(dataUrl,"JPEG",x,y,w,h,"","FAST");
+    }catch(e){
+      // Retry: tenta sem compression mode "FAST" (alguns browsers têm bug com esse modo)
+      try{pdf.addImage(dataUrl,"JPEG",x,y,w,h);}
+      catch(e2){console.error("[PDF] Falha ao inserir foto:",e2.message||e2);}
+    }
+    res();
+  });
+}
 async function shareOrDownload(blob,nome,mime){
   // iOS Chrome/Safari: navigator.share funciona melhor que a.click() pra PDFs.
   // Mostra a share sheet nativa — o cadastrador escolhe salvar em Arquivos, WhatsApp, etc.
