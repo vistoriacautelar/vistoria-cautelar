@@ -3591,11 +3591,22 @@ window.detectarBairroPorGPS=async()=>{
     alert(msg);
     return;
   }
-  // ETAPA 2: reverse geocoding via Nominatim
+  // ETAPA 2: reverse geocoding via Nominatim (com retry pra sinal oscilante)
   try{
     const url=`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&accept-language=pt-BR`;
-    const resp=await fetch(url);
-    if(!resp.ok)throw new Error("Servidor respondeu "+resp.status);
+    let resp=null;
+    let lastErr=null;
+    for(let tentativa=1;tentativa<=3;tentativa++){
+      try{
+        if(btn&&tentativa>1){btn.textContent="Tentativa "+tentativa+"/3...";}
+        resp=await fetch(url);
+        if(resp.ok)break;
+        lastErr=new Error("Servidor respondeu "+resp.status);
+        resp=null;
+      }catch(ef){lastErr=ef;resp=null;}
+      if(tentativa<3)await new Promise(r=>setTimeout(r,1500));
+    }
+    if(!resp||!resp.ok)throw lastErr||new Error("Falha após 3 tentativas");
     const data=await resp.json();
     const a=data&&data.address||{};
     const bairro=a.suburb||a.neighbourhood||a.city_district||a.district||a.quarter||a.village||"";
