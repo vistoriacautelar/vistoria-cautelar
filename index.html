@@ -230,6 +230,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div id="perfil-arm-resumo" style="font-size:13px;color:#555;margin-bottom:10px">Carregando...</div>
       <button class="btn" onclick="goTo('s-armazenamento')">Gerenciar fotos locais</button>
     </div>
+    <div class="card" id="perfil-gdrive-card" style="display:none"><h2>☁️ Google Drive</h2>
+      <p style="font-size:13px;color:#888;margin-bottom:10px">Envie automaticamente PDFs e fotos para o Google Drive após cada finalização.</p>
+      <div id="perfil-gdrive-status" style="font-size:13px;color:#555;margin-bottom:10px"></div>
+      <button class="btn primary" id="perfil-gdrive-btn" onclick="gdrive_conectar()">Conectar Google Drive</button>
+    </div>
     <div class="card" style="background:#fef3c7;border-color:#fcd34d"><h2 style="color:#92400e">🔬 Diagnóstico (temporário)</h2>
       <p style="font-size:13px;color:#78350f;margin-bottom:10px">Após gerar um PDF, toque aqui para ver os logs técnicos. Útil para investigar problemas de rotação de foto.</p>
       <button class="btn" style="background:#fbbf24;color:#78350f;border-color:#f59e0b" onclick="verLogsPDF()">📋 Ver Logs do PDF</button>
@@ -272,6 +277,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       </div>
       <div class="field"><label>Cliente</label><select id="resumo-cliente-export"><option value="">Todos os clientes</option></select></div>
       <button class="btn success" onclick="exportarPlanilhaCliente()">Exportar Planilha Cliente</button>
+    </div>
+    <div class="card" id="resumo-gdrive-card" style="display:none">
+      <h2>☁️ Google Drive</h2>
+      <p style="font-size:13px;color:#888;margin-bottom:10px">Envia PDFs e fotos de todas as vistorias do período para o Google Drive.</p>
+      <button class="btn primary" onclick="gdrive_exportarResumo()">📁 Exportar pro Drive</button>
     </div>
   </div>
 </div>
@@ -885,6 +895,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <!-- ===== PWA: Service Worker + prompt de instalação ===== -->
 <script>
@@ -1675,6 +1686,8 @@ onAuthStateChanged(auth,async user=>{
     }catch(e){}
     goTo("s-dash");
     verificarRascunho();
+    // Google Drive: se Master, tenta refresh do token se necessário
+    gdrive_tentarRefreshSeNecessario();
   }else{goTo("s-login");}
 });
 
@@ -1925,6 +1938,10 @@ window.carregarResumo=async()=>{
     _resumoVistoriasCache=docs;
     renderResumo(docs,de,ate);
     document.getElementById("resumo-export-card").style.display=docs.length?"block":"none";
+    // Google Drive export card (async check)
+    const gdc=document.getElementById("resumo-gdrive-card");
+    if(gdc&&docs.length){gdrive_isConnectedAsync().then(c=>{gdc.style.display=c?"block":"none";});}
+    else if(gdc){gdc.style.display="none";}
     // Pré-preenche os campos de data da exportação com o mesmo período do resumo.
     // Usuário pode estreitar pra exportar um sub-intervalo sem recarregar.
     const elExpDe=document.getElementById("resumo-export-de");
@@ -2274,6 +2291,12 @@ function renderPerfil(){
   el.onmouseup=el.ontouchend=e=>{e.preventDefault();drawing=false;};
   // Resumo de armazenamento local (assíncrono)
   _atualizarResumoArmazenamento();
+  // Google Drive card (todos — Master configura no celular de cada cadastrador)
+  const gCard=document.getElementById("perfil-gdrive-card");
+  if(gCard){
+    gCard.style.display="block";
+    gdrive_atualizarStatus();
+  }
 }
 
 async function _atualizarResumoArmazenamento(){
@@ -5727,8 +5750,21 @@ function abrirDetalheVistoria(id,data){
     try{fotos=await localBuscarFotos(id);}catch(e){}
     const dadosCompletos={...data};
     if(fotos&&fotos.length){dadosCompletos.fotosBase64=fotos;}
+    // Fallback: se não tem fotos locais, tenta buscar do Google Drive
     if(!dadosCompletos.fotosBase64||!dadosCompletos.fotosBase64.length){
-      return alert("As fotos desta vistoria não estão disponíveis neste dispositivo.\n\nA regeração de PDF só funciona no celular onde a vistoria foi originalmente gerada.");
+      const driveOk=await gdrive_isConnectedAsync();
+      if(driveOk){
+        btnPDF.textContent="Buscando fotos no Drive...";btnPDF.disabled=true;
+        try{
+          const drFotos=await gdrive_buscarFotosVistoria(data);
+          if(drFotos&&drFotos.length){dadosCompletos.fotosBase64=drFotos;}
+        }catch(eg){console.warn("GDrive fallback fotos:",eg);}
+        btnPDF.textContent="Gerar PDF Novamente";btnPDF.disabled=false;
+      }
+    }
+    if(!dadosCompletos.fotosBase64||!dadosCompletos.fotosBase64.length){
+      const driveOk2=await gdrive_isConnectedAsync();
+      return alert("As fotos desta vistoria não estão disponíveis neste dispositivo"+(driveOk2?"":" e o Google Drive não está conectado")+".\n\nConecte o Google Drive em Perfil ou use o celular onde a vistoria foi gerada.");
     }
     regeRarPDF(dadosCompletos);
   };c.appendChild(btnPDF);
@@ -6766,7 +6802,8 @@ window.finalizarVistoria=async()=>{
     }
     setStatus("Gerando PDF...");
     await yieldThread();
-    await shareOrDownload(pdf.output("blob"),nomeBase+".pdf","application/pdf");
+    const _pdfBlobGerado=pdf.output("blob");
+    await shareOrDownload(_pdfBlobGerado,nomeBase+".pdf","application/pdf");
     // Restaurar fotos originais (qualidade máxima) ANTES do ZIP — a recompressão só serve para o PDF
     fotosPendentes=_backupFotos;
 
@@ -6917,6 +6954,17 @@ window.finalizarVistoria=async()=>{
       const btnZip=document.getElementById("fin-banner-btn-zip");
       if(btnZip){btnZip.disabled=false;btnZip.style.opacity="1";btnZip.textContent="📦 Baixar Fotos (ZIP) novamente";}
     }
+
+    // (3) Google Drive — upload automático em background (best-effort)
+    // gdrive_uploadVistoria verifica token no Firestore internamente
+    if(_vDocComprov&&!window._modoRegerar){
+      (async()=>{
+        try{
+          await gdrive_uploadVistoria(_vDocComprov,_pdfBlobGerado,_backupFotos,nomeBase);
+        }catch(eg){console.error("GDrive auto-upload:",eg);}
+      })();
+    }
+
   }catch(e){
     console.error(e);
     // Restaurar estado: sessão de vistoria deve permanecer disponível para nova tentativa
@@ -8590,6 +8638,477 @@ function pdfFooter(pdf,PW,PH,ML,MR,MB,p){
   pdf.text((p.endereco||""),PW/2,footTop+7.5,{align:"center"});
   pdf.text((p.cnpj?"CNPJ: "+p.cnpj:"")+(p.email?"  |  "+p.email:""),PW/2,footTop+10.5,{align:"center"});
   pdf.setTextColor(0,0,0);
+}
+
+// ============================================================================
+// GOOGLE DRIVE INTEGRATION
+// ============================================================================
+// Token compartilhado via Firestore (collection "config", doc "drive").
+// Master conecta UMA VEZ → token fica disponível para TODOS os aparelhos.
+// Cadastradores não precisam de conta Google.
+// Upload é best-effort em background — se falhar, vistoria não é afetada.
+// ============================================================================
+
+const GDRIVE_CLIENT_ID="294138153904-havjd0omk0atjpvdpseevuq4ggt8rbkn.apps.googleusercontent.com";
+const GDRIVE_SCOPE="https://www.googleapis.com/auth/drive.file";
+
+// Cache local para não ler Firestore a cada chamada
+let _gdriveTokenCache=null;
+let _gdriveTokenCacheTime=0;
+const GDRIVE_CACHE_TTL=60000; // 1 min
+
+// --- Ler token do Firestore ---
+async function gdrive_getTokenFromFirestore(){
+  // Cache local rápido
+  if(_gdriveTokenCache&&Date.now()-_gdriveTokenCacheTime<GDRIVE_CACHE_TTL){
+    if(Date.now()<_gdriveTokenCache.expiry)return _gdriveTokenCache;
+    _gdriveTokenCache=null;
+  }
+  try{
+    const snap=await getDoc(doc(db,"config","drive"));
+    if(!snap.exists())return null;
+    const d=snap.data();
+    if(!d.accessToken)return null;
+    _gdriveTokenCache=d;
+    _gdriveTokenCacheTime=Date.now();
+    if(Date.now()>=d.expiry)return null; // expirado
+    return d;
+  }catch(e){console.warn("GDrive getToken:",e);return null;}
+}
+
+// --- Salvar token no Firestore ---
+async function gdrive_saveTokenToFirestore(accessToken,expiresIn,email){
+  const data={
+    accessToken,
+    expiry:Date.now()+(expiresIn-300)*1000, // margem de 5min
+    email:email||"",
+    connectedBy:currentUser?currentUser.uid:"",
+    connectedAt:new Date().toISOString()
+  };
+  await setDoc(doc(db,"config","drive"),data);
+  _gdriveTokenCache=data;
+  _gdriveTokenCacheTime=Date.now();
+}
+
+// --- Limpar token ---
+async function gdrive_clearTokenFirestore(){
+  try{
+    await setDoc(doc(db,"config","drive"),{accessToken:"",expiry:0,email:"",connectedBy:"",connectedAt:""});
+  }catch(e){console.warn("GDrive clear:",e);}
+  _gdriveTokenCache=null;
+}
+
+// --- Verificar se está conectado ---
+async function gdrive_isConnectedAsync(){
+  const t=await gdrive_getTokenFromFirestore();
+  return !!t;
+}
+// Versão síncrona para UI (usa cache)
+function gdrive_isConnected(){
+  if(_gdriveTokenCache&&Date.now()<(_gdriveTokenCache.expiry||0))return true;
+  return false;
+}
+
+// --- UI status no Perfil ---
+async function gdrive_atualizarStatus(){
+  const el=document.getElementById("perfil-gdrive-status");
+  const btn=document.getElementById("perfil-gdrive-btn");
+  if(!el||!btn)return;
+  const isMaster=currentRole&&currentRole.toLowerCase()==="master";
+  const tokenData=await gdrive_getTokenFromFirestore();
+  if(tokenData){
+    const email=tokenData.email||"";
+    el.innerHTML='<span style="color:#065f46">✅ Conectado</span>'+(email?' — <strong>'+email+'</strong>':'');
+    if(isMaster){
+      btn.textContent="Desconectar Google Drive";
+      btn.className="btn danger";
+      btn.style.display="";
+      btn.onclick=()=>{gdrive_desconectar();};
+    }else{
+      btn.style.display="none"; // Cadastrador não desconecta
+    }
+  }else{
+    if(isMaster){
+      el.innerHTML='<span style="color:#888">Não conectado</span>';
+      btn.textContent="Conectar Google Drive";
+      btn.className="btn primary";
+      btn.style.display="";
+      btn.onclick=()=>{gdrive_conectar();};
+    }else{
+      el.innerHTML='<span style="color:#888">Drive não configurado. Peça ao Master para conectar.</span>';
+      btn.style.display="none";
+    }
+  }
+}
+
+// --- Connect (só Master) ---
+window.gdrive_conectar=async function(){
+  if(typeof google==="undefined"||!google.accounts||!google.accounts.oauth2){
+    showToast("Biblioteca Google não carregou. Verifique sua conexão.",3500);
+    return;
+  }
+  const client=google.accounts.oauth2.initTokenClient({
+    client_id:GDRIVE_CLIENT_ID,
+    scope:GDRIVE_SCOPE,
+    callback:async(resp)=>{
+      if(resp.error){
+        console.error("GDrive OAuth error:",resp);
+        showToast("Erro ao conectar: "+(resp.error_description||resp.error),3500);
+        return;
+      }
+      // Buscar email
+      let email="";
+      try{
+        const r=await fetch("https://www.googleapis.com/oauth2/v2/userinfo",{headers:{Authorization:"Bearer "+resp.access_token}});
+        if(r.ok){const d=await r.json();email=d.email||"";}
+      }catch(e){}
+      // Salvar no Firestore (disponível para todos os aparelhos)
+      await gdrive_saveTokenToFirestore(resp.access_token,parseInt(resp.expires_in,10),email);
+      showToast("Google Drive conectado!",2500);
+      gdrive_atualizarStatus();
+    }
+  });
+  client.requestAccessToken();
+};
+
+// --- Disconnect (só Master) ---
+window.gdrive_desconectar=async function(){
+  const tokenData=await gdrive_getTokenFromFirestore();
+  if(tokenData&&tokenData.accessToken){
+    try{
+      google.accounts.oauth2.revoke(tokenData.accessToken,()=>{console.log("GDrive token revoked");});
+    }catch(e){console.warn("GDrive revoke:",e);}
+  }
+  await gdrive_clearTokenFirestore();
+  showToast("Google Drive desconectado.",2500);
+  gdrive_atualizarStatus();
+};
+
+// --- Obter token válido para upload ---
+// Tenta ler do Firestore. Se expirado e estamos no device do Master, tenta refresh silencioso.
+async function gdrive_ensureToken(){
+  const tokenData=await gdrive_getTokenFromFirestore();
+  if(tokenData)return tokenData.accessToken;
+  // Token expirado ou ausente — tenta refresh se for Master
+  if(currentRole&&currentRole.toLowerCase()==="master"&&typeof google!=="undefined"&&google.accounts&&google.accounts.oauth2){
+    return new Promise((resolve)=>{
+      const client=google.accounts.oauth2.initTokenClient({
+        client_id:GDRIVE_CLIENT_ID,
+        scope:GDRIVE_SCOPE,
+        prompt:"",
+        callback:async(resp)=>{
+          if(resp.error||!resp.access_token){resolve(null);return;}
+          let email="";
+          try{
+            const r=await fetch("https://www.googleapis.com/oauth2/v2/userinfo",{headers:{Authorization:"Bearer "+resp.access_token}});
+            if(r.ok){const d=await r.json();email=d.email||"";}
+          }catch(e){}
+          await gdrive_saveTokenToFirestore(resp.access_token,parseInt(resp.expires_in,10),email);
+          resolve(resp.access_token);
+        }
+      });
+      client.requestAccessToken();
+    });
+  }
+  return null;
+}
+
+// --- Find or create folder ---
+async function gdrive_findOrCreateFolder(token,name,parentId){
+  let q="mimeType='application/vnd.google-apps.folder' and name='"+name.replace(/'/g,"\\'")+"' and trashed=false";
+  if(parentId)q+=" and '"+parentId+"' in parents";
+  const sr=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id,name)&spaces=drive",{
+    headers:{Authorization:"Bearer "+token}
+  });
+  if(!sr.ok)throw new Error("GDrive search failed: "+sr.status);
+  const sd=await sr.json();
+  if(sd.files&&sd.files.length>0)return sd.files[0].id;
+  const meta={name,mimeType:"application/vnd.google-apps.folder"};
+  if(parentId)meta.parents=[parentId];
+  const cr=await fetch("https://www.googleapis.com/drive/v3/files",{
+    method:"POST",
+    headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
+    body:JSON.stringify(meta)
+  });
+  if(!cr.ok)throw new Error("GDrive folder create failed: "+cr.status);
+  const cd=await cr.json();
+  return cd.id;
+}
+
+// --- Upload file to Drive ---
+async function gdrive_uploadFile(token,fileName,blob,parentId){
+  const metadata={name:fileName};
+  if(parentId)metadata.parents=[parentId];
+  const form=new FormData();
+  form.append("metadata",new Blob([JSON.stringify(metadata)],{type:"application/json"}));
+  form.append("file",blob);
+  const r=await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name",{
+    method:"POST",
+    headers:{Authorization:"Bearer "+token},
+    body:form
+  });
+  if(!r.ok)throw new Error("GDrive upload failed: "+r.status);
+  return await r.json();
+}
+
+// --- Fila de retry para uploads que falharam por token expirado ---
+const GDRIVE_QUEUE_DB="vistoria-gdrive-queue";
+const GDRIVE_QUEUE_STORE="queue";
+let _gdriveQueueDB=null;
+
+function gdriveQueueDB(){
+  if(_gdriveQueueDB)return Promise.resolve(_gdriveQueueDB);
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open(GDRIVE_QUEUE_DB,1);
+    req.onupgradeneeded=()=>{
+      const db=req.result;
+      if(!db.objectStoreNames.contains(GDRIVE_QUEUE_STORE)){
+        db.createObjectStore(GDRIVE_QUEUE_STORE,{keyPath:"id",autoIncrement:true});
+      }
+    };
+    req.onsuccess=()=>{_gdriveQueueDB=req.result;res(_gdriveQueueDB);};
+    req.onerror=()=>rej(req.error);
+  });
+}
+
+async function gdriveQueueAdd(vistoriaId,vDoc,pdfBlob,nomeBase){
+  try{
+    const db=await gdriveQueueDB();
+    const tx=db.transaction(GDRIVE_QUEUE_STORE,"readwrite");
+    // Converter PDF blob pra ArrayBuffer pra serializar no IndexedDB
+    let pdfData=null;
+    if(pdfBlob){pdfData=await pdfBlob.arrayBuffer();}
+    tx.objectStore(GDRIVE_QUEUE_STORE).put({
+      vistoriaId,vDoc,pdfData,nomeBase,
+      createdAt:Date.now()
+    });
+    await new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=rej;});
+    console.log("[GDrive Queue] Vistoria enfileirada:",vistoriaId);
+  }catch(e){console.warn("[GDrive Queue] Falha ao enfileirar:",e);}
+}
+
+async function gdriveQueueGetAll(){
+  try{
+    const db=await gdriveQueueDB();
+    const tx=db.transaction(GDRIVE_QUEUE_STORE,"readonly");
+    return new Promise((res,rej)=>{
+      const req=tx.objectStore(GDRIVE_QUEUE_STORE).getAll();
+      req.onsuccess=()=>res(req.result||[]);
+      req.onerror=()=>rej(req.error);
+    });
+  }catch(e){return [];}
+}
+
+async function gdriveQueueRemove(id){
+  try{
+    const db=await gdriveQueueDB();
+    const tx=db.transaction(GDRIVE_QUEUE_STORE,"readwrite");
+    tx.objectStore(GDRIVE_QUEUE_STORE).delete(id);
+    await new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=rej;});
+  }catch(e){}
+}
+
+// --- Upload vistoria completa (PDF + fotos) ---
+// Se token indisponível: enfileira pra retry posterior.
+// Estrutura: Vistorias / [Cliente] / [Data]-[Endereço] / {Laudo.pdf, fotos/}
+async function gdrive_uploadVistoria(vDoc,pdfBlob,fotosMap,nomeBase,opts){
+  opts=opts||{};
+  const token=await gdrive_ensureToken();
+  if(!token){
+    // Sem token — enfileira se tem vistoriaId (e não é retry, pra evitar loop)
+    if(!opts._fromQueue&&vDoc&&vDoc.id){
+      await gdriveQueueAdd(vDoc.id,vDoc,pdfBlob,nomeBase);
+    }
+    return;
+  }
+  try{
+    const rootId=await gdrive_findOrCreateFolder(token,"Vistorias",null);
+    const clienteNome=(vDoc.clienteNome||vDoc.clienteId||"Sem Cliente").replace(/[\/\\:*?"<>|]/g,"_");
+    const clienteId=await gdrive_findOrCreateFolder(token,clienteNome,rootId);
+    const dataStr=(vDoc.data_finalizacao||new Date().toISOString()).slice(0,10).replace(/-/g,"");
+    const endRua=((vDoc.endereco&&vDoc.endereco.rua)||"sem-endereco").substring(0,60).replace(/[\/\\:*?"<>|]/g,"_");
+    const endNum=(vDoc.endereco&&vDoc.endereco.numero)||"";
+    const pastaVistoria=dataStr+"-"+endRua+(endNum?"-"+endNum:"");
+    const vistId=await gdrive_findOrCreateFolder(token,pastaVistoria,clienteId);
+    if(pdfBlob){
+      await gdrive_uploadFile(token,(nomeBase||"Laudo")+".pdf",pdfBlob,vistId);
+    }
+    if(fotosMap&&Object.keys(fotosMap).length>0){
+      const fotosDir=await gdrive_findOrCreateFolder(token,"fotos",vistId);
+      const entries=Object.entries(fotosMap);
+      for(let i=0;i<entries.length;i++){
+        const [fotoId,fotoObj]=entries[i];
+        if(!fotoObj||!fotoObj.dataUrl)continue;
+        try{
+          const resp=await fetch(fotoObj.dataUrl);
+          const fBlob=await resp.blob();
+          const ext=fotoObj.dataUrl.startsWith("data:image/png")?"png":"jpg";
+          const ambNome=(fotoObj.ambiente||"foto").replace(/\s+/g,"_").replace(/[\/\\:*?"<>|]/g,"");
+          const fName="foto_"+(i+1).toString().padStart(2,"0")+"_"+ambNome+"."+ext;
+          await gdrive_uploadFile(token,fName,fBlob,fotosDir);
+        }catch(ef){console.warn("GDrive foto upload falhou:",fotoId,ef);}
+      }
+    }
+    showToast("📁 Salvo no Drive",3000);
+  }catch(e){
+    console.error("[GDrive] Upload falhou:",e);
+    // Enfileira se falhou por erro de rede/auth (e não é retry)
+    if(!opts._fromQueue&&vDoc&&vDoc.id){
+      await gdriveQueueAdd(vDoc.id,vDoc,pdfBlob,nomeBase);
+    }
+  }
+}
+
+// --- Processar fila de retry ---
+let _gdriveQueueProcessing=false;
+async function gdrive_processQueue(){
+  if(_gdriveQueueProcessing)return;
+  _gdriveQueueProcessing=true;
+  try{
+    const items=await gdriveQueueGetAll();
+    if(!items.length)return;
+    const token=await gdrive_ensureToken();
+    if(!token)return; // ainda sem token, tenta na próxima
+    let ok=0;
+    for(const item of items){
+      try{
+        // Recuperar fotos do IndexedDB local
+        let fotosMap={};
+        try{
+          const fotosArr=await localBuscarFotos(item.vistoriaId);
+          if(fotosArr&&fotosArr.length){
+            fotosArr.forEach((f,i)=>{fotosMap["f"+i]=f;});
+          }
+        }catch(e){}
+        // Reconstituir PDF blob se disponível
+        let pdfBlob=null;
+        if(item.pdfData){
+          pdfBlob=new Blob([item.pdfData],{type:"application/pdf"});
+        }
+        await gdrive_uploadVistoria(item.vDoc,pdfBlob,fotosMap,item.nomeBase,{_fromQueue:true});
+        await gdriveQueueRemove(item.id);
+        ok++;
+      }catch(e){console.warn("[GDrive Queue] Item falhou:",item.id,e);}
+    }
+    if(ok)console.log("[GDrive Queue] "+ok+"/"+items.length+" enviadas com sucesso.");
+  }catch(e){console.warn("[GDrive Queue] Erro:",e);}
+  finally{_gdriveQueueProcessing=false;}
+}
+
+// --- Buscar fotos de uma vistoria no Drive (fallback para Gerar PDF Novamente) ---
+async function gdrive_buscarFotosVistoria(vDoc){
+  const token=await gdrive_ensureToken();
+  if(!token)return null;
+  try{
+    const rootId=await gdrive_findOrCreateFolder(token,"Vistorias",null);
+    const clienteNome=(vDoc.clienteNome||vDoc.clienteId||"Sem Cliente").replace(/[\/\\:*?"<>|]/g,"_");
+    // Buscar pasta cliente
+    let q="mimeType='application/vnd.google-apps.folder' and name='"+clienteNome.replace(/'/g,"\\'")+"' and '"+rootId+"' in parents and trashed=false";
+    let r=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
+    let d=await r.json();
+    if(!d.files||!d.files.length)return null;
+    const clienteFolderId=d.files[0].id;
+    // Buscar pasta vistoria por data
+    const dataStr=(vDoc.data_finalizacao||"").slice(0,10).replace(/-/g,"");
+    const endRua=((vDoc.endereco&&vDoc.endereco.rua)||"").substring(0,30).replace(/[\/\\:*?"<>|]/g,"_");
+    q="mimeType='application/vnd.google-apps.folder' and '"+clienteFolderId+"' in parents and trashed=false";
+    if(dataStr)q+=" and name contains '"+dataStr+"'";
+    r=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id,name)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
+    d=await r.json();
+    if(!d.files||!d.files.length)return null;
+    let vistFolderId=d.files[0].id;
+    if(endRua&&d.files.length>1){
+      const match=d.files.find(f=>f.name.includes(endRua));
+      if(match)vistFolderId=match.id;
+    }
+    // Buscar pasta fotos
+    q="mimeType='application/vnd.google-apps.folder' and name='fotos' and '"+vistFolderId+"' in parents and trashed=false";
+    r=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
+    d=await r.json();
+    if(!d.files||!d.files.length)return null;
+    const fotosFolderId=d.files[0].id;
+    // Listar e baixar fotos
+    q="'"+fotosFolderId+"' in parents and trashed=false and (mimeType='image/jpeg' or mimeType='image/png')";
+    r=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id,name,mimeType)&orderBy=name&spaces=drive",{headers:{Authorization:"Bearer "+token}});
+    d=await r.json();
+    if(!d.files||!d.files.length)return null;
+    const fotos=[];
+    for(const f of d.files){
+      try{
+        const dr=await fetch("https://www.googleapis.com/drive/v3/files/"+f.id+"?alt=media",{headers:{Authorization:"Bearer "+token}});
+        const blob=await dr.blob();
+        const dataUrl=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.onerror=rej;rd.readAsDataURL(blob);});
+        const parts=f.name.replace(/\.\w+$/,"").split("_");
+        const ambiente=parts.length>=3?parts.slice(2).join(" "):"";
+        fotos.push({dataUrl,ambiente,tipo:"foto"});
+      }catch(ef){console.warn("GDrive download foto:",f.name,ef);}
+    }
+    return fotos.length?fotos:null;
+  }catch(e){console.warn("GDrive buscar fotos:",e);return null;}
+}
+
+// --- Exportar vistorias do período pro Drive (botão no Resumo) ---
+window.gdrive_exportarResumo=async function(){
+  const token=await gdrive_ensureToken();
+  if(!token){showToast("Drive não conectado ou token expirado.",3000);return;}
+  const de=document.getElementById("resumo-de").value;
+  const ate=document.getElementById("resumo-ate").value;
+  if(!de||!ate){showToast("Selecione o período primeiro.",2500);return;}
+  const btn=document.querySelector("#s-resumo [onclick*='gdrive_exportarResumo']");
+  if(btn){btn.disabled=true;btn.textContent="Exportando...";}
+  try{
+    const inicio=new Date(de+"T00:00:00");
+    const fim=new Date(ate+"T23:59:59");
+    let q2=query(collection(db,"vistorias"),where("data_finalizacao",">=",inicio.toISOString()),where("data_finalizacao","<=",fim.toISOString()));
+    if(currentRole&&currentRole.toLowerCase()!=="master"){
+      q2=query(collection(db,"vistorias"),where("userId","==",currentUser.uid),where("data_finalizacao",">=",inicio.toISOString()),where("data_finalizacao","<=",fim.toISOString()));
+    }
+    const snap=await getDocs(q2);
+    if(snap.empty){showToast("Nenhuma vistoria no período.",2500);return;}
+    let ok=0,fail=0;
+    for(const d of snap.docs){
+      const vDoc=d.data();
+      let fotosMap={};
+      try{
+        const fotosArr=await localBuscarFotos(d.id);
+        if(fotosArr&&fotosArr.length){
+          fotosArr.forEach((f,i)=>{fotosMap["f"+i]=f;});
+        }
+      }catch(e){}
+      if(!Object.keys(fotosMap).length){fail++;continue;}
+      try{
+        await gdrive_uploadVistoria(vDoc,null,fotosMap,null);
+        ok++;
+      }catch(e){fail++;console.warn("GDrive export falhou:",d.id,e);}
+    }
+    showToast("📁 "+ok+" enviada(s)"+(fail?" · "+fail+" sem fotos locais":""),4000);
+  }catch(e){
+    console.error("GDrive exportar resumo:",e);
+    showToast("Erro na exportação: "+(e.message||"desconhecido"),3500);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="📁 Exportar pro Drive";}
+  }
+};
+
+// --- Refresh automático do token quando Master abre o app ---
+async function gdrive_tentarRefreshSeNecessario(){
+  try{
+    // Master tenta refresh do token se necessário
+    if(currentRole&&currentRole.toLowerCase()==="master"){
+      const snap=await getDoc(doc(db,"config","drive"));
+      if(snap.exists()&&snap.data().accessToken){
+        const d=snap.data();
+        if(d.expiry&&(d.expiry-Date.now()<600000)){
+          await gdrive_ensureToken();
+        }else{
+          _gdriveTokenCache=d;
+          _gdriveTokenCacheTime=Date.now();
+        }
+      }
+    }
+    // Qualquer perfil: processar fila de uploads pendentes
+    await gdrive_processQueue();
+  }catch(e){}
 }
 
 
