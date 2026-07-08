@@ -1515,6 +1515,37 @@ async function localBuscarFotos(vistoriaId){
     });
   }catch(e){console.error("localBuscarFotos:",e);return null;}
 }
+
+// === DIAGNÓSTICO: listar TUDO no IndexedDB pra encontrar fotos perdidas ===
+// Acessível via console: listarFotosLocais() ou pelo botão na tela de Perfil
+window.listarFotosLocais=async()=>{
+  try{
+    const db=await localDB();
+    return new Promise((res)=>{
+      const tx=db.transaction(LOCAL_DB_STORE,"readonly");
+      const store=tx.objectStore(LOCAL_DB_STORE);
+      const req=store.getAll();
+      req.onsuccess=()=>{
+        const entries=req.result||[];
+        console.log("=== IndexedDB: "+entries.length+" entrada(s) ===");
+        const resumo=[];
+        entries.forEach(e=>{
+          const numFotos=(e.fotos&&e.fotos.length)||0;
+          const key=e.vistoriaId||"?";
+          const nome=(e.vistoria&&e.vistoria.responsavel&&e.vistoria.responsavel.nome)||"";
+          const rua=(e.vistoria&&e.vistoria.endereco&&e.vistoria.endereco.rua)||"";
+          const primeiraFoto=(e.fotos&&e.fotos[0])?e.fotos[0].ambiente:"";
+          const info={chave:key,fotos:numFotos,nome,rua,ambiente:primeiraFoto,savedAt:e.savedAt?new Date(e.savedAt).toLocaleString("pt-BR"):""};
+          resumo.push(info);
+          console.log("  "+key+" → "+numFotos+" foto(s)"+(nome?" | "+nome:"")+(rua?" | "+rua:""));
+        });
+        alert("IndexedDB tem "+entries.length+" entrada(s).\n\n"+resumo.map(r=>"• "+r.chave.substring(0,12)+"... → "+r.fotos+" fotos"+(r.nome?" | "+r.nome:"")).join("\n")+"\n\n(Detalhes no console do navegador)");
+        res(resumo);
+      };
+      req.onerror=()=>{console.error("Falha ao listar");res([]);};
+    });
+  }catch(e){console.error("listarFotosLocais:",e);return[];}
+};
 async function localApagarFotos(vistoriaId){
   try{
     const db=await localDB();
@@ -2606,9 +2637,33 @@ let _efAmbienteAlvo=null,_efSubstIdx=null;
 window.abrirEditorFotos=async(id,data)=>{
   _efId=id;_efData=data;
   _efComodosNovos=new Set();
-  // Tenta IndexedDB primeiro (novo armazenamento local-only); fallback p/ fotosBase64 antigo
+  // Tenta IndexedDB primeiro pelo ID exato
   let fotos=null;
   try{fotos=await localBuscarFotos(id);}catch(e){console.error("localBuscarFotos:",e);}
+  // FALLBACK: busca por endereço/nome se ID exato não encontrou
+  if(!fotos||!fotos.length){
+    try{
+      const db2=await localDB();
+      const allEntries=await new Promise((res)=>{
+        const tx=db2.transaction(LOCAL_DB_STORE,"readonly");
+        const req=tx.objectStore(LOCAL_DB_STORE).getAll();
+        req.onsuccess=()=>res(req.result||[]);
+        req.onerror=()=>res([]);
+      });
+      const rua=(data&&data.endereco&&data.endereco.rua)||"";
+      const num=(data&&data.endereco&&data.endereco.num)||"";
+      const nome=(data&&data.responsavel&&data.responsavel.nome)||"";
+      for(const entry of allEntries){
+        if(!entry.fotos||!entry.fotos.length)continue;
+        const v=entry.vistoria||{};
+        const eRua=(v.endereco&&v.endereco.rua)||"";
+        const eNum=(v.endereco&&v.endereco.num)||"";
+        const eNome=(v.responsavel&&v.responsavel.nome)||"";
+        if(rua&&eRua&&rua===eRua&&num===eNum){fotos=entry.fotos;console.log("[RECUPERAÇÃO-EDITOR] Fotos por endereço! Chave:",entry.vistoriaId);break;}
+        if(nome&&eNome&&nome===eNome&&rua===eRua){fotos=entry.fotos;console.log("[RECUPERAÇÃO-EDITOR] Fotos por nome! Chave:",entry.vistoriaId);break;}
+      }
+    }catch(_){}
+  }
   if(!fotos||!fotos.length){
     // Tenta também o fallback do Firestore (vistorias antigas que salvavam fotos no doc)
     if(data&&data.fotosBase64&&data.fotosBase64.length)fotos=data.fotosBase64;
@@ -2619,7 +2674,6 @@ window.abrirEditorFotos=async(id,data)=>{
       +"• O navegador limpou os dados locais (cache, modo anônimo, ou \"Limpar dados\").\n"
       +"• Fotos foram apagadas pelo usuário em \"Gerenciar fotos locais\".\n\n"
       +"Você pode tirar fotos novas tocando em \"+ Adicionar foto\" abaixo.");
-    // Mesmo sem fotos, abre o editor com lista vazia — permitir acrescentar novas
     _efFotos=[];
   } else {
     _efFotos=fotos.map((f,i)=>({...f,_idx:i}));
@@ -3618,8 +3672,8 @@ window.detectarBairroPorGPS=async()=>{
     showToast("Bairro detectado: "+bairro,2500);
   }catch(eNet){
     console.warn("Nominatim falhou:",eNet);
-    // GPS funcionou, só o serviço de bairro falhou. Avisa mas não bloqueia.
-    alert("GPS detectado e salvo (o mapa funcionará).\n\nNão foi possível buscar o bairro: "+(eNet.message||eNet.name||"erro de rede")+"\n\nPreencha manualmente.");
+    // GPS funcionou, só o serviço de bairro falhou. Toast discreto — não bloqueia.
+    showToast("📍 GPS salvo! Bairro não detectado — preencha manualmente.",4000);
   }finally{
     if(btn){btn.disabled=false;btn.textContent="📍 Detectar";}
   }
@@ -5759,6 +5813,39 @@ function abrirDetalheVistoria(id,data){
     // Tenta enriquecer data com fotos do IndexedDB antes de chamar regeRarPDF
     let fotos=null;
     try{fotos=await localBuscarFotos(id);}catch(e){}
+    // FALLBACK: se não encontrou pelo ID exato, varre TUDO no IndexedDB e tenta
+    // encontrar por endereço ou nome do morador. Isso cobre o caso em que o ID do
+    // Firestore mudou (timeout offline, re-sync) mas as fotos estão salvas com o ID original.
+    if(!fotos||!fotos.length){
+      try{
+        const db2=await localDB();
+        const allEntries=await new Promise((res)=>{
+          const tx=db2.transaction(LOCAL_DB_STORE,"readonly");
+          const req=tx.objectStore(LOCAL_DB_STORE).getAll();
+          req.onsuccess=()=>res(req.result||[]);
+          req.onerror=()=>res([]);
+        });
+        const rua=(data.endereco&&data.endereco.rua)||"";
+        const num=(data.endereco&&data.endereco.num)||"";
+        const nome=(data.responsavel&&data.responsavel.nome)||"";
+        for(const entry of allEntries){
+          if(!entry.fotos||!entry.fotos.length)continue;
+          // Verifica se é rascunho com dados que batem
+          const v=entry.vistoria||{};
+          const eRua=(v.endereco&&v.endereco.rua)||"";
+          const eNum=(v.endereco&&v.endereco.num)||"";
+          const eNome=(v.responsavel&&v.responsavel.nome)||"";
+          if(rua&&eRua&&rua===eRua&&num===eNum){fotos=entry.fotos;console.log("[RECUPERAÇÃO] Fotos encontradas por endereço! Chave:",entry.vistoriaId);break;}
+          if(nome&&eNome&&nome===eNome&&rua===eRua){fotos=entry.fotos;console.log("[RECUPERAÇÃO] Fotos encontradas por nome+rua! Chave:",entry.vistoriaId);break;}
+        }
+        // Última tentativa: se só existe UMA entrada com fotos e o ID não é o draft key,
+        // provavelmente é esta vistoria
+        if(!fotos||!fotos.length){
+          const comFotos=allEntries.filter(e=>e.fotos&&e.fotos.length&&e.vistoriaId!=="__rascunho_ativo__");
+          if(comFotos.length===1){fotos=comFotos[0].fotos;console.log("[RECUPERAÇÃO] Única entrada com fotos encontrada! Chave:",comFotos[0].vistoriaId);}
+        }
+      }catch(eScan){console.warn("Scan IndexedDB falhou:",eScan);}
+    }
     const dadosCompletos={...data};
     if(fotos&&fotos.length){dadosCompletos.fotosBase64=fotos;}
     // Fallback: se não tem fotos locais, tenta buscar do Google Drive
