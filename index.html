@@ -525,7 +525,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div class="field"><label>Estado de Conservacao</label><select id="fin-estado"><option>Bom</option><option selected>Regular</option><option>Ruim</option><option>Péssimo</option></select></div>
       <div class="field"><label>Idade Aparente do Imóvel (anos) *</label><input type="number" id="fin-idade" placeholder="Ex: 30" min="0" max="200" inputmode="numeric" required></div>
     </div>
-    <div class="card"><h2>Terreno</h2>
+    <div class="card" id="fin-card-terreno" style="display:none"><h2>Terreno</h2>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px">
         <div style="padding:6px;border-right:1px solid #e5e7eb">
           <p style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;text-align:center">Formato</p>
@@ -550,7 +550,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
         </div>
       </div>
     </div>
-    <div class="card"><h2>Padrão da Construção</h2>
+    <div class="card" id="fin-card-padrao" style="display:none"><h2>Padrão da Construção</h2>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px">
         <div style="padding:6px;border-right:1px solid #e5e7eb">
           <p style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;text-align:center">Alto</p>
@@ -923,21 +923,12 @@ if("serviceWorker" in navigator){
         // Se o CACHE_VERSION mudou, o novo SW instala, skipWaiting ativa, e na próxima
         // navegação (ou reload) o app já está atualizado.
         reg.update().catch(()=>{});
-        // Detectar quando um novo SW está pronto e recarregar automaticamente
         reg.addEventListener("updatefound",()=>{
           const newSW=reg.installing;
           if(!newSW)return;
           newSW.addEventListener("statechange",()=>{
             if(newSW.state==="activated"){
-              // Novo SW ativo — recarrega pra pegar a versão nova
-              // Só recarrega se NÃO estiver no meio de uma vistoria (pra não perder fotos)
-              if(!currentVistoria||!Object.keys(fotosPendentes||{}).length){
-                console.log("[PWA] Nova versão detectada, recarregando...");
-                window.location.reload();
-              } else {
-                console.log("[PWA] Nova versão disponível — será aplicada na próxima abertura (vistoria em andamento).");
-                showToast("Nova versão disponível! Será aplicada ao terminar a vistoria.",5000);
-              }
+              showToast("Nova versão disponível! Feche e reabra o app.",4000);
             }
           });
         });
@@ -1027,7 +1018,7 @@ const PARTES=["Estrutura","Parede e muro","Cobertura e teto","Porta e esquadria"
 const COLS=["estrutura","paredes","cobertura","portas","piso"];
 const PATOLOGIAS=["Fissura","Trinca","Rachadura","Umidade","Infiltração","Desplacamento de Pintura","Desplacamento de Revestimento","Armadura Exposta","Danificado","Portão Desalinhado"];
 // Grupos do checklist PDF (agrupado para economizar espaço)
-const PATOLOGIAS_CK=["Fissura/Trinca/Rachadura","Umidade/Infiltração","Desplacamento de Pintura","Desplacamento de Revestimento","Armadura Exposta","Danificado","Portão Desalinhado"];
+const PATOLOGIAS_CK=["Fissura/Trinca/Rachadura","Umidade/Infiltração","Despl. de Pintura","Despl. de Revestimento","Armadura Exposta","Danificado","Portão Desalinhado"];
 // Map: cada coluna do CK aceita as patologias correspondentes + nomes antigos abreviados
 // pra retrocompatibilidade com vistorias gravadas antes da mudança de nomenclatura.
 const PATOLOGIAS_CK_MAP={"Fissura/Trinca/Rachadura":["Fissura","Trinca","Rachadura"],"Umidade/Infiltração":["Umidade","Infiltração"],"Desplacamento de Pintura":["Desplacamento de Pintura","Despl. de Pintura","Desplacamento"],"Desplacamento de Revestimento":["Desplacamento de Revestimento","Despl. de Revestimento"],"Armadura Exposta":["Armadura Exposta"],"Danificado":["Danificado"],"Portão Desalinhado":["Portão Desalinhado"]};
@@ -5352,6 +5343,12 @@ function renderFinalizacao(){
   if(banner)banner.style.display="none";
   if(blocosNormais)blocosNormais.style.display="block";
   if(btnBack)btnBack.setAttribute("onclick","goTo('s-vistoria')");
+  // Terreno e Padrão: visíveis APENAS no Completo
+  const tipoLaudoFin=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";
+  const cardTerreno=document.getElementById("fin-card-terreno");
+  const cardPadrao=document.getElementById("fin-card-padrao");
+  if(cardTerreno)cardTerreno.style.display=(tipoLaudoFin==="completo")?"block":"none";
+  if(cardPadrao)cardPadrao.style.display=(tipoLaudoFin==="completo")?"block":"none";
   // Limpar campos da vistoria anterior e aplicar defaults
   // Se a vistoria foi iniciada pelo botão "Iniciar como Ausente — Passível de Retorno",
   // o default da tela de Finalização já vem com status=ausente + pendente=sim. O togglePendente
@@ -5953,15 +5950,27 @@ window.editarVistoriaAtual=async()=>{
   document.getElementById("er-estado").value=v.estado||"";
   document.getElementById("er-idade").value=v.idade||"";
   document.getElementById("er-status").value=v.status||"concluida";
-  // Popula select de coletores (todos os coletores do cliente atual)
+  // Popula select de coletores
   const erCol=document.getElementById("er-coletor");
   erCol.innerHTML='<option value="">Carregando...</option>';
   try{
-    const snap=await getDocs(collection(db,"coletores"));
+    let snap;
+    try{snap=await getDocs(collection(db,"coletores"));}catch(e){
+      if(/terminated/i.test(e.message||"")){_initDb();snap=await getDocs(collection(db,"coletores"));}else throw e;
+    }
     erCol.innerHTML='<option value="">Selecione...</option>';
     snap.forEach(d=>{const o=document.createElement("option");o.value=d.id;o.textContent=d.data().nome;erCol.appendChild(o);});
     if(v.coletorId)erCol.value=v.coletorId;
-  }catch(_){erCol.innerHTML='<option value="">'+(v.coletorNome||"--")+'</option>';}
+    // Se coletorId não bateu (formato diferente), tenta por nome
+    if(!erCol.value&&v.coletorNome){
+      for(let oi=0;oi<erCol.options.length;oi++){
+        if(erCol.options[oi].textContent===v.coletorNome){erCol.value=erCol.options[oi].value;break;}
+      }
+    }
+  }catch(_){
+    // Fallback: mostra o coletor atual como opção fixa
+    erCol.innerHTML='<option value="'+(v.coletorId||"")+'">'+(v.coletorNome||"--")+'</option>';
+  }
   document.getElementById("modal-editar-resp").style.display="flex";
 };
 
@@ -7438,23 +7447,6 @@ function addImgPDF(pdf,dataUrl,x,y,w,h){
   });
 }
 async function shareOrDownload(blob,nome,mime){
-  // iOS Chrome/Safari: navigator.share funciona melhor que a.click() pra PDFs.
-  // Mostra a share sheet nativa — o cadastrador escolhe salvar em Arquivos, WhatsApp, etc.
-  // Para ZIPs ou se share não estiver disponível, usa a.click() como fallback.
-  if(navigator.share&&navigator.canShare&&mime==="application/pdf"){
-    try{
-      const file=new File([blob],nome,{type:mime});
-      if(navigator.canShare({files:[file]})){
-        await navigator.share({files:[file],title:nome});
-        return;
-      }
-    }catch(e){
-      // Usuário cancelou o share sheet ou erro — tenta fallback
-      if(e.name==="AbortError")return; // cancelou = OK, não tenta fallback
-      console.warn("share falhou, tentando download:",e);
-    }
-  }
-  // Fallback: download direto via a.click()
   const url=URL.createObjectURL(blob);
   try{
     const a=document.createElement("a");
@@ -7462,9 +7454,17 @@ async function shareOrDownload(blob,nome,mime){
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    showToast("📥 "+nome+" baixado!",2500);
   }catch(e){
+    // Fallback: share sheet
+    try{
+      if(navigator.share){
+        const file=new File([blob],nome,{type:mime});
+        await navigator.share({files:[file]});
+        return;
+      }
+    }catch(_){}
     try{window.open(url,"_blank");}catch(_){}
-    console.warn("shareOrDownload fallback:",e);
   }
   setTimeout(()=>URL.revokeObjectURL(url),10000);
 }
@@ -8891,7 +8891,27 @@ async function gdrive_atualizarStatus(){
   const btnBackup=document.getElementById("perfil-gdrive-backup");
   if(!el||!btn)return;
   const isMaster=currentRole&&currentRole.toLowerCase()==="master";
-  const tokenData=await gdrive_getTokenFromFirestore();
+  // Ler token direto do Firestore (sem cache, pra pegar status real)
+  let tokenData=null;
+  try{
+    const snap=await getDoc(doc(db,"config","drive"));
+    if(snap.exists()){
+      const d=snap.data();
+      if(d.accessToken&&Date.now()<d.expiry)tokenData=d;
+      else if(d.accessToken&&d.email){
+        // Token existe mas expirou — mostrar como "expirado" com botão de reconectar
+        el.innerHTML='<span style="color:#dc2626">⚠️ Token expirado</span> — <strong>'+d.email+'</strong>';
+        btn.textContent="🔄 Reconectar Google Drive";
+        btn.className="btn primary";
+        btn.style.display="";
+        btn.onclick=()=>{gdrive_conectar();};
+        if(btnBackup)btnBackup.style.display="none";
+        return;
+      }
+    }
+  }catch(e){
+    if(/terminated/i.test(e.message||"")){_initDb();}
+  }
   if(tokenData){
     const email=tokenData.email||"";
     el.innerHTML='<span style="color:#065f46">✅ Conectado</span>'+(email?' — <strong>'+email+'</strong>':'');
@@ -8903,9 +8923,9 @@ async function gdrive_atualizarStatus(){
     }else{
       btn.style.display="none";
     }
-    // Botão de backup: visível pra TODOS quando Drive está conectado
     if(btnBackup)btnBackup.style.display="block";
   }else{
+    // Sem token nenhum
     if(isMaster){
       el.innerHTML='<span style="color:#888">Não conectado</span>';
       btn.textContent="Conectar Google Drive";
@@ -9277,25 +9297,39 @@ async function gdrive_buscarFotosVistoria(vDoc){
   if(!token)return null;
   try{
     const rootId=await gdrive_findOrCreateFolder(token,"Vistorias",null);
-    const clienteNome=(vDoc.clienteNome||vDoc.clienteId||"Sem Cliente").replace(/[\/\\:*?"<>|]/g,"_");
-    // Buscar pasta cliente
-    let q="mimeType='application/vnd.google-apps.folder' and name='"+clienteNome.replace(/'/g,"\\'")+"' and '"+rootId+"' in parents and trashed=false";
+    // Estrutura atual: Vistorias / [YYYY-MM-DD] / [Coletor] / [Endereço-id] / fotos/
+    // Converter data dd/mm/yyyy → yyyy-mm-dd
+    const dataRaw=(vDoc.data||"").replace(/[\/]/g,"-")||"";
+    const pp=dataRaw.split(/[-\/]/);
+    const dataPasta=pp.length===3&&pp[0].length===4?pp.join("-"):pp.length===3?(pp[2]+"-"+pp[1]+"-"+pp[0]):"";
+    if(!dataPasta)return null;
+    // Buscar pasta da data
+    let q="mimeType='application/vnd.google-apps.folder' and name='"+dataPasta+"' and '"+rootId+"' in parents and trashed=false";
     let r=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
     let d=await r.json();
     if(!d.files||!d.files.length)return null;
-    const clienteFolderId=d.files[0].id;
-    // Buscar pasta vistoria por data
-    const dataStr=(vDoc.data_finalizacao||"").slice(0,10).replace(/-/g,"");
+    const dataFolderId=d.files[0].id;
+    // Buscar pasta do coletor
+    const coletorNome=(vDoc.coletorNome||"").replace(/[\/\\:*?"<>|]/g,"_");
+    if(!coletorNome)return null;
+    q="mimeType='application/vnd.google-apps.folder' and name='"+coletorNome.replace(/'/g,"\\'")+"' and '"+dataFolderId+"' in parents and trashed=false";
+    r=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
+    d=await r.json();
+    if(!d.files||!d.files.length)return null;
+    const coletorFolderId=d.files[0].id;
+    // Buscar pasta da vistoria (por endereço parcial ou ID)
     const endRua=((vDoc.endereco&&vDoc.endereco.rua)||"").substring(0,30).replace(/[\/\\:*?"<>|]/g,"_");
-    q="mimeType='application/vnd.google-apps.folder' and '"+clienteFolderId+"' in parents and trashed=false";
-    if(dataStr)q+=" and name contains '"+dataStr+"'";
+    const idCurto=(vDoc.id||"").slice(-6);
+    q="mimeType='application/vnd.google-apps.folder' and '"+coletorFolderId+"' in parents and trashed=false";
     r=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id,name)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
     d=await r.json();
     if(!d.files||!d.files.length)return null;
+    // Tentar match por ID curto ou por nome da rua
     let vistFolderId=d.files[0].id;
-    if(endRua&&d.files.length>1){
-      const match=d.files.find(f=>f.name.includes(endRua));
-      if(match)vistFolderId=match.id;
+    if(d.files.length>1){
+      const matchId=d.files.find(f=>f.name.includes(idCurto));
+      if(matchId)vistFolderId=matchId.id;
+      else if(endRua){const matchRua=d.files.find(f=>f.name.includes(endRua));if(matchRua)vistFolderId=matchRua.id;}
     }
     // Buscar pasta fotos
     q="mimeType='application/vnd.google-apps.folder' and name='fotos' and '"+vistFolderId+"' in parents and trashed=false";
