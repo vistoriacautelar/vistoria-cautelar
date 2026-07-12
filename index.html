@@ -1943,7 +1943,7 @@ window.carregarResumo=async()=>{
     let snap;
     try{snap=await getDocs(q);}catch(eDb){
       // "client has already been terminated" → re-inicializa e tenta de novo
-      if(/terminated/i.test(eDb.message||"")){
+      if(/terminated|connection.*lost|unavailable/i.test(eDb.message||"")){
         console.warn("[Resumo] Client terminated, re-init...");
         _initDb();
         if(currentRole==="master"){q=query(collection(db,"vistorias"));}
@@ -5550,7 +5550,7 @@ async function loadHistorico(){
     }
     let snap;
     try{snap=await getDocs(q);}catch(eDb){
-      if(/terminated/i.test(eDb.message||"")){
+      if(/terminated|connection.*lost|unavailable/i.test(eDb.message||"")){
         _initDb();
         if(verTodos)q=query(collection(db,"vistorias"));
         else q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));
@@ -5956,7 +5956,7 @@ window.editarVistoriaAtual=async()=>{
   try{
     let snap;
     try{snap=await getDocs(collection(db,"coletores"));}catch(e){
-      if(/terminated/i.test(e.message||"")){_initDb();snap=await getDocs(collection(db,"coletores"));}else throw e;
+      if(/terminated|connection.*lost|unavailable/i.test(e.message||"")){_initDb();snap=await getDocs(collection(db,"coletores"));}else throw e;
     }
     erCol.innerHTML='<option value="">Selecione...</option>';
     snap.forEach(d=>{const o=document.createElement("option");o.value=d.id;o.textContent=d.data().nome;erCol.appendChild(o);});
@@ -7021,7 +7021,7 @@ window.finalizarVistoria=async()=>{
             new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),5000))
           ]);
         }catch(eUp){
-          if(/terminated/i.test(eUp.message||"")){
+          if(/terminated|connection.*lost|unavailable/i.test(eUp.message||"")){
             try{_initDb();await Promise.race([updateDoc(doc(db,"vistorias",currentVistoria._retornoId),vDocUpd),new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),5000))]);}
             catch(_){console.warn("Firestore update enfileirado (offline/timeout)");}
           } else if(eUp.message==="timeout"){
@@ -7040,7 +7040,7 @@ window.finalizarVistoria=async()=>{
             new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),5000))
           ]);
         }catch(eAdd){
-          if(/terminated/i.test(eAdd.message||"")){
+          if(/terminated|connection.*lost|unavailable/i.test(eAdd.message||"")){
             try{_initDb();const r2=doc(collection(db,"vistorias"));await Promise.race([setDoc(r2,vDoc),new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),5000))]);vRef=r2;}
             catch(_){console.warn("Firestore add enfileirado (offline/timeout)");vRef=novoRef;}
           } else if(eAdd.message==="timeout"){
@@ -8853,7 +8853,7 @@ async function gdrive_saveTokenToFirestore(accessToken,expiresIn,email){
     await setDoc(doc(db,"config","drive"),data);
   }catch(e){
     // Client terminated → re-init e retry
-    if(/terminated/i.test(e.message||"")){
+    if(/terminated|connection.*lost|unavailable/i.test(e.message||"")){
       console.warn("Firestore terminated ao salvar token Drive, re-init...");
       _initDb();
       await setDoc(doc(db,"config","drive"),data);
@@ -8910,7 +8910,7 @@ async function gdrive_atualizarStatus(){
       }
     }
   }catch(e){
-    if(/terminated/i.test(e.message||"")){_initDb();}
+    if(/terminated|connection.*lost|unavailable/i.test(e.message||"")){_initDb();}
   }
   if(tokenData){
     const email=tokenData.email||"";
@@ -9294,67 +9294,97 @@ async function gdrive_processQueue(){
 // --- Buscar fotos de uma vistoria no Drive (fallback para Gerar PDF Novamente) ---
 async function gdrive_buscarFotosVistoria(vDoc){
   const token=await gdrive_ensureToken();
-  if(!token)return null;
+  if(!token){console.warn("[GDrive busca] Sem token");return null;}
   try{
     const rootId=await gdrive_findOrCreateFolder(token,"Vistorias",null);
-    // Estrutura atual: Vistorias / [YYYY-MM-DD] / [Coletor] / [Endereço-id] / fotos/
-    // Converter data dd/mm/yyyy → yyyy-mm-dd
-    const dataRaw=(vDoc.data||"").replace(/[\/]/g,"-")||"";
-    const pp=dataRaw.split(/[-\/]/);
-    const dataPasta=pp.length===3&&pp[0].length===4?pp.join("-"):pp.length===3?(pp[2]+"-"+pp[1]+"-"+pp[0]):"";
-    if(!dataPasta)return null;
+    // Converter data para yyyy-mm-dd (aceita dd/mm/yyyy, yyyy-mm-dd, ISO)
+    let dataRaw=vDoc.data||"";
+    // Se data está em formato Firestore Timestamp
+    if(!dataRaw&&vDoc.data_finalizacao){
+      if(typeof vDoc.data_finalizacao==="string")dataRaw=vDoc.data_finalizacao.slice(0,10);
+      else if(vDoc.data_finalizacao.seconds)dataRaw=new Date(vDoc.data_finalizacao.seconds*1000).toISOString().slice(0,10);
+    }
+    if(!dataRaw&&vDoc.criadoEm){
+      if(typeof vDoc.criadoEm==="string")dataRaw=vDoc.criadoEm.slice(0,10);
+      else if(vDoc.criadoEm.seconds)dataRaw=new Date(vDoc.criadoEm.seconds*1000).toISOString().slice(0,10);
+    }
+    dataRaw=dataRaw.replace(/[\/]/g,"-");
+    const pp=dataRaw.split("-");
+    let dataPasta="";
+    if(pp.length===3){
+      dataPasta=pp[0].length===4?pp.join("-"):(pp[2]+"-"+pp[1]+"-"+pp[0]);
+    }
+    if(!dataPasta){console.warn("[GDrive busca] data inválida:",vDoc.data,vDoc.data_finalizacao);return null;}
     // Buscar pasta da data
     let q="mimeType='application/vnd.google-apps.folder' and name='"+dataPasta+"' and '"+rootId+"' in parents and trashed=false";
     let r=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
     let d=await r.json();
-    if(!d.files||!d.files.length)return null;
+    if(!d.files||!d.files.length){console.warn("[GDrive busca] pasta data não encontrada:",dataPasta);return null;}
     const dataFolderId=d.files[0].id;
     // Buscar pasta do coletor
     const coletorNome=(vDoc.coletorNome||"").replace(/[\/\\:*?"<>|]/g,"_");
-    if(!coletorNome)return null;
-    q="mimeType='application/vnd.google-apps.folder' and name='"+coletorNome.replace(/'/g,"\\'")+"' and '"+dataFolderId+"' in parents and trashed=false";
-    r=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
-    d=await r.json();
-    if(!d.files||!d.files.length)return null;
-    const coletorFolderId=d.files[0].id;
-    // Buscar pasta da vistoria (por endereço parcial ou ID)
-    const endRua=((vDoc.endereco&&vDoc.endereco.rua)||"").substring(0,30).replace(/[\/\\:*?"<>|]/g,"_");
-    const idCurto=(vDoc.id||"").slice(-6);
-    q="mimeType='application/vnd.google-apps.folder' and '"+coletorFolderId+"' in parents and trashed=false";
-    r=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id,name)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
-    d=await r.json();
-    if(!d.files||!d.files.length)return null;
-    // Tentar match por ID curto ou por nome da rua
-    let vistFolderId=d.files[0].id;
-    if(d.files.length>1){
-      const matchId=d.files.find(f=>f.name.includes(idCurto));
-      if(matchId)vistFolderId=matchId.id;
-      else if(endRua){const matchRua=d.files.find(f=>f.name.includes(endRua));if(matchRua)vistFolderId=matchRua.id;}
+    // Se não tem coletor, lista todas as subpastas da data e busca por endereço
+    let coletorFolderId=null;
+    if(coletorNome){
+      q="mimeType='application/vnd.google-apps.folder' and name='"+coletorNome.replace(/'/g,"\\'")+"' and '"+dataFolderId+"' in parents and trashed=false";
+      r=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
+      d=await r.json();
+      if(d.files&&d.files.length)coletorFolderId=d.files[0].id;
     }
-    // Buscar pasta fotos
-    q="mimeType='application/vnd.google-apps.folder' and name='fotos' and '"+vistFolderId+"' in parents and trashed=false";
-    r=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
-    d=await r.json();
-    if(!d.files||!d.files.length)return null;
-    const fotosFolderId=d.files[0].id;
-    // Listar e baixar fotos
-    q="'"+fotosFolderId+"' in parents and trashed=false and (mimeType='image/jpeg' or mimeType='image/png')";
-    r=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id,name,mimeType)&orderBy=name&spaces=drive",{headers:{Authorization:"Bearer "+token}});
-    d=await r.json();
-    if(!d.files||!d.files.length)return null;
-    const fotos=[];
-    for(const f of d.files){
-      try{
-        const dr=await fetch("https://www.googleapis.com/drive/v3/files/"+f.id+"?alt=media",{headers:{Authorization:"Bearer "+token}});
-        const blob=await dr.blob();
-        const dataUrl=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.onerror=rej;rd.readAsDataURL(blob);});
-        const parts=f.name.replace(/\.\w+$/,"").split("_");
-        const ambiente=parts.length>=3?parts.slice(2).join(" "):"";
-        fotos.push({dataUrl,ambiente,tipo:"foto"});
-      }catch(ef){console.warn("GDrive download foto:",f.name,ef);}
+    if(!coletorFolderId){
+      // Fallback: lista todas as subpastas e busca recursivamente
+      q="mimeType='application/vnd.google-apps.folder' and '"+dataFolderId+"' in parents and trashed=false";
+      r=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id,name)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
+      d=await r.json();
+      if(!d.files||!d.files.length){console.warn("[GDrive busca] nenhuma subpasta em",dataPasta);return null;}
+      // Tenta cada subpasta (coletor) buscando a vistoria dentro
+      for(const sub of d.files){
+        const result=await _gdrive_buscarFotosEmPastaColetor(token,sub.id,vDoc);
+        if(result)return result;
+      }
+      return null;
     }
-    return fotos.length?fotos:null;
+    return await _gdrive_buscarFotosEmPastaColetor(token,coletorFolderId,vDoc);
   }catch(e){console.warn("GDrive buscar fotos:",e);return null;}
+}
+
+// Busca fotos dentro de uma pasta de coletor específica
+async function _gdrive_buscarFotosEmPastaColetor(token,coletorFolderId,vDoc){
+  const endRua=((vDoc.endereco&&vDoc.endereco.rua)||"").substring(0,30).replace(/[\/\\:*?"<>|]/g,"_");
+  const idCurto=(vDoc.id||"").slice(-6);
+  let q="mimeType='application/vnd.google-apps.folder' and '"+coletorFolderId+"' in parents and trashed=false";
+  let r=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id,name)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
+  let d=await r.json();
+  if(!d.files||!d.files.length)return null;
+  let vistFolderId=d.files[0].id;
+  if(d.files.length>1){
+    const matchId=d.files.find(f=>f.name.includes(idCurto));
+    if(matchId)vistFolderId=matchId.id;
+    else if(endRua){const matchRua=d.files.find(f=>f.name.includes(endRua));if(matchRua)vistFolderId=matchRua.id;}
+  }
+  // Buscar pasta fotos
+  q="mimeType='application/vnd.google-apps.folder' and name='fotos' and '"+vistFolderId+"' in parents and trashed=false";
+  r=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
+  d=await r.json();
+  if(!d.files||!d.files.length)return null;
+  const fotosFolderId=d.files[0].id;
+  // Listar e baixar fotos
+  q="'"+fotosFolderId+"' in parents and trashed=false and (mimeType='image/jpeg' or mimeType='image/png')";
+  r=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id,name,mimeType)&orderBy=name&spaces=drive",{headers:{Authorization:"Bearer "+token}});
+  d=await r.json();
+  if(!d.files||!d.files.length)return null;
+  const fotos=[];
+  for(const f of d.files){
+    try{
+      const dr=await fetch("https://www.googleapis.com/drive/v3/files/"+f.id+"?alt=media",{headers:{Authorization:"Bearer "+token}});
+      const blob=await dr.blob();
+      const dataUrl=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.onerror=rej;rd.readAsDataURL(blob);});
+      const parts=f.name.replace(/\.\w+$/,"").split("_");
+      const ambiente=parts.length>=3?parts.slice(2).join(" "):"";
+      fotos.push({dataUrl,ambiente,tipo:"foto"});
+    }catch(ef){console.warn("GDrive download foto:",f.name,ef);}
+  }
+  return fotos.length?fotos:null;
 }
 
 // --- Exportar vistorias do período pro Drive (botão no Resumo) ---
