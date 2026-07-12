@@ -5881,7 +5881,9 @@ function abrirDetalheVistoria(id,data){
       if(driveOk){
         btnPDF.textContent="Buscando fotos no Drive...";btnPDF.disabled=true;
         try{
-          const drFotos=await gdrive_buscarFotosVistoria(data);
+          const drFotos=await gdrive_buscarFotosVistoria(data,(prog)=>{
+            btnPDF.textContent="Baixando foto "+prog.atual+"/"+prog.total+"...";
+          });
           if(drFotos&&drFotos.length){dadosCompletos.fotosBase64=drFotos;}
         }catch(eg){console.warn("GDrive fallback fotos:",eg);}
         btnPDF.textContent="Gerar PDF Novamente";btnPDF.disabled=false;
@@ -9292,7 +9294,7 @@ async function gdrive_processQueue(){
 }
 
 // --- Buscar fotos de uma vistoria no Drive (fallback para Gerar PDF Novamente) ---
-async function gdrive_buscarFotosVistoria(vDoc){
+async function gdrive_buscarFotosVistoria(vDoc,onProgress){
   const token=await gdrive_ensureToken();
   if(!token){console.warn("[GDrive busca] Sem token");return null;}
   try{
@@ -9339,17 +9341,18 @@ async function gdrive_buscarFotosVistoria(vDoc){
       if(!d.files||!d.files.length){console.warn("[GDrive busca] nenhuma subpasta em",dataPasta);return null;}
       // Tenta cada subpasta (coletor) buscando a vistoria dentro
       for(const sub of d.files){
-        const result=await _gdrive_buscarFotosEmPastaColetor(token,sub.id,vDoc);
+        const result=await _gdrive_buscarFotosEmPastaColetor(token,sub.id,vDoc,onProgress);
         if(result)return result;
       }
       return null;
     }
-    return await _gdrive_buscarFotosEmPastaColetor(token,coletorFolderId,vDoc);
+    return await _gdrive_buscarFotosEmPastaColetor(token,coletorFolderId,vDoc,onProgress);
   }catch(e){console.warn("GDrive buscar fotos:",e);return null;}
 }
 
 // Busca fotos dentro de uma pasta de coletor específica
-async function _gdrive_buscarFotosEmPastaColetor(token,coletorFolderId,vDoc){
+// Comprime cada foto ao baixar pra evitar crash de memória no iOS
+async function _gdrive_buscarFotosEmPastaColetor(token,coletorFolderId,vDoc,onProgress){
   const endRua=((vDoc.endereco&&vDoc.endereco.rua)||"").substring(0,30).replace(/[\/\\:*?"<>|]/g,"_");
   const idCurto=(vDoc.id||"").slice(-6);
   let q="mimeType='application/vnd.google-apps.folder' and '"+coletorFolderId+"' in parents and trashed=false";
@@ -9368,17 +9371,41 @@ async function _gdrive_buscarFotosEmPastaColetor(token,coletorFolderId,vDoc){
   d=await r.json();
   if(!d.files||!d.files.length)return null;
   const fotosFolderId=d.files[0].id;
-  // Listar e baixar fotos
+  // Listar fotos (só metadata, sem baixar ainda)
   q="'"+fotosFolderId+"' in parents and trashed=false and (mimeType='image/jpeg' or mimeType='image/png')";
   r=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id,name,mimeType)&orderBy=name&spaces=drive",{headers:{Authorization:"Bearer "+token}});
   d=await r.json();
   if(!d.files||!d.files.length)return null;
   const fotos=[];
-  for(const f of d.files){
+  // Baixar uma foto por vez, comprimir, liberar memória entre cada
+  for(let i=0;i<d.files.length;i++){
+    const f=d.files[i];
+    if(onProgress)try{onProgress({atual:i+1,total:d.files.length});}catch(_){}
     try{
       const dr=await fetch("https://www.googleapis.com/drive/v3/files/"+f.id+"?alt=media",{headers:{Authorization:"Bearer "+token}});
       const blob=await dr.blob();
-      const dataUrl=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.onerror=rej;rd.readAsDataURL(blob);});
+      // Criar Object URL temporário (mais leve que data URL completo na memória)
+      const objUrl=URL.createObjectURL(blob);
+      // Comprimir via canvas (max 1600px pra PDF, menor que o original de 2400)
+      const dataUrl=await new Promise((res,rej)=>{
+        const img=new Image();
+        img.onload=()=>{
+          let w=img.naturalWidth,h=img.naturalHeight;
+          const maior=Math.max(w,h);
+          if(maior>1600){const sc=1600/maior;w=Math.round(w*sc);h=Math.round(h*sc);}
+          const cv=document.createElement("canvas");
+          cv.width=w;cv.height=h;
+          const ctx=cv.getContext("2d");
+          ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
+          ctx.drawImage(img,0,0,w,h);
+          const result=cv.toDataURL("image/jpeg",0.75);
+          cv.width=0;cv.height=0; // liberar memória do canvas
+          URL.revokeObjectURL(objUrl); // liberar blob
+          res(result);
+        };
+        img.onerror=()=>{URL.revokeObjectURL(objUrl);rej(new Error("img load fail"));};
+        img.src=objUrl;
+      });
       const parts=f.name.replace(/\.\w+$/,"").split("_");
       const ambiente=parts.length>=3?parts.slice(2).join(" "):"";
       fotos.push({dataUrl,ambiente,tipo:"foto"});
