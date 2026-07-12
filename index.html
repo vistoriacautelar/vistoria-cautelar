@@ -9014,14 +9014,19 @@ window.gdrive_backupLocal=async function(){
         const tkn=await gdrive_ensureToken();
         if(!tkn){erros++;continue;}
         const rootId=await gdrive_findOrCreateFolder(tkn,"Vistorias",null);
-        const clienteNome=(vDoc.clienteNome||"Sem Cliente").replace(/[\/\\:*?"<>|]/g,"_");
-        const clienteDir=await gdrive_findOrCreateFolder(tkn,clienteNome,rootId);
-        const dataStr=(vDoc.data||"").replace(/[\/]/g,"-").replace(/-/g,"")||new Date().toISOString().slice(0,10).replace(/-/g,"");
+        // Estrutura: Vistorias / [YYYY-MM-DD] / [ColetorNome] / [Rua Num - id] / fotos/
+        const dataStr=(vDoc.data||"").replace(/[\/]/g,"-")||new Date().toISOString().slice(0,10);
+        // Converter dd/mm/yyyy pra yyyy-mm-dd pra ordenar cronologicamente no Drive
+        const partes=dataStr.split("-");
+        const dataPasta=partes.length===3&&partes[0].length===4?dataStr:partes.length===3?(partes[2]+"-"+partes[1]+"-"+partes[0]):dataStr;
+        const dataDir=await gdrive_findOrCreateFolder(tkn,dataPasta,rootId);
+        const coletorNome=(vDoc.coletorNome||"Sem Coletor").replace(/[\/\\:*?"<>|]/g,"_");
+        const coletorDir=await gdrive_findOrCreateFolder(tkn,coletorNome,dataDir);
         const endRua=((vDoc.endereco&&vDoc.endereco.rua)||"sem-endereco").substring(0,40).replace(/[\/\\:*?"<>|]/g,"_");
         const endNum=(vDoc.endereco&&vDoc.endereco.num)||"";
         const idCurto=(vDoc.id||"").slice(-6);
-        const pastaVist=dataStr+"-"+endRua+(endNum?"-"+endNum:"")+(idCurto?"-"+idCurto:"");
-        const vistDir=await gdrive_findOrCreateFolder(tkn,pastaVist,clienteDir);
+        const pastaVist=endRua+(endNum?"-"+endNum:"")+(idCurto?"-"+idCurto:"");
+        const vistDir=await gdrive_findOrCreateFolder(tkn,pastaVist,coletorDir);
         const fotosDir=await gdrive_findOrCreateFolder(tkn,"fotos",vistDir);
         for(let fi=0;fi<entry.fotos.length;fi++){
           const f=entry.fotos[fi];
@@ -9203,15 +9208,21 @@ async function gdrive_uploadVistoria(vDoc,pdfBlob,fotosMap,nomeBase,opts){
   }
   try{
     const rootId=await gdrive_findOrCreateFolder(token,"Vistorias",null);
-    const clienteNome=(vDoc.clienteNome||vDoc.clienteId||"Sem Cliente").replace(/[\/\\:*?"<>|]/g,"_");
-    const clienteId=await gdrive_findOrCreateFolder(token,clienteNome,rootId);
-    const dataStr=(vDoc.data||vDoc.data_finalizacao||new Date().toISOString()).slice(0,10).replace(/[\/]/g,"-").replace(/-/g,"");
+    // Estrutura: Vistorias / [YYYY-MM-DD] / [ColetorNome] / [Rua Num - id] / fotos/
+    const dataRaw=(vDoc.data||vDoc.data_finalizacao||new Date().toISOString()).slice(0,10);
+    // Converter dd/mm/yyyy → yyyy-mm-dd pra ordenar cronologicamente no Drive
+    const partes=dataRaw.split(/[-\/]/);
+    const dataPasta=partes.length===3&&partes[0].length===4?partes.join("-")
+      :partes.length===3?(partes[2]+"-"+partes[1]+"-"+partes[0])
+      :dataRaw.replace(/[\/]/g,"-");
+    const dataDir=await gdrive_findOrCreateFolder(token,dataPasta,rootId);
+    const coletorNome=(vDoc.coletorNome||"Sem Coletor").replace(/[\/\\:*?"<>|]/g,"_");
+    const coletorDir=await gdrive_findOrCreateFolder(token,coletorNome,dataDir);
     const endRua=((vDoc.endereco&&vDoc.endereco.rua)||"sem-endereco").substring(0,40).replace(/[\/\\:*?"<>|]/g,"_");
     const endNum=(vDoc.endereco&&vDoc.endereco.num)||"";
-    // ID curto da vistoria (últimos 6 chars) garante unicidade mesmo com endereço igual
     const idCurto=(vDoc.id||"").slice(-6);
-    const pastaVistoria=dataStr+"-"+endRua+(endNum?"-"+endNum:"")+(idCurto?"-"+idCurto:"");
-    const vistId=await gdrive_findOrCreateFolder(token,pastaVistoria,clienteId);
+    const pastaVistoria=endRua+(endNum?"-"+endNum:"")+(idCurto?"-"+idCurto:"");
+    const vistId=await gdrive_findOrCreateFolder(token,pastaVistoria,coletorDir);
     if(pdfBlob){
       await gdrive_uploadFile(token,(nomeBase||"Laudo")+".pdf",pdfBlob,vistId);
     }
