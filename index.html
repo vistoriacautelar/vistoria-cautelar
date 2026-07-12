@@ -4765,9 +4765,9 @@ function renderCombinacoes(){
 // salvos no banco. Esta função as exibe sempre como "Desplacamento" no PDF, legendas e UI,
 // sem alterar os dados gravados (preservamos o histórico, normalizamos só a apresentação).
 function _normalizarPatNome(p){
+  // Expande abreviações pra nome completo
   if(p==="Despl. de Pintura")return "Desplacamento de Pintura";
   if(p==="Despl. de Revestimento")return "Desplacamento de Revestimento";
-  // "Desplacamento" genérico (de vistorias gravadas durante a fase consolidada) → mantém como está
   return p;
 }
 // Aplica normalização e dedup numa lista de patologias (caso o nome antigo e o novo coexistam)
@@ -4780,6 +4780,17 @@ function _normalizarPatLista(pats){
     if(!seen.has(norm)){seen.add(norm);out.push(norm);}
   });
   return out;
+}
+
+// Normaliza legendas invertidas de desplacamento salvas em vistorias antigas.
+// "Desplacamento de Revestimento na Parede" → "Parede: Desplacamento de Revestimento"
+// "Desplacamento de Pintura no Piso" → "Piso: Desplacamento de Pintura"
+function _normalizarLegenda(leg){
+  if(!leg)return leg;
+  // "Desplacamento de Revestimento na Parede" → "Parede: Desplacamento de Revestimento"
+  const m=leg.match(/^(Desplacamento\b.*?)\s+(n[ao]s?)\s+(.+)$/i);
+  if(m)return m[3]+": "+m[1];
+  return leg;
 }
 
 function gerarLegendaCombo(c){
@@ -6695,7 +6706,7 @@ window.finalizarVistoria=async()=>{
         pdf.setFont("helvetica","bold");pdf.setFontSize(9);
         pdf.text(f0.numero||"Foto 01",ML+CW/2,y+F01H+3,{align:"center"});
         pdf.setFont("helvetica","normal");pdf.setFontSize(8.5);
-        pdf.text(f0.legenda||f0.tipo||f0.ambiente||"Fachada",ML+CW/2,y+F01H+6.8,{align:"center"});
+        pdf.text(_normalizarLegenda(f0.legenda||f0.tipo||f0.ambiente||"Fachada"),ML+CW/2,y+F01H+6.8,{align:"center"});
         fotoNum++;
         y+=F01H+LEGH;
 
@@ -7287,7 +7298,7 @@ async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
     pdf.setFont("helvetica","bold");pdf.setFontSize(8);
     pdf.text("Foto "+String(fotoNum).padStart(2,"0"),fx+FPL/2,y+FPH+3.2,{align:"center"});
     pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);
-    const leg1=pdf.splitTextToSize(f.legenda||f.tipo||"Vista",FPL-2);
+    const leg1=pdf.splitTextToSize(_normalizarLegenda(f.legenda||f.tipo||"Vista"),FPL-2);
     pdf.text(leg1[0],fx+FPL/2,y+FPH+6.8,{align:"center"});
   } else {
     pdf.setDrawColor(0,0,0);pdf.setLineWidth(LW);
@@ -7307,7 +7318,7 @@ async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
       pdf.setFont("helvetica","bold");pdf.setFontSize(8);
       pdf.text("Foto "+String(fotoNum+k).padStart(2,"0"),fx+fw_k/2,y+FPH+3.2,{align:"center"});
       pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);
-      const legTxt=pdf.splitTextToSize(f.legenda||f.tipo||"Vista",fw_k-2);
+      const legTxt=pdf.splitTextToSize(_normalizarLegenda(f.legenda||f.tipo||"Vista"),fw_k-2);
       pdf.text(legTxt[0],fx+fw_k/2,y+FPH+6.8,{align:"center"});
     }
   }
