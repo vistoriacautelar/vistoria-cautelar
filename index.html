@@ -4783,19 +4783,9 @@ function _normalizarPatLista(pats){
 }
 
 function gerarLegendaCombo(c){
-  // Mapa de preposições por elemento (para desplacamento: "na Parede", "no Piso", etc.)
-  const PREPOSICAO={"Estruturas":"nas","Estrutura":"na","Parede":"na","Teto":"no","Forro":"no","Piso":"no","Calçada":"na","Porta":"na","Portas":"nas","Janela":"na","Esquadria":"na","Esquadrias":"nas","Portão":"no","Estr. Metálicas":"nas","Vidros":"nos","Telhados":"nos","Inst. Hidráulicas":"nas","Outros":"em"};
-  // Normaliza nomes ANTES de qualquer renderização: garante que "Despl. de Pintura" virou
-  // "Desplacamento" no que sai pro usuário, mesmo em vistorias antigas.
+  // Normaliza nomes ANTES de qualquer renderização
   const patsNorm=_normalizarPatLista(c.pats||[]);
-  // Se TODAS as patologias são desplacamento, usa formato especial:
-  // "Desplacamento de Pintura na Parede" em vez de "Parede: Desplacamento de Pintura"
-  const isDespl=patsNorm.length&&patsNorm.every(p=>p.startsWith("Desplacamento"));
-  if(isDespl&&c.elemento){
-    const prep=PREPOSICAO[c.elemento]||"na";
-    return patsNorm.join(" / ")+" "+prep+" "+c.elemento;
-  }
-  // Padrão: "Elemento: Patologia1 / Patologia2"
+  // Formato padrão: "Elemento: Patologia1 / Patologia2"
   return c.elemento+": "+patsNorm.join(" / ");
 }
 
