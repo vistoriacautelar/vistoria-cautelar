@@ -5896,6 +5896,13 @@ function abrirDetalheVistoria(id,data){
     }
     regeRarPDF(dadosCompletos);
   };c.appendChild(btnPDF);
+  // Botão enviar para o Drive (visível pra todos quando Drive está conectado)
+  const btnDrive=document.createElement("button");
+  btnDrive.className="btn";
+  btnDrive.style.cssText="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;margin-bottom:8px";
+  btnDrive.textContent="☁️ Enviar para o Drive";
+  btnDrive.onclick=()=>gdrive_enviarUma(id,data,btnDrive);
+  c.appendChild(btnDrive);
   goTo("s-detalhe-vistoria");
 }
 
@@ -8959,93 +8966,33 @@ window.gdrive_conectar=async function(){
 
 // --- Disconnect (só Master) ---
 
-// --- Backup fotos locais para o Drive ---
-// FASE 1: Lista vistorias com fotos (SEM carregar fotos — só chaves + Firestore metadata)
-// FASE 2: Usuário seleciona UMA, o app carrega e envia foto por foto
-window.gdrive_backupLocal=async function(){
-  const statusEl=document.getElementById("perfil-gdrive-backup-status");
-  const btn=document.getElementById("perfil-gdrive-backup");
-  if(statusEl)statusEl.style.display="block";
-  if(btn){btn.disabled=true;btn.textContent="⏳ Listando...";}
-  const show=(msg)=>{if(statusEl)statusEl.innerHTML=msg;};
-  try{
-    const token=await gdrive_ensureToken();
-    if(!token){show("❌ Drive não conectado.");if(btn){btn.disabled=false;btn.textContent="📤 Enviar fotos locais para o Drive";}return;}
-    // Listar APENAS chaves do IndexedDB (zero memória de fotos)
-    const dbLocal=await localDB();
-    const chaves=await new Promise((res)=>{
-      const tx=dbLocal.transaction(LOCAL_DB_STORE,"readonly");
-      const req=tx.objectStore(LOCAL_DB_STORE).getAllKeys();
-      req.onsuccess=()=>res((req.result||[]).filter(k=>k&&k!=="__rascunho_ativo__"));
-      req.onerror=()=>res([]);
-    });
-    if(!chaves.length){show("Nenhuma foto local neste aparelho.");if(btn){btn.disabled=false;btn.textContent="📤 Enviar fotos locais para o Drive";}return;}
-    // Buscar metadata de cada vistoria NO FIRESTORE (leve — sem fotos)
-    show("Carregando lista...");
-    const lista=[];
-    for(const vid of chaves){
-      let nome="",rua="",num="",coletor="",data="";
-      try{
-        const snap=await getDoc(doc(db,"vistorias",vid));
-        if(snap.exists()){
-          const d=snap.data();
-          nome=(d.responsavel&&d.responsavel.nome)||"";
-          rua=(d.endereco&&d.endereco.rua)||"";
-          num=(d.endereco&&d.endereco.num)||"";
-          coletor=d.coletorNome||"";
-          data=d.data||"";
-        }
-      }catch(e){if(/terminated/i.test(e.message||"")){_initDb();}}
-      lista.push({vid,nome:nome||"Sem nome",rua,num,coletor,data});
-    }
-    // Montar lista HTML com botões individuais
-    let html='<p style="font-size:13px;color:#555;margin-bottom:8px"><b>'+lista.length+'</b> vistoria(s) com fotos neste aparelho. Toque em uma para enviar:</p>';
-    lista.forEach((item,idx)=>{
-      html+='<div style="display:flex;align-items:center;gap:8px;padding:8px;margin-bottom:4px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb">'
-        +'<div style="flex:1;min-width:0">'
-        +'<div style="font-size:13px;font-weight:600;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+item.nome+'</div>'
-        +'<div style="font-size:11px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+item.rua+(item.num?", "+item.num:"")+(item.coletor?" | "+item.coletor:"")+(item.data?" | "+item.data:"")+'</div>'
-        +'</div>'
-        +'<button onclick="gdrive_enviarUma(\''+item.vid+'\')" class="btn small" style="flex-shrink:0;font-size:11px;padding:4px 10px">Enviar</button>'
-        +'</div>';
-    });
-    html+='<button onclick="gdrive_enviarTodas()" class="btn primary" style="margin-top:10px;width:100%">📤 Enviar TODAS (uma por vez)</button>';
-    show(html);
-    if(btn){btn.disabled=false;btn.textContent="📤 Enviar fotos locais para o Drive";}
-  }catch(e){
-    show("❌ "+(e.message||e));
-    if(btn){btn.disabled=false;btn.textContent="📤 Enviar fotos locais para o Drive";}
-  }
+// --- Backup: botão no Perfil redireciona pra Minhas Vistorias ---
+window.gdrive_backupLocal=function(){
+  alert("Para enviar fotos ao Drive:\n\n1. Vá em 'Minhas Vistorias'\n2. Abra a vistoria desejada\n3. Toque em '☁️ Enviar para o Drive'\n\nCada vistoria é enviada individualmente.");
+  goTo("s-historico");
 };
 
-// Envia UMA vistoria selecionada
-window.gdrive_enviarUma=async function(vid){
-  const statusEl=document.getElementById("perfil-gdrive-backup-status");
-  const show=(msg)=>{if(statusEl)statusEl.innerHTML=msg;};
-  show("⏳ Carregando vistoria...");
+// Envia fotos de UMA vistoria para o Drive (chamado do detalhe da vistoria)
+window.gdrive_enviarUma=async function(vid,vDoc,btnEl){
+  if(btnEl){btnEl.disabled=true;btnEl.textContent="⏳ Preparando...";}
   try{
     let token=await gdrive_ensureToken();
-    if(!token){show("❌ Drive não conectado.");return;}
-    // Ler metadados do Firestore
-    let vDoc=null;
-    try{const snap=await getDoc(doc(db,"vistorias",vid));if(snap.exists())vDoc={id:snap.id,...snap.data()};}
-    catch(e){if(/terminated/i.test(e.message||"")){_initDb();try{const s=await getDoc(doc(db,"vistorias",vid));if(s.exists())vDoc={id:s.id,...s.data()};}catch(_){}}}
+    if(!token){alert("Drive não conectado. Vá em Perfil e conecte primeiro.");if(btnEl){btnEl.disabled=false;btnEl.textContent="☁️ Enviar para o Drive";}return;}
     // Ler fotos do IndexedDB
-    show("⏳ Carregando fotos...");
+    if(btnEl)btnEl.textContent="⏳ Lendo fotos...";
     const dbL=await localDB();
     let entry=await new Promise((res)=>{
       const tx=dbL.transaction(LOCAL_DB_STORE,"readonly");
       const req=tx.objectStore(LOCAL_DB_STORE).get(vid);
       req.onsuccess=()=>res(req.result);req.onerror=()=>res(null);
     });
-    if(!entry||!entry.fotos||!entry.fotos.length){show("❌ Sem fotos nessa vistoria.");return;}
-    if(!vDoc&&entry.vistoria){
-      vDoc={id:vid,clienteNome:entry.vistoria.clienteNome||"",coletorNome:entry.vistoria.coletorNome||"Sem Coletor",endereco:entry.vistoria.endereco||{},data:entry.vistoria.data||""};
+    if(!entry||!entry.fotos||!entry.fotos.length){
+      alert("Sem fotos locais desta vistoria neste aparelho.");
+      if(btnEl){btnEl.disabled=false;btnEl.textContent="☁️ Enviar para o Drive";}return;
     }
-    if(!vDoc){show("❌ Dados da vistoria não encontrados.");entry=null;return;}
     // Criar pastas no Drive
-    show("⏳ Criando pastas no Drive...");
-    token=await gdrive_ensureToken();if(!token){show("❌ Token expirado.");entry=null;return;}
+    if(btnEl)btnEl.textContent="⏳ Criando pastas...";
+    token=await gdrive_ensureToken();if(!token){entry=null;if(btnEl){btnEl.disabled=false;btnEl.textContent="☁️ Enviar para o Drive";}return;}
     const rootId=await gdrive_findOrCreateFolder(token,"Vistorias",null);
     const dr=(vDoc.data||"").replace(/[\/]/g,"-")||new Date().toISOString().slice(0,10);
     const pp=dr.split(/[-\/]/);
@@ -9059,18 +9006,17 @@ window.gdrive_enviarUma=async function(vid){
     const pv=ru+(nu?"-"+nu:"")+(ic?"-"+ic:"");
     const vDir=await gdrive_findOrCreateFolder(token,pv,cDir);
     const fotosDir=await gdrive_findOrCreateFolder(token,"fotos",vDir);
-    // Enviar foto por foto com liberação agressiva de memória
+    // Enviar foto por foto
     const total=entry.fotos.length;
     let ok=0;
     for(let fi=0;fi<total;fi++){
-      show("📤 Enviando foto "+(fi+1)+"/"+total+"...");
+      if(btnEl)btnEl.textContent="📤 Foto "+(fi+1)+"/"+total;
       const foto=entry.fotos[fi];
       if(!foto||!foto.dataUrl){entry.fotos[fi]=null;continue;}
       try{
         const amb=(foto.ambiente||"").replace(/\s+/g,"_");
         const parts=foto.dataUrl.split(",");
         const raw=parts[1]||"";
-        // LIBERAR antes de converter
         foto.dataUrl=null;
         entry.fotos[fi]=null;
         if(!raw)continue;
@@ -9085,34 +9031,13 @@ window.gdrive_enviarUma=async function(vid){
       await new Promise(r=>setTimeout(r,500));
     }
     entry.fotos=null;entry=null;
-    show("✅ "+ok+"/"+total+" fotos enviadas! Toque em 'Enviar fotos locais' pra ver a lista novamente.");
+    if(btnEl){btnEl.disabled=false;btnEl.textContent="✅ "+ok+"/"+total+" enviadas";btnEl.style.background="#d1fae5";btnEl.style.color="#065f46";btnEl.style.borderColor="#6ee7b7";}
+    showToast("✅ "+ok+" foto(s) enviadas ao Drive!",3000);
   }catch(e){
-    show("❌ "+(e.message||e));
+    console.error("gdrive_enviarUma:",e);
+    alert("Erro ao enviar: "+(e.message||e));
+    if(btnEl){btnEl.disabled=false;btnEl.textContent="☁️ Enviar para o Drive";}
   }
-};
-
-// Envia TODAS uma por uma com pausa entre elas
-window.gdrive_enviarTodas=async function(){
-  const statusEl=document.getElementById("perfil-gdrive-backup-status");
-  const show=(msg)=>{if(statusEl)statusEl.innerHTML=msg;};
-  const dbLocal=await localDB();
-  const chaves=await new Promise((res)=>{
-    const tx=dbLocal.transaction(LOCAL_DB_STORE,"readonly");
-    const req=tx.objectStore(LOCAL_DB_STORE).getAllKeys();
-    req.onsuccess=()=>res((req.result||[]).filter(k=>k&&k!=="__rascunho_ativo__"));
-    req.onerror=()=>res([]);
-  });
-  let enviadas=0,erros=0;
-  for(let i=0;i<chaves.length;i++){
-    show("📤 Vistoria "+(i+1)+"/"+chaves.length+"...");
-    try{
-      await gdrive_enviarUma(chaves[i]);
-      enviadas++;
-    }catch(e){erros++;}
-    // Pausa longa entre vistorias
-    await new Promise(r=>setTimeout(r,2000));
-  }
-  show("✅ Concluído! "+enviadas+" enviada(s)"+(erros?" | "+erros+" erro(s)":""));
 };
 
 window.gdrive_desconectar=async function(){
