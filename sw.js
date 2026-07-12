@@ -15,7 +15,7 @@
 // no próximo carregamento.
 // ============================================================================
 
-const CACHE_VERSION = "v20260709-1";
+const CACHE_VERSION = "v20260710-1";
 const CACHE_NAME = "vistoria-cautelar-" + CACHE_VERSION;
 
 // Arquivos do app shell que serão cacheados na instalação.
