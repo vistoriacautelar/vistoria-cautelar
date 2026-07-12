@@ -234,6 +234,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <p style="font-size:13px;color:#888;margin-bottom:10px">Envie automaticamente PDFs e fotos para o Google Drive após cada finalização.</p>
       <div id="perfil-gdrive-status" style="font-size:13px;color:#555;margin-bottom:10px"></div>
       <button class="btn primary" id="perfil-gdrive-btn" onclick="gdrive_conectar()">Conectar Google Drive</button>
+      <button class="btn" id="perfil-gdrive-backup" onclick="gdrive_backupLocal()" style="margin-top:8px;display:none;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd">📤 Enviar fotos locais para o Drive</button>
+      <div id="perfil-gdrive-backup-status" style="font-size:12px;color:#666;margin-top:6px;display:none"></div>
     </div>
     <div class="card" style="background:#fef3c7;border-color:#fcd34d"><h2 style="color:#92400e">🔬 Diagnóstico (temporário)</h2>
       <p style="font-size:13px;color:#78350f;margin-bottom:10px">Após gerar um PDF, toque aqui para ver os logs técnicos. Útil para investigar problemas de rotação de foto.</p>
@@ -8879,6 +8881,7 @@ function gdrive_isConnected(){
 async function gdrive_atualizarStatus(){
   const el=document.getElementById("perfil-gdrive-status");
   const btn=document.getElementById("perfil-gdrive-btn");
+  const btnBackup=document.getElementById("perfil-gdrive-backup");
   if(!el||!btn)return;
   const isMaster=currentRole&&currentRole.toLowerCase()==="master";
   const tokenData=await gdrive_getTokenFromFirestore();
@@ -8891,8 +8894,10 @@ async function gdrive_atualizarStatus(){
       btn.style.display="";
       btn.onclick=()=>{gdrive_desconectar();};
     }else{
-      btn.style.display="none"; // Cadastrador não desconecta
+      btn.style.display="none";
     }
+    // Botão de backup: visível pra TODOS quando Drive está conectado
+    if(btnBackup)btnBackup.style.display="block";
   }else{
     if(isMaster){
       el.innerHTML='<span style="color:#888">Não conectado</span>';
@@ -8904,6 +8909,7 @@ async function gdrive_atualizarStatus(){
       el.innerHTML='<span style="color:#888">Drive não configurado. Peça ao Master para conectar.</span>';
       btn.style.display="none";
     }
+    if(btnBackup)btnBackup.style.display="none";
   }
 }
 
@@ -8952,6 +8958,72 @@ window.gdrive_conectar=async function(){
 };
 
 // --- Disconnect (só Master) ---
+// --- Backup de TODAS as fotos locais (IndexedDB) para o Drive ---
+// Varre o IndexedDB, busca metadados de cada vistoria no Firestore, e sobe as fotos.
+// Cada cadastrador roda no próprio celular — só as fotos que estão naquele aparelho são enviadas.
+// Pastas nunca se sobrescrevem: incluem os últimos 6 chars do ID da vistoria no nome.
+window.gdrive_backupLocal=async function(){
+  const statusEl=document.getElementById("perfil-gdrive-backup-status");
+  const btn=document.getElementById("perfil-gdrive-backup");
+  if(statusEl)statusEl.style.display="block";
+  if(btn){btn.disabled=true;btn.textContent="⏳ Enviando...";}
+  const show=(msg)=>{if(statusEl)statusEl.textContent=msg;};
+  try{
+    const token=await gdrive_ensureToken();
+    if(!token){show("❌ Drive não conectado. Peça ao Master para conectar.");if(btn){btn.disabled=false;btn.textContent="📤 Enviar fotos locais para o Drive";}return;}
+    // Listar TODAS as entradas do IndexedDB (exceto rascunho ativo)
+    const dbLocal=await localDB();
+    const allEntries=await new Promise((res)=>{
+      const tx=dbLocal.transaction(LOCAL_DB_STORE,"readonly");
+      const req=tx.objectStore(LOCAL_DB_STORE).getAll();
+      req.onsuccess=()=>res(req.result||[]);
+      req.onerror=()=>res([]);
+    });
+    const entradas=allEntries.filter(e=>e.vistoriaId&&e.vistoriaId!=="__rascunho_ativo__"&&e.fotos&&e.fotos.length);
+    if(!entradas.length){show("Nenhuma foto local encontrada neste aparelho.");if(btn){btn.disabled=false;btn.textContent="📤 Enviar fotos locais para o Drive";}return;}
+    show("Encontradas "+entradas.length+" vistoria(s) com fotos. Iniciando upload...");
+    let enviadas=0,erros=0;
+    for(let i=0;i<entradas.length;i++){
+      const entry=entradas[i];
+      const vid=entry.vistoriaId;
+      show("Enviando "+(i+1)+"/"+entradas.length+" ("+entry.fotos.length+" fotos)...");
+      // Buscar metadados da vistoria no Firestore
+      let vDoc=null;
+      try{
+        const snap=await getDoc(doc(db,"vistorias",vid));
+        if(snap.exists())vDoc={id:snap.id,...snap.data()};
+      }catch(e){
+        // Client terminated → re-init
+        if(/terminated/i.test(e.message||"")){_initDb();try{const snap2=await getDoc(doc(db,"vistorias",vid));if(snap2.exists())vDoc={id:snap2.id,...snap2.data()};}catch(_){}}
+      }
+      // Se não encontrou no Firestore, usa dados do rascunho local (se houver)
+      if(!vDoc&&entry.vistoria){
+        vDoc={id:vid,clienteNome:entry.vistoria.clienteNome||"Sem Cliente",endereco:entry.vistoria.endereco||{},responsavel:entry.vistoria.responsavel||{},data:entry.vistoria.data||""};
+      }
+      if(!vDoc){erros++;continue;}
+      // Montar fotosMap no formato esperado por gdrive_uploadVistoria
+      const fotosMap={};
+      entry.fotos.forEach((f,idx)=>{
+        fotosMap["foto_"+idx]={dataUrl:f.dataUrl,ambiente:f.ambiente||"",tipo:f.tipo||"",legenda:f.legenda||"",numero:f.numero||"Foto "+String(idx+1).padStart(2,"0")};
+      });
+      // Upload (sem PDF — só fotos; o PDF já foi baixado no celular na hora da finalização)
+      try{
+        await gdrive_uploadVistoria(vDoc,null,fotosMap,"backup",{_fromQueue:false});
+        enviadas++;
+      }catch(eUp){
+        console.error("Backup Drive falhou pra vistoria "+vid+":",eUp);
+        erros++;
+      }
+    }
+    show("✅ Concluído! "+enviadas+" vistoria(s) enviada(s)"+(erros?" | "+erros+" erro(s)":"")+".");
+    if(btn){btn.disabled=false;btn.textContent="📤 Enviar fotos locais para o Drive";}
+  }catch(e){
+    console.error("gdrive_backupLocal:",e);
+    show("❌ Erro: "+(e.message||e));
+    if(btn){btn.disabled=false;btn.textContent="📤 Enviar fotos locais para o Drive";}
+  }
+};
+
 window.gdrive_desconectar=async function(){
   const tokenData=await gdrive_getTokenFromFirestore();
   if(tokenData&&tokenData.accessToken){
@@ -9105,10 +9177,12 @@ async function gdrive_uploadVistoria(vDoc,pdfBlob,fotosMap,nomeBase,opts){
     const rootId=await gdrive_findOrCreateFolder(token,"Vistorias",null);
     const clienteNome=(vDoc.clienteNome||vDoc.clienteId||"Sem Cliente").replace(/[\/\\:*?"<>|]/g,"_");
     const clienteId=await gdrive_findOrCreateFolder(token,clienteNome,rootId);
-    const dataStr=(vDoc.data_finalizacao||new Date().toISOString()).slice(0,10).replace(/-/g,"");
-    const endRua=((vDoc.endereco&&vDoc.endereco.rua)||"sem-endereco").substring(0,60).replace(/[\/\\:*?"<>|]/g,"_");
-    const endNum=(vDoc.endereco&&vDoc.endereco.numero)||"";
-    const pastaVistoria=dataStr+"-"+endRua+(endNum?"-"+endNum:"");
+    const dataStr=(vDoc.data||vDoc.data_finalizacao||new Date().toISOString()).slice(0,10).replace(/[\/]/g,"-").replace(/-/g,"");
+    const endRua=((vDoc.endereco&&vDoc.endereco.rua)||"sem-endereco").substring(0,40).replace(/[\/\\:*?"<>|]/g,"_");
+    const endNum=(vDoc.endereco&&vDoc.endereco.num)||"";
+    // ID curto da vistoria (últimos 6 chars) garante unicidade mesmo com endereço igual
+    const idCurto=(vDoc.id||"").slice(-6);
+    const pastaVistoria=dataStr+"-"+endRua+(endNum?"-"+endNum:"")+(idCurto?"-"+idCurto:"");
     const vistId=await gdrive_findOrCreateFolder(token,pastaVistoria,clienteId);
     if(pdfBlob){
       await gdrive_uploadFile(token,(nomeBase||"Laudo")+".pdf",pdfBlob,vistId);
