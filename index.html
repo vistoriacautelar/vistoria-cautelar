@@ -8840,7 +8840,18 @@ async function gdrive_saveTokenToFirestore(accessToken,expiresIn,email){
     connectedBy:currentUser?currentUser.uid:"",
     connectedAt:new Date().toISOString()
   };
-  await setDoc(doc(db,"config","drive"),data);
+  try{
+    await setDoc(doc(db,"config","drive"),data);
+  }catch(e){
+    // Client terminated → re-init e retry
+    if(/terminated/i.test(e.message||"")){
+      console.warn("Firestore terminated ao salvar token Drive, re-init...");
+      _initDb();
+      await setDoc(doc(db,"config","drive"),data);
+    } else {
+      throw e; // propaga pra o caller mostrar o alert
+    }
+  }
   _gdriveTokenCache=data;
   _gdriveTokenCacheTime=Date.now();
 }
@@ -8899,31 +8910,45 @@ async function gdrive_atualizarStatus(){
 // --- Connect (só Master) ---
 window.gdrive_conectar=async function(){
   if(typeof google==="undefined"||!google.accounts||!google.accounts.oauth2){
-    showToast("Biblioteca Google não carregou. Verifique sua conexão.",3500);
+    alert("A biblioteca do Google não carregou.\n\nIsso acontece quando:\n• A internet está instável\n• O navegador bloqueou scripts externos\n\nTente:\n1. Fechar e reabrir o app\n2. Verificar se tem internet estável\n3. Tentar em uma aba comum (não anônima)");
     return;
   }
-  const client=google.accounts.oauth2.initTokenClient({
-    client_id:GDRIVE_CLIENT_ID,
-    scope:GDRIVE_SCOPE,
-    callback:async(resp)=>{
-      if(resp.error){
-        console.error("GDrive OAuth error:",resp);
-        showToast("Erro ao conectar: "+(resp.error_description||resp.error),3500);
-        return;
+  try{
+    const client=google.accounts.oauth2.initTokenClient({
+      client_id:GDRIVE_CLIENT_ID,
+      scope:GDRIVE_SCOPE,
+      callback:async(resp)=>{
+        if(resp.error){
+          console.error("GDrive OAuth error:",resp);
+          alert("Erro ao conectar com Google Drive:\n\n"+(resp.error_description||resp.error)+"\n\nVerifique se a conta "+
+            "carlabezerra121@gmail.com está adicionada como usuária de teste no Google Cloud Console.");
+          return;
+        }
+        let email="";
+        try{
+          const r=await fetch("https://www.googleapis.com/oauth2/v2/userinfo",{headers:{Authorization:"Bearer "+resp.access_token}});
+          if(r.ok){const d=await r.json();email=d.email||"";}
+        }catch(e){console.warn("Falha ao buscar email:",e);}
+        try{
+          await gdrive_saveTokenToFirestore(resp.access_token,parseInt(resp.expires_in,10),email);
+          // Atualiza status DIRETO DO CACHE (sem reler Firestore — evita falha de leitura)
+          const el=document.getElementById("perfil-gdrive-status");
+          const btn=document.getElementById("perfil-gdrive-btn");
+          if(el)el.innerHTML='<span style="color:#065f46">✅ Conectado</span> — <strong>'+email+'</strong>';
+          if(btn){btn.textContent="Desconectar Google Drive";btn.className="btn danger";btn.onclick=()=>{gdrive_desconectar();};}
+          alert("✅ Google Drive conectado com sucesso!\n\nConta: "+email+"\n\nA partir de agora, todas as vistorias finalizadas terão as fotos salvas no Drive automaticamente.");
+        }catch(eSave){
+          console.error("Falha ao salvar token no Firestore:",eSave);
+          alert("Drive autenticado com a conta "+email+", mas FALHOU ao salvar o token no Firestore:\n\n"+(eSave.message||eSave)+
+            "\n\nVerifique:\n1. Se as Firestore Rules têm a regra para 'config/{docId}'\n2. Se você está logado como Master no app");
+        }
       }
-      // Buscar email
-      let email="";
-      try{
-        const r=await fetch("https://www.googleapis.com/oauth2/v2/userinfo",{headers:{Authorization:"Bearer "+resp.access_token}});
-        if(r.ok){const d=await r.json();email=d.email||"";}
-      }catch(e){}
-      // Salvar no Firestore (disponível para todos os aparelhos)
-      await gdrive_saveTokenToFirestore(resp.access_token,parseInt(resp.expires_in,10),email);
-      showToast("Google Drive conectado!",2500);
-      gdrive_atualizarStatus();
-    }
-  });
-  client.requestAccessToken();
+    });
+    client.requestAccessToken();
+  }catch(e){
+    console.error("GDrive connect error:",e);
+    alert("Erro ao iniciar conexão com Google Drive:\n\n"+(e.message||e));
+  }
 };
 
 // --- Disconnect (só Master) ---
