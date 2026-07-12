@@ -6239,7 +6239,7 @@ async function gerarComprovanteBlob(data,conclusaoLinhas,assinaturaResp,assinatu
     const step=(rowH-2)/PATOLOGIAS_CK.length;
     vals.forEach((arr,ki)=>{
       PATOLOGIAS_CK.forEach((grp,pi)=>{
-        const mk=PATOLOGIAS_CK_MAP[grp].some(p=>arr.includes(p));
+        const mk=PATOLOGIAS_CK_MAP[grp]?PATOLOGIAS_CK_MAP[grp].some(p=>arr.includes(p)):false;
         const ty=yc+1.5+pi*step;
         const bx=cx+1;const by=ty-0.3;const bs=2.6;
         pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(bx,by,bs,bs,"S");
@@ -6845,7 +6845,7 @@ window.finalizarVistoria=async()=>{
       vals.forEach((arr,ki)=>{
         PATOLOGIAS_CK.forEach((grp,pi)=>{
           // Marca se qualquer patologia do grupo estiver selecionada
-          const mk=PATOLOGIAS_CK_MAP[grp].some(p=>arr.includes(p));
+          const mk=PATOLOGIAS_CK_MAP[grp]?PATOLOGIAS_CK_MAP[grp].some(p=>arr.includes(p)):false;
           const ty=yc+1.5+pi*step;
           const bx=cx+1;const by=ty-0.3;const bs=2.6;
           // Quadrado sempre com linha simples preta
@@ -9234,6 +9234,7 @@ async function gdrive_uploadVistoria(vDoc,pdfBlob,fotosMap,nomeBase,opts){
     if(fotosMap&&Object.keys(fotosMap).length>0){
       const fotosDir=await gdrive_findOrCreateFolder(token,"fotos",vistId);
       const entries=Object.entries(fotosMap);
+      const metadataArr=[];
       for(let i=0;i<entries.length;i++){
         const [fotoId,fotoObj]=entries[i];
         if(!fotoObj||!fotoObj.dataUrl)continue;
@@ -9244,7 +9245,20 @@ async function gdrive_uploadVistoria(vDoc,pdfBlob,fotosMap,nomeBase,opts){
           const ambNome=(fotoObj.ambiente||"foto").replace(/\s+/g,"_").replace(/[\/\\:*?"<>|]/g,"");
           const fName="foto_"+(i+1).toString().padStart(2,"0")+"_"+ambNome+"."+ext;
           await gdrive_uploadFile(token,fName,fBlob,fotosDir);
+          // Guardar metadados pra restaurar depois (sem dataUrl)
+          const meta={fileName:fName,ambiente:fotoObj.ambiente||"",tipo:fotoObj.tipo||"",numero:fotoObj.numero||""};
+          if(fotoObj.patologias)meta.patologias=fotoObj.patologias;
+          if(fotoObj.combos)meta.combos=fotoObj.combos;
+          if(fotoObj.comodo)meta.comodo=fotoObj.comodo;
+          metadataArr.push(meta);
         }catch(ef){console.warn("GDrive foto upload falhou:",fotoId,ef);}
+      }
+      // Salvar metadata.json na pasta de fotos
+      if(metadataArr.length){
+        try{
+          const metaBlob=new Blob([JSON.stringify(metadataArr,null,2)],{type:"application/json"});
+          await gdrive_uploadFile(token,"metadata.json",metaBlob,fotosDir);
+        }catch(em){console.warn("GDrive metadata upload:",em);}
       }
     }
     showToast("📁 Salvo no Drive",3000);
@@ -9371,6 +9385,18 @@ async function _gdrive_buscarFotosEmPastaColetor(token,coletorFolderId,vDoc,onPr
   d=await r.json();
   if(!d.files||!d.files.length)return null;
   const fotosFolderId=d.files[0].id;
+  // Tentar ler metadata.json pra restaurar legendas/patologias
+  let metadataMap={};
+  try{
+    const mq="name='metadata.json' and '"+fotosFolderId+"' in parents and trashed=false";
+    const mr=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(mq)+"&fields=files(id)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
+    const md=await mr.json();
+    if(md.files&&md.files.length){
+      const mjr=await fetch("https://www.googleapis.com/drive/v3/files/"+md.files[0].id+"?alt=media",{headers:{Authorization:"Bearer "+token}});
+      const metaArr=await mjr.json();
+      if(Array.isArray(metaArr)){metaArr.forEach(m=>{if(m.fileName)metadataMap[m.fileName]=m;});}
+    }
+  }catch(em){console.warn("GDrive metadata.json:",em);}
   // Listar fotos (só metadata, sem baixar ainda)
   q="'"+fotosFolderId+"' in parents and trashed=false and (mimeType='image/jpeg' or mimeType='image/png')";
   r=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(q)+"&fields=files(id,name,mimeType)&orderBy=name&spaces=drive",{headers:{Authorization:"Bearer "+token}});
@@ -9407,8 +9433,14 @@ async function _gdrive_buscarFotosEmPastaColetor(token,coletorFolderId,vDoc,onPr
         img.src=objUrl;
       });
       const parts=f.name.replace(/\.\w+$/,"").split("_");
-      const ambiente=parts.length>=3?parts.slice(2).join(" "):"";
-      fotos.push({dataUrl,ambiente,tipo:"foto"});
+      const ambienteFallback=parts.length>=3?parts.slice(2).join(" "):"";
+      const meta=metadataMap[f.name]||{};
+      const foto={dataUrl,ambiente:meta.ambiente||ambienteFallback,tipo:meta.tipo||"foto"};
+      if(meta.numero)foto.numero=meta.numero;
+      if(meta.patologias)foto.patologias=meta.patologias;
+      if(meta.combos)foto.combos=meta.combos;
+      if(meta.comodo)foto.comodo=meta.comodo;
+      fotos.push(foto);
     }catch(ef){console.warn("GDrive download foto:",f.name,ef);}
   }
   return fotos.length?fotos:null;
