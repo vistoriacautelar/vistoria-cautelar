@@ -236,6 +236,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <button class="btn primary" id="perfil-gdrive-btn" onclick="gdrive_conectar()">Conectar Google Drive</button>
       <button class="btn" id="perfil-gdrive-backup" onclick="gdrive_backupLocal()" style="margin-top:8px;display:none;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd">📤 Enviar fotos locais para o Drive</button>
       <div id="perfil-gdrive-backup-status" style="font-size:12px;color:#666;margin-top:6px;display:none"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:12px;padding:10px;background:#f9fafb;border-radius:6px;cursor:pointer">
+        <input type="checkbox" id="perfil-gdrive-wifi-only" onchange="gdrive_setWifiOnly(this.checked)" style="width:18px;height:18px">
+        <span>📶 Enviar apenas quando estiver no WiFi (economiza dados móveis)</span>
+      </label>
       <div style="border-top:1px solid #e5e7eb;margin-top:12px;padding-top:10px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <strong style="font-size:13px">Status do Backup</strong>
@@ -498,9 +502,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       </div>
     </div>
     <div id="fotos-por-ambiente"></div>
-    <div class="card"><h2>Observações</h2>
-      <div class="field"><textarea id="v-obs" rows="3" placeholder="Anotações livres sobre a vistoria (opcional)" oninput="if(currentVistoria)currentVistoria.observacoes=this.value" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical"></textarea></div>
-    </div>
     <button class="btn success" onclick="irParaFinalizacao()">Finalizar Vistoria</button>
     <div style="margin-top:18px;padding-top:14px;border-top:1px dashed #d4d4d8">
       <p style="font-size:12px;color:#888;text-align:center;margin-bottom:6px">Imóvel sem ninguém presente?</p>
@@ -514,12 +515,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   <div class="topbar"><button class="back" onclick="goTo('s-vistoria')">&#8249; Voltar</button><h1>Revisar Dados</h1></div>
   <div class="content">
     <div class="card" style="background:#eff6ff;border:1px solid #93c5fd;margin-bottom:12px">
-      <p style="font-size:13px;color:#1e40af;margin:0">Confira os dados antes de finalizar. Se algo estiver errado, toque em <strong>Corrigir</strong>.</p>
+      <p style="font-size:13px;color:#1e40af;margin:0">Confira e ajuste os dados abaixo antes de finalizar.</p>
     </div>
     <div id="revisao-conteudo"></div>
-    <div style="display:flex;gap:10px;margin-top:16px">
-      <button class="btn" onclick="goTo('s-vistoria')" style="flex:1;border-color:#dc2626;color:#dc2626">Corrigir</button>
-      <button class="btn success" onclick="irParaFinalizacaoConfirmado()" style="flex:2">Confirmar e Finalizar</button>
+    <div style="margin-top:16px">
+      <button class="btn success" onclick="irParaFinalizacaoConfirmado()" style="width:100%">Confirmar e Finalizar</button>
     </div>
   </div>
 </div>
@@ -9016,6 +9016,9 @@ function gdrive_isConnected(){
 
 // --- UI status no Perfil ---
 async function gdrive_atualizarStatus(){
+  // Refletir preferência WiFi-only salva
+  const wifiCk=document.getElementById("perfil-gdrive-wifi-only");
+  if(wifiCk)wifiCk.checked=gdrive_getWifiOnly();
   const el=document.getElementById("perfil-gdrive-status");
   const btn=document.getElementById("perfil-gdrive-btn");
   const btnBackup=document.getElementById("perfil-gdrive-backup");
@@ -9326,11 +9329,57 @@ async function gdriveQueueRemove(id){
   }catch(e){}
 }
 
+// --- WiFi-only preference ---
+const GDRIVE_WIFI_ONLY_KEY="gdrive_wifi_only";
+function gdrive_getWifiOnly(){return localStorage.getItem(GDRIVE_WIFI_ONLY_KEY)==="1";}
+window.gdrive_setWifiOnly=function(on){
+  localStorage.setItem(GDRIVE_WIFI_ONLY_KEY,on?"1":"0");
+  showToast(on?"📶 Envio limitado ao WiFi":"📱 Envio em qualquer conexão",2500);
+};
+// Detecta se está em WiFi. Usa Network Information API (Chrome Android).
+// Em iOS Safari a API não existe: nesse caso, retorna "unknown" e enfileira só quando o usuário optou por WiFi-only.
+function gdrive_conexaoTipo(){
+  const c=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
+  if(!c)return "unknown";
+  if(c.type)return c.type; // "wifi","cellular","ethernet","none"
+  if(c.effectiveType)return c.effectiveType; // fallback
+  return "unknown";
+}
+function gdrive_deveEsperarWifi(){
+  if(!gdrive_getWifiOnly())return false; // preferência desligada
+  const tipo=gdrive_conexaoTipo();
+  // WiFi ou ethernet = enviar. Celular = esperar. Unknown = enviar (não bloqueia iOS sem a API).
+  if(tipo==="wifi"||tipo==="ethernet")return false;
+  if(tipo==="cellular"||tipo==="2g"||tipo==="3g"||tipo==="4g"||tipo==="5g")return true;
+  return false;
+}
+// Escuta mudanças de conexão: quando WiFi conecta, processa a fila
+if(navigator.connection){
+  navigator.connection.addEventListener("change",()=>{
+    if(!gdrive_deveEsperarWifi()){
+      // Está em WiFi (ou preferência desligada) → tenta processar fila
+      setTimeout(()=>gdrive_processQueue().catch(()=>{}),1500);
+    }
+  });
+}
+// Também escuta quando o app volta a ficar online (fallback pra iOS)
+window.addEventListener("online",()=>{
+  setTimeout(()=>{if(!gdrive_deveEsperarWifi())gdrive_processQueue().catch(()=>{});},2000);
+});
+
 // --- Upload vistoria completa (PDF + fotos) ---
-// Se token indisponível: enfileira pra retry posterior.
+// Se token indisponível OU esperando WiFi: enfileira pra retry posterior.
 // Estrutura: Vistorias / [Cliente] / [Data]-[Endereço] / {Laudo.pdf, fotos/}
 async function gdrive_uploadVistoria(vDoc,pdfBlob,fotosMap,nomeBase,opts){
   opts=opts||{};
+  // Se preferência WiFi-only e não está no WiFi, enfileira sem tentar
+  if(!opts._fromQueue&&gdrive_deveEsperarWifi()){
+    if(vDoc&&vDoc.id){
+      await gdriveQueueAdd(vDoc.id,vDoc,pdfBlob,nomeBase);
+      showToast("📱 Salvo na fila — enviará no WiFi",3000);
+    }
+    return;
+  }
   const token=await gdrive_ensureToken();
   if(!token){
     // Sem token — enfileira se tem vistoriaId (e não é retry, pra evitar loop)
@@ -9403,6 +9452,8 @@ async function gdrive_uploadVistoria(vDoc,pdfBlob,fotosMap,nomeBase,opts){
 let _gdriveQueueProcessing=false;
 async function gdrive_processQueue(){
   if(_gdriveQueueProcessing)return;
+  // Se preferência WiFi-only e não está no WiFi, não processa
+  if(gdrive_deveEsperarWifi())return;
   _gdriveQueueProcessing=true;
   try{
     const items=await gdriveQueueGetAll();
@@ -9692,6 +9743,18 @@ window.gdrive_verStatusBackup=async function(){
     }
     // 4. Render
     let html='';
+    // Tipo de conexão
+    const tipoConexao=gdrive_conexaoTipo();
+    const wifiOnly=gdrive_getWifiOnly();
+    if(tipoConexao!=="unknown"){
+      const emoji=tipoConexao==="wifi"||tipoConexao==="ethernet"?"📶":"📱";
+      const nome=tipoConexao==="wifi"?"WiFi":tipoConexao==="ethernet"?"Ethernet":"Dados móveis";
+      html+='<div style="margin-bottom:8px;padding:6px;background:#f9fafb;border-radius:4px">'+emoji+' Conexão atual: <strong>'+nome+'</strong>';
+      if(wifiOnly&&tipoConexao!=="wifi"&&tipoConexao!=="ethernet"){
+        html+=' <span style="color:#dc2626">(aguardando WiFi)</span>';
+      }
+      html+='</div>';
+    }
     if(fila.length){
       html+='<div style="color:#dc2626;margin-bottom:6px">⚠️ '+fila.length+' vistoria(s) na fila (aguardando token para enviar)</div>';
     }else{
