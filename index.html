@@ -378,8 +378,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   </div>
   <div id="arm-bulk-bar" style="display:none;background:#fff0f0;border-bottom:1px solid #fca5a5;padding:10px 16px;align-items:center;gap:10px;position:sticky;top:53px;z-index:90">
     <span id="arm-bulk-count" style="flex:1;font-size:13px;color:#7f1d1d;font-weight:500">0 selecionadas</span>
+    <button class="btn small" onclick="armSelecionarConfirmadas()" style="background:#fff;border-color:#059669;color:#059669">Só ✅</button>
     <button class="btn small" onclick="armSelecionarTodas()" style="background:#fff;border-color:#fca5a5;color:#7f1d1d">Todas</button>
     <button id="arm-btn-apagar-bulk" class="btn small danger" onclick="apagarFotosLocaisSelecionadas()" disabled>Apagar fotos</button>
+  </div>
+  <div style="background:#eff6ff;border-bottom:1px solid #93c5fd;padding:10px 16px;display:flex;gap:10px;align-items:center">
+    <span style="flex:1;font-size:12px;color:#1e40af">Verifique quais estão salvas no Drive antes de apagar</span>
+    <button class="btn small" onclick="armVerificarDrive()" id="arm-btn-verificar" style="background:#1d4ed8;color:#fff">🔍 Verificar Drive</button>
   </div>
   <div class="content" id="lista-armazenamento"></div>
 </div>
@@ -2402,7 +2407,30 @@ window._armAtualizarBulkBar=()=>{
 window.apagarFotosLocaisSelecionadas=async()=>{
   const ids=Array.from(_armSelecionadas);
   if(!ids.length)return;
-  if(!confirm("Apagar fotos de "+ids.length+" vistoria(s) deste aparelho?\n\nAs vistorias permanecem no histórico, apenas as fotos locais serão removidas. Use isto após extrair as fotos para o PC."))return;
+  // Verificar se alguma das selecionadas está SEM confirmação no Drive
+  const semConfirmacao=ids.filter(id=>{
+    const r=_armResumoCache.find(x=>x.id===id);
+    return r&&r._noDrive===false;
+  });
+  const naoVerificadas=ids.filter(id=>{
+    const r=_armResumoCache.find(x=>x.id===id);
+    return r&&r._noDrive===undefined;
+  });
+  let msg="Apagar fotos de "+ids.length+" vistoria(s) deste aparelho?\n\n";
+  if(naoVerificadas.length){
+    msg+="⚠️ ATENÇÃO: "+naoVerificadas.length+" vistoria(s) NÃO foram verificadas no Drive.\n\n";
+    msg+="Recomendo tocar em '🔍 Verificar Drive' antes de apagar.\n\n";
+  }
+  if(semConfirmacao.length){
+    msg+="🚨 PERIGO: "+semConfirmacao.length+" vistoria(s) NÃO estão confirmadas no Drive!\n";
+    msg+="Se apagar, você não conseguirá gerar o PDF novamente.\n\n";
+  }
+  msg+="As vistorias permanecem no histórico, apenas as fotos locais serão removidas.\n\nDeseja continuar?";
+  if(!confirm(msg))return;
+  if(semConfirmacao.length){
+    // Segunda confirmação para as sem Drive
+    if(!confirm("Última confirmação: apagar "+semConfirmacao.length+" vistoria(s) sem backup no Drive?\n\nISSO NÃO PODE SER DESFEITO."))return;
+  }
   const btn=document.getElementById("arm-btn-apagar-bulk");
   const origTxt=btn.textContent;
   btn.disabled=true;btn.textContent="Apagando...";
@@ -2416,6 +2444,55 @@ window.apagarFotosLocaisSelecionadas=async()=>{
   showToast("Fotos apagadas de "+ok+" vistoria(s)",3000);
   armToggleSelecao(false);
   loadArmazenamento();
+};
+
+// Selecionar apenas vistorias confirmadas no Drive
+window.armSelecionarConfirmadas=()=>{
+  _armResumoCache.forEach(r=>{
+    if(r._noDrive===true)_armSelecionadas.add(r.id);
+  });
+  document.querySelectorAll("#lista-armazenamento input.arm-check").forEach(cb=>{
+    cb.checked=_armSelecionadas.has(cb.dataset.id);
+  });
+  _armAtualizarBulkBar();
+  showToast("✅ "+_armSelecionadas.size+" confirmada(s) selecionada(s)",2000);
+};
+
+// Verificar quais vistorias existem no Drive (usa flag no Firestore quando disponível)
+window.armVerificarDrive=async()=>{
+  const btn=document.getElementById("arm-btn-verificar");
+  const origTxt=btn.textContent;
+  btn.disabled=true;btn.textContent="Verificando...";
+  let verificadas=0;
+  for(const r of _armResumoCache){
+    const v=r.vistoriaData;
+    if(!v){r._noDrive=false;continue;}
+    // Prioridade 1: flag do Firestore (rápido e confiável)
+    if(v.driveBackupOk){
+      r._noDrive=true;
+    }else if(gdrive_isConnected()){
+      // Prioridade 2: verificar direto no Drive (fallback pra vistorias antigas sem flag)
+      try{
+        const token=await gdrive_ensureToken();
+        if(token){
+          const existe=await _gdrive_verificarPastaExiste(token,{id:r.id,data:v.data});
+          r._noDrive=existe;
+        }else{
+          r._noDrive=false;
+        }
+      }catch(e){r._noDrive=false;}
+    }else{
+      r._noDrive=false;
+    }
+    verificadas++;
+    btn.textContent="Verificando "+verificadas+"/"+_armResumoCache.length+"...";
+    if(verificadas%5===0)_renderArmazenamento();
+  }
+  btn.disabled=false;btn.textContent=origTxt;
+  _renderArmazenamento();
+  const confirmadas=_armResumoCache.filter(r=>r._noDrive===true).length;
+  const semDrive=_armResumoCache.filter(r=>r._noDrive===false).length;
+  showToast("Verificação concluída: "+confirmadas+" ✅ · "+semDrive+" ❌",4000);
 };
 
 async function loadArmazenamento(){
@@ -2469,18 +2546,31 @@ function _renderArmazenamento(){
   el.innerHTML="";
   const totalBytes=_armResumoCache.reduce((a,r)=>a+r.bytesAprox,0);
   const totalFotos=_armResumoCache.reduce((a,r)=>a+r.numFotos,0);
+  const confirmadas=_armResumoCache.filter(r=>r._noDrive===true).length;
+  const naoConfirmadas=_armResumoCache.filter(r=>r._noDrive===false).length;
   // Resumo no topo
   const resumo=document.createElement("div");
   resumo.style.cssText="background:#f5f5f7;border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:13px";
-  resumo.innerHTML='<b>'+_armResumoCache.length+'</b> vistoria(s) | <b>'+totalFotos+'</b> foto(s) | <b>'+_fmtBytes(totalBytes)+'</b> ocupados<br><span style="color:#888;font-size:12px">Apague depois de extrair as fotos para o PC. A vistoria permanece no histórico.</span>';
+  let resumoHtml='<b>'+_armResumoCache.length+'</b> vistoria(s) | <b>'+totalFotos+'</b> foto(s) | <b>'+_fmtBytes(totalBytes)+'</b> ocupados';
+  if(confirmadas>0||naoConfirmadas>0){
+    resumoHtml+='<br><span style="color:#059669;font-size:12px">✅ '+confirmadas+' no Drive</span>';
+    if(naoConfirmadas>0)resumoHtml+=' <span style="color:#dc2626;font-size:12px">| ❌ '+naoConfirmadas+' sem confirmação</span>';
+  }else{
+    resumoHtml+='<br><span style="color:#888;font-size:12px">Toque em "🔍 Verificar Drive" para saber quais estão seguras para apagar.</span>';
+  }
+  resumo.innerHTML=resumoHtml;
   el.appendChild(resumo);
   _armResumoCache.forEach(r=>{
     const v=r.vistoriaData;
     const nome=(v&&v.responsavel&&v.responsavel.nome)||"(sem dados no Firestore)";
     const end=v?((v.endereco&&v.endereco.rua||"")+" "+(v.endereco&&v.endereco.num||"")).trim():"";
     const data=v&&v.data||"";
+    // Badge do Drive
+    let badgeDrive="";
+    if(r._noDrive===true)badgeDrive='<span style="background:#d1fae5;color:#059669;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;margin-right:4px">✅ Drive</span>';
+    else if(r._noDrive===false)badgeDrive='<span style="background:#fee2e2;color:#dc2626;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;margin-right:4px">❌ Sem confirmação</span>';
     const div=document.createElement("div");div.className="list-item";div.style.cursor="pointer";
-    const corpo='<div class="avatar" style="background:#fef3c7;color:#92400e"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg></div><div class="info"><div class="title">'+nome+'</div><div class="sub">'+end+(data?" | "+data:"")+' | '+r.numFotos+' fotos | '+_fmtBytes(r.bytesAprox)+'</div></div>';
+    const corpo='<div class="avatar" style="background:#fef3c7;color:#92400e"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg></div><div class="info"><div class="title">'+badgeDrive+nome+'</div><div class="sub">'+end+(data?" | "+data:"")+' | '+r.numFotos+' fotos | '+_fmtBytes(r.bytesAprox)+'</div></div>';
     if(_armModoSelecao){
       const isChecked=_armSelecionadas.has(r.id);
       div.innerHTML='<input type="checkbox" class="arm-check" data-id="'+r.id+'" '+(isChecked?"checked":"")+' style="width:20px;height:20px;margin-right:6px;flex-shrink:0;accent-color:#dc2626">'+corpo;
@@ -5884,6 +5974,7 @@ function _histItemCard(v){
   const div=document.createElement("div");div.className="list-item";div.style.cursor="pointer";
   const tipoBadge=v.tipoLaudo==="completo"?'<span class="badge laudo" style="margin-right:6px">Completo</span>':'';
   const statusBadge='<span class="badge '+({concluida:"ok",parcial:"cad",externa:"cad",recusa:"master",ausente:"com"}[v.status]||"ok")+'">'+({"concluida":"Finalizado","parcial":"Parcial","externa":"Externa","recusa":"Recusa","ausente":"Ausente"}[v.status]||"Finalizado")+'</span>';
+  const driveBadge=v.driveBackupOk?'<span title="Backup no Drive" style="display:inline-flex;align-items:center;justify-content:center;background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;margin-right:4px">☁️</span>':'';
   // Hora da finalização (extrai HH:MM do timestamp). Se a vistoria não foi finalizada (pendente),
   // pega criadoEm como referência. Se nenhum dos dois existir, omite a hora.
   let horaTxt="";
@@ -5892,7 +5983,7 @@ function _histItemCard(v){
     const d=new Date(ts.seconds*1000);
     horaTxt=" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
   }
-  const corpoItem='<div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></div><div class="info"><div class="title">'+(v.responsavel&&v.responsavel.nome||"--")+'</div><div class="sub">'+(v.endereco&&v.endereco.rua||"")+" "+(v.endereco&&v.endereco.num||"")+" | "+(v.totalFotos||0)+" fotos | "+(v.data||"")+horaTxt+'</div></div><div class="hist-actions">'+tipoBadge+statusBadge+'</div>';
+  const corpoItem='<div class="avatar" style="background:#f3f4f6;color:#374151"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></div><div class="info"><div class="title">'+(v.responsavel&&v.responsavel.nome||"--")+'</div><div class="sub">'+(v.endereco&&v.endereco.rua||"")+" "+(v.endereco&&v.endereco.num||"")+" | "+(v.totalFotos||0)+" fotos | "+(v.data||"")+horaTxt+'</div></div><div class="hist-actions">'+driveBadge+tipoBadge+statusBadge+'</div>';
   if(_histModoSelecao){
     const isChecked=_histSelecionadas.has(v.id);
     div.innerHTML='<input type="checkbox" class="hist-check" data-id="'+v.id+'" '+(isChecked?"checked":"")+' style="width:20px;height:20px;margin-right:6px;flex-shrink:0;accent-color:#dc2626">'+corpoItem;
@@ -6028,11 +6119,18 @@ function abrirDetalheVistoria(id,data){
     }
     regeRarPDF(dadosCompletos);
   };c.appendChild(btnPDF);
-  // Botão enviar para o Drive (visível pra todos quando Drive está conectado)
+  // Botão enviar para o Drive — muda de aparência se já foi enviado
   const btnDrive=document.createElement("button");
   btnDrive.className="btn";
-  btnDrive.style.cssText="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;margin-bottom:8px";
-  btnDrive.textContent="☁️ Enviar para o Drive";
+  if(data.driveBackupOk){
+    // Já foi enviada — verde, mostra data
+    const dt=data.driveBackupAt?new Date(data.driveBackupAt).toLocaleDateString("pt-BR"):"";
+    btnDrive.style.cssText="background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;margin-bottom:8px";
+    btnDrive.textContent="✅ Backup no Drive"+(dt?" ("+dt+")":"")+" — reenviar";
+  }else{
+    btnDrive.style.cssText="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;margin-bottom:8px";
+    btnDrive.textContent="☁️ Enviar para o Drive";
+  }
   btnDrive.onclick=()=>gdrive_enviarUma(id,data,btnDrive);
   c.appendChild(btnDrive);
   goTo("s-detalhe-vistoria");
@@ -9169,7 +9267,7 @@ window.gdrive_enviarUma=async function(vid,vDoc,btnEl){
     // Ler fotos do IndexedDB
     if(btnEl)btnEl.textContent="⏳ Lendo fotos...";
     const dbL=await localDB();
-    let entry=await new Promise((res)=>{
+    const entry=await new Promise((res)=>{
       const tx=dbL.transaction(LOCAL_DB_STORE,"readonly");
       const req=tx.objectStore(LOCAL_DB_STORE).get(vid);
       req.onsuccess=()=>res(req.result);req.onerror=()=>res(null);
@@ -9178,49 +9276,29 @@ window.gdrive_enviarUma=async function(vid,vDoc,btnEl){
       alert("Sem fotos locais desta vistoria neste aparelho.");
       if(btnEl){btnEl.disabled=false;btnEl.textContent="☁️ Enviar para o Drive";}return;
     }
-    // Criar pastas no Drive
-    if(btnEl)btnEl.textContent="⏳ Criando pastas...";
-    token=await gdrive_ensureToken();if(!token){entry=null;if(btnEl){btnEl.disabled=false;btnEl.textContent="☁️ Enviar para o Drive";}return;}
-    const rootId=await gdrive_findOrCreateFolder(token,"Vistorias",null);
-    const dr=(vDoc.data||"").replace(/[\/]/g,"-")||new Date().toISOString().slice(0,10);
-    const pp=dr.split(/[-\/]/);
-    const dp=pp.length===3&&pp[0].length===4?pp.join("-"):pp.length===3?(pp[2]+"-"+pp[1]+"-"+pp[0]):dr;
-    const dDir=await gdrive_findOrCreateFolder(token,dp,rootId);
-    const cn=(vDoc.coletorNome||"Sem Coletor").replace(/[\/\\:*?"<>|]/g,"_");
-    const cDir=await gdrive_findOrCreateFolder(token,cn,dDir);
-    const ru=((vDoc.endereco&&vDoc.endereco.rua)||"sem-end").substring(0,40).replace(/[\/\\:*?"<>|]/g,"_");
-    const nu=(vDoc.endereco&&vDoc.endereco.num)||"";
-    const ic=(vDoc.id||"").slice(-6);
-    const pv=ru+(nu?"-"+nu:"")+(ic?"-"+ic:"");
-    const vDir=await gdrive_findOrCreateFolder(token,pv,cDir);
-    const fotosDir=await gdrive_findOrCreateFolder(token,"fotos",vDir);
-    // Enviar foto por foto
-    const total=entry.fotos.length;
-    let ok=0;
-    for(let fi=0;fi<total;fi++){
-      if(btnEl)btnEl.textContent="📤 Foto "+(fi+1)+"/"+total;
-      const foto=entry.fotos[fi];
-      if(!foto||!foto.dataUrl){entry.fotos[fi]=null;continue;}
-      try{
-        const amb=(foto.ambiente||"").replace(/\s+/g,"_");
-        const parts=foto.dataUrl.split(",");
-        const raw=parts[1]||"";
-        foto.dataUrl=null;
-        entry.fotos[fi]=null;
-        if(!raw)continue;
-        const bin=atob(raw);
-        const arr=new Uint8Array(bin.length);
-        for(let b=0;b<bin.length;b++)arr[b]=bin.charCodeAt(b);
-        const blob=new Blob([arr],{type:"image/jpeg"});
-        token=await gdrive_ensureToken();
-        if(token)await gdrive_uploadFile(token,"foto_"+String(fi+1).padStart(2,"0")+"_"+amb+".jpg",blob,fotosDir);
-        ok++;
-      }catch(ef){console.warn("Foto "+fi+":",ef);}
-      await new Promise(r=>setTimeout(r,500));
+    // Converter array de fotos pra fotosMap (formato esperado por gdrive_uploadVistoria)
+    const fotosMap={};
+    entry.fotos.forEach((f,i)=>{if(f&&f.dataUrl)fotosMap["f"+i]=f;});
+    // vDoc pode não ter id — garantir que tem
+    const vDocComId={...vDoc,id:vid};
+    // Chamar upload unificado com progresso e forçado (ignora WiFi-only pra envio manual)
+    const resultado=await gdrive_uploadVistoria(vDocComId,null,fotosMap,null,{
+      _forcado:true,
+      onProgress:(p)=>{
+        if(!btnEl)return;
+        if(p.etapa==="pastas")btnEl.textContent="⏳ Criando pastas...";
+        else if(p.etapa==="pdf")btnEl.textContent="📄 Enviando PDF...";
+        else if(p.etapa==="fotos")btnEl.textContent="📤 Foto "+p.atual+"/"+p.total;
+        else if(p.etapa==="concluido")btnEl.textContent="✅ Concluído";
+      }
+    });
+    if(resultado&&resultado.ok){
+      if(btnEl){btnEl.disabled=false;btnEl.textContent="✅ Enviada ao Drive";btnEl.style.background="#d1fae5";btnEl.style.color="#065f46";btnEl.style.borderColor="#6ee7b7";}
+      showToast("✅ "+resultado.qtdFotos+" foto(s) enviadas ao Drive!",3000);
+    }else{
+      if(btnEl){btnEl.disabled=false;btnEl.textContent="☁️ Enviar para o Drive";}
+      alert("Falha ao enviar: "+(resultado&&resultado.motivo||"desconhecido"));
     }
-    entry.fotos=null;entry=null;
-    if(btnEl){btnEl.disabled=false;btnEl.textContent="✅ "+ok+"/"+total+" enviadas";btnEl.style.background="#d1fae5";btnEl.style.color="#065f46";btnEl.style.borderColor="#6ee7b7";}
-    showToast("✅ "+ok+" foto(s) enviadas ao Drive!",3000);
   }catch(e){
     console.error("gdrive_enviarUma:",e);
     alert("Erro ao enviar: "+(e.message||e));
@@ -9405,32 +9483,91 @@ window.addEventListener("online",()=>{
   setTimeout(()=>{if(!gdrive_deveEsperarWifi())gdrive_processQueue().catch(()=>{});},2000);
 });
 
+// --- Comprimir foto pra upload no Drive (mantém qualidade visual, reduz tamanho ~6x) ---
+async function _gdrive_comprimirFoto(dataUrl){
+  return new Promise((res)=>{
+    try{
+      const img=new Image();
+      img.onload=()=>{
+        let w=img.naturalWidth,h=img.naturalHeight;
+        const maior=Math.max(w,h);
+        // Reduz para no máximo 1920px na maior dimensão (Full HD, suficiente pra laudo)
+        if(maior>1920){const sc=1920/maior;w=Math.round(w*sc);h=Math.round(h*sc);}
+        const cv=document.createElement("canvas");
+        cv.width=w;cv.height=h;
+        const ctx=cv.getContext("2d");
+        ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
+        ctx.drawImage(img,0,0,w,h);
+        // JPEG 82% - qualidade visualmente indistinguível do original em impressão
+        cv.toBlob(blob=>{
+          cv.width=0;cv.height=0;
+          res(blob||null);
+        },"image/jpeg",0.82);
+      };
+      img.onerror=()=>res(null);
+      img.src=dataUrl;
+    }catch(e){res(null);}
+  });
+}
+
+// --- Detectar conexão medida (hotspot ou plano com limite) ---
+function _gdrive_conexaoEhMedida(){
+  const c=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
+  if(!c)return false;
+  // Android: quando o usuário está em WiFi mas conectado via hotspot ou plano limitado,
+  // o sistema marca saveData como true (Modo Economia de Dados)
+  if(c.saveData===true)return true;
+  return false;
+}
+
+// --- Marcar vistoria como enviada ao Drive no Firestore ---
+async function _gdrive_marcarBackupOk(vistoriaId,detalhes){
+  if(!vistoriaId)return;
+  try{
+    const dados={
+      driveBackupOk:true,
+      driveBackupAt:new Date().toISOString()
+    };
+    if(detalhes&&detalhes.folderId)dados.driveFolderId=detalhes.folderId;
+    if(detalhes&&detalhes.qtdFotos!=null)dados.driveBackupQtdFotos=detalhes.qtdFotos;
+    await updateDoc(doc(db,"vistorias",vistoriaId),dados);
+  }catch(e){console.warn("Falha ao marcar backup no Firestore:",e);}
+}
+
 // --- Upload vistoria completa (PDF + fotos) ---
 // Se token indisponível OU esperando WiFi: enfileira pra retry posterior.
-// Estrutura: Vistorias / [Cliente] / [Data]-[Endereço] / {Laudo.pdf, fotos/}
+// Estrutura: Vistorias / [YYYY-MM-DD] / [Coletor] / [Endereço-id] / {Laudo.pdf, fotos/}
+// opts.onProgress: callback({etapa, atual, total}) pra barra de progresso
 async function gdrive_uploadVistoria(vDoc,pdfBlob,fotosMap,nomeBase,opts){
   opts=opts||{};
+  const onProgress=opts.onProgress||function(){};
   // Se preferência WiFi-only e não está no WiFi, enfileira sem tentar
-  if(!opts._fromQueue&&gdrive_deveEsperarWifi()){
+  if(!opts._fromQueue&&!opts._forcado&&gdrive_deveEsperarWifi()){
     if(vDoc&&vDoc.id){
       await gdriveQueueAdd(vDoc.id,vDoc,pdfBlob,nomeBase);
       showToast("📱 Salvo na fila — enviará no WiFi",3000);
     }
-    return;
+    return {ok:false,motivo:"aguardando-wifi"};
+  }
+  // Se conexão é medida (hotspot) e WiFi-only ativado, também enfileira
+  if(!opts._fromQueue&&!opts._forcado&&gdrive_getWifiOnly()&&_gdrive_conexaoEhMedida()){
+    if(vDoc&&vDoc.id){
+      await gdriveQueueAdd(vDoc.id,vDoc,pdfBlob,nomeBase);
+      showToast("📱 Hotspot detectado — enviará no WiFi normal",3000);
+    }
+    return {ok:false,motivo:"conexao-medida"};
   }
   const token=await gdrive_ensureToken();
   if(!token){
-    // Sem token — enfileira se tem vistoriaId (e não é retry, pra evitar loop)
     if(!opts._fromQueue&&vDoc&&vDoc.id){
       await gdriveQueueAdd(vDoc.id,vDoc,pdfBlob,nomeBase);
     }
-    return;
+    return {ok:false,motivo:"sem-token"};
   }
   try{
+    onProgress({etapa:"pastas",atual:0,total:1});
     const rootId=await gdrive_findOrCreateFolder(token,"Vistorias",null);
-    // Estrutura: Vistorias / [YYYY-MM-DD] / [ColetorNome] / [Rua Num - id] / fotos/
     const dataRaw=(vDoc.data||vDoc.data_finalizacao||new Date().toISOString()).slice(0,10);
-    // Converter dd/mm/yyyy → yyyy-mm-dd pra ordenar cronologicamente no Drive
     const partes=dataRaw.split(/[-\/]/);
     const dataPasta=partes.length===3&&partes[0].length===4?partes.join("-")
       :partes.length===3?(partes[2]+"-"+partes[1]+"-"+partes[0])
@@ -9443,9 +9580,11 @@ async function gdrive_uploadVistoria(vDoc,pdfBlob,fotosMap,nomeBase,opts){
     const idCurto=(vDoc.id||"").slice(-6);
     const pastaVistoria=endRua+(endNum?"-"+endNum:"")+(idCurto?"-"+idCurto:"");
     const vistId=await gdrive_findOrCreateFolder(token,pastaVistoria,coletorDir);
+    onProgress({etapa:"pdf",atual:1,total:1});
     if(pdfBlob){
       await gdrive_uploadFile(token,(nomeBase||"Laudo")+".pdf",pdfBlob,vistId);
     }
+    let qtdFotos=0;
     if(fotosMap&&Object.keys(fotosMap).length>0){
       const fotosDir=await gdrive_findOrCreateFolder(token,"fotos",vistId);
       const entries=Object.entries(fotosMap);
@@ -9453,22 +9592,29 @@ async function gdrive_uploadVistoria(vDoc,pdfBlob,fotosMap,nomeBase,opts){
       for(let i=0;i<entries.length;i++){
         const [fotoId,fotoObj]=entries[i];
         if(!fotoObj||!fotoObj.dataUrl)continue;
+        onProgress({etapa:"fotos",atual:i+1,total:entries.length});
         try{
-          const resp=await fetch(fotoObj.dataUrl);
-          const fBlob=await resp.blob();
-          const ext=fotoObj.dataUrl.startsWith("data:image/png")?"png":"jpg";
+          // Comprimir foto ANTES de enviar (economiza dados e acelera 6x)
+          let fBlob=await _gdrive_comprimirFoto(fotoObj.dataUrl);
+          if(!fBlob){
+            // Fallback: se compressão falhou, envia original
+            const resp=await fetch(fotoObj.dataUrl);
+            fBlob=await resp.blob();
+          }
           const ambNome=(fotoObj.ambiente||"foto").replace(/\s+/g,"_").replace(/[\/\\:*?"<>|]/g,"");
-          const fName="foto_"+(i+1).toString().padStart(2,"0")+"_"+ambNome+"."+ext;
+          const fName="foto_"+(i+1).toString().padStart(2,"0")+"_"+ambNome+".jpg";
           await gdrive_uploadFile(token,fName,fBlob,fotosDir);
+          qtdFotos++;
           // Guardar metadados pra restaurar depois (sem dataUrl)
           const meta={fileName:fName,ambiente:fotoObj.ambiente||"",tipo:fotoObj.tipo||"",numero:fotoObj.numero||""};
           if(fotoObj.patologias)meta.patologias=fotoObj.patologias;
           if(fotoObj.combos)meta.combos=fotoObj.combos;
           if(fotoObj.comodo)meta.comodo=fotoObj.comodo;
+          if(fotoObj.legenda)meta.legenda=fotoObj.legenda;
+          if(fotoObj.combinacoes)meta.combinacoes=fotoObj.combinacoes;
           metadataArr.push(meta);
         }catch(ef){console.warn("GDrive foto upload falhou:",fotoId,ef);}
       }
-      // Salvar metadata.json na pasta de fotos
       if(metadataArr.length){
         try{
           const metaBlob=new Blob([JSON.stringify(metadataArr,null,2)],{type:"application/json"});
@@ -9476,13 +9622,19 @@ async function gdrive_uploadVistoria(vDoc,pdfBlob,fotosMap,nomeBase,opts){
         }catch(em){console.warn("GDrive metadata upload:",em);}
       }
     }
+    // Marcar backup ok no Firestore
+    if(vDoc.id){
+      await _gdrive_marcarBackupOk(vDoc.id,{folderId:vistId,qtdFotos});
+    }
+    onProgress({etapa:"concluido",atual:1,total:1});
     showToast("📁 Salvo no Drive",3000);
+    return {ok:true,folderId:vistId,qtdFotos};
   }catch(e){
     console.error("[GDrive] Upload falhou:",e);
-    // Enfileira se falhou por erro de rede/auth (e não é retry)
     if(!opts._fromQueue&&vDoc&&vDoc.id){
       await gdriveQueueAdd(vDoc.id,vDoc,pdfBlob,nomeBase);
     }
+    return {ok:false,motivo:"erro",erro:e.message};
   }
 }
 
