@@ -5464,6 +5464,24 @@ window.irParaFinalizacao=()=>{
 };
 
 window.irParaFinalizacaoConfirmado=()=>{
+  // Salvar edições da tela de revisão em currentVistoria
+  const g=id=>document.getElementById(id);
+  if(currentVistoria){
+    if(!currentVistoria.responsavel)currentVistoria.responsavel={};
+    if(!currentVistoria.endereco)currentVistoria.endereco={};
+    currentVistoria.responsavel.nome=(g("rev-nome")||{}).value||"";
+    currentVistoria.responsavel.doc=(g("rev-cpf")||{}).value||"";
+    currentVistoria.responsavel.tel=(g("rev-tel")||{}).value||"";
+    currentVistoria.endereco.rua=(g("rev-rua")||{}).value||"";
+    currentVistoria.endereco.num=(g("rev-num")||{}).value||"";
+    currentVistoria.endereco.comp=(g("rev-comp")||{}).value||"";
+    currentVistoria.endereco.bairro=(g("rev-bairro")||{}).value||"";
+    currentVistoria.coletorNome=(g("rev-coletor")||{}).value||"";
+    currentVistoria.ocupacao=(g("rev-ocupacao")||{}).value||"";
+    currentVistoria.estado=(g("rev-conservacao")||{}).value||"";
+    currentVistoria.idade=(g("rev-idade")||{}).value||"";
+    currentVistoria.observacoes=(g("rev-obs")||{}).value||"";
+  }
   goTo("s-finalizacao");
 };
 
@@ -5471,46 +5489,40 @@ function renderRevisao(){
   const el=document.getElementById("revisao-conteudo");
   if(!el||!currentVistoria)return;
   const v=currentVistoria;
+  const r=v.responsavel||{};
+  const e=v.endereco||{};
   const fotos=Object.values(fotosPendentes||{});
   const totalFotos=fotos.length;
-  const tipoLaudo=(v.tipoLaudo||"simplificado")==="completo"?"Completo":"Simplificado";
-  // Ambientes com fotos
   const ambientes=[...new Set(fotos.map(f=>f.ambiente).filter(Boolean))];
-  // Patologias
   const pats=[...new Set(fotos.flatMap(f=>(f.combinacoes||[]).flatMap(c=>c.pats||[])).filter(Boolean))];
-  let html='<div class="card" style="margin-bottom:10px"><h2 style="margin-bottom:8px">👤 Responsável</h2>';
-  html+='<p style="margin:2px 0;font-size:14px"><strong>'+_esc(v.nome||"—")+'</strong></p>';
-  html+='<p style="margin:2px 0;font-size:13px;color:#555">CPF/RG: '+(v.cpf||"Não informado")+'</p>';
-  html+='<p style="margin:2px 0;font-size:13px;color:#555">Contato: '+(v.contato||"Não informado")+'</p>';
-  html+='</div>';
-  html+='<div class="card" style="margin-bottom:10px"><h2 style="margin-bottom:8px">📍 Endereço</h2>';
-  html+='<p style="margin:2px 0;font-size:14px">'+(v.rua||"—")+', '+(v.numero||"SN")+'</p>';
-  if(v.complemento)html+='<p style="margin:2px 0;font-size:13px;color:#555">Compl.: '+_esc(v.complemento)+'</p>';
-  html+='<p style="margin:2px 0;font-size:13px;color:#555">'+(v.bairro||"")+(v.cidade?" — "+v.cidade:"")+'</p>';
-  if(v.cep)html+='<p style="margin:2px 0;font-size:13px;color:#555">CEP: '+v.cep+'</p>';
-  html+='</div>';
-  html+='<div class="card" style="margin-bottom:10px"><h2 style="margin-bottom:8px">📋 Vistoria</h2>';
-  html+='<p style="margin:2px 0;font-size:13px">Coletor: <strong>'+(v.coletorNome||"—")+'</strong></p>';
-  html+='<p style="margin:2px 0;font-size:13px">Cliente: <strong>'+(v.clienteNome||"—")+'</strong></p>';
-  html+='<p style="margin:2px 0;font-size:13px">Tipo: <strong>'+tipoLaudo+'</strong></p>';
-  html+='<p style="margin:2px 0;font-size:13px">Ocupação: <strong>'+(v.ocupacao||"—")+'</strong></p>';
-  html+='<p style="margin:2px 0;font-size:13px">Conservação: <strong>'+(v.conservacao||"—")+'</strong></p>';
-  html+='<p style="margin:2px 0;font-size:13px">Idade aparente: <strong>'+(v.idade||"—")+'</strong></p>';
-  html+='</div>';
-  html+='<div class="card" style="margin-bottom:10px"><h2 style="margin-bottom:8px">📸 Fotos: '+totalFotos+'</h2>';
-  if(ambientes.length){
-    html+='<p style="margin:2px 0;font-size:13px;color:#555">Ambientes: '+ambientes.join(", ")+'</p>';
-  }
-  if(pats.length){
-    html+='<p style="margin:2px 0;font-size:13px;color:#555">Patologias: '+pats.join(", ")+'</p>';
-  }
-  if(v.observacoes){
-    html+='<p style="margin:6px 0 0;font-size:13px"><strong>Obs:</strong> '+_esc(v.observacoes)+'</p>';
-  }
-  html+='</div>';
-  el.innerHTML=html;
+  const inp=(id,val,ph,w)=>'<input id="'+id+'" value="'+_esc(val||"")+'" placeholder="'+(ph||"")+'" style="width:'+(w||"100%")+';padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;margin:2px 0;box-sizing:border-box">';
+  let h='<div class="card" style="margin-bottom:10px"><h2 style="margin-bottom:8px">👤 Responsável</h2>';
+  h+=inp("rev-nome",r.nome,"Nome do responsável");
+  h+='<div style="display:flex;gap:6px">'+inp("rev-cpf",r.doc,"CPF/RG","48%")+inp("rev-tel",r.tel,"Contato","48%")+'</div>';
+  h+='</div>';
+  h+='<div class="card" style="margin-bottom:10px"><h2 style="margin-bottom:8px">📍 Endereço</h2>';
+  h+=inp("rev-rua",e.rua,"Rua/Logradouro");
+  h+='<div style="display:flex;gap:6px">'+inp("rev-num",e.num,"Nº","30%")+inp("rev-comp",e.comp,"Complemento","68%")+'</div>';
+  h+=inp("rev-bairro",e.bairro,"Bairro");
+  h+='</div>';
+  h+='<div class="card" style="margin-bottom:10px"><h2 style="margin-bottom:8px">📋 Vistoria</h2>';
+  h+='<div class="field" style="margin:4px 0"><label style="font-size:12px;color:#888">Coletor</label>'+inp("rev-coletor",v.coletorNome,"Coletor")+'</div>';
+  h+='<p style="margin:4px 0;font-size:13px">Cliente: <strong>'+(v.clienteNome||"—")+'</strong></p>';
+  h+='<p style="margin:4px 0;font-size:13px">Tipo: <strong>'+((v.tipoLaudo||"simplificado")==="completo"?"Completo":"Simplificado")+'</strong></p>';
+  h+='<div style="display:flex;gap:6px">'+inp("rev-ocupacao",v.ocupacao,"Ocupação","48%")+inp("rev-conservacao",v.estado,"Conservação","48%")+'</div>';
+  h+=inp("rev-idade",v.idade,"Idade aparente");
+  h+='</div>';
+  h+='<div class="card" style="margin-bottom:10px"><h2 style="margin-bottom:8px">📸 Fotos: '+totalFotos+'</h2>';
+  if(ambientes.length)h+='<p style="margin:2px 0;font-size:13px;color:#555">Ambientes: '+ambientes.join(", ")+'</p>';
+  if(pats.length)h+='<p style="margin:2px 0;font-size:13px;color:#555">Patologias: '+pats.join(", ")+'</p>';
+  h+='</div>';
+  h+='<div class="card" style="margin-bottom:10px"><h2 style="margin-bottom:8px">📝 Observações Gerais</h2>';
+  h+='<textarea id="rev-obs" rows="3" placeholder="Anotações livres (opcional)" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;resize:vertical;box-sizing:border-box">'+(v.observacoes||"")+'</textarea>';
+  h+='</div>';
+  el.innerHTML=h;
 }
-function _esc(s){return(s||"").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function _esc(s){return(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+
 
 // ===== HISTORICO COM DETALHE/EDITAR/EXCLUIR =====
 // Estado da seleção múltipla
