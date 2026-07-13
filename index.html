@@ -6754,8 +6754,7 @@ window.finalizarVistoria=async()=>{
 
     const HDR=47;
     const hasSelo=currentVistoria.identificacao&&currentVistoria.identificacao.selo;
-    const hasTipo=!!currentVistoria.tipo;
-    const actualHDR=HDR+(hasSelo?4.5:0)+(hasTipo?5:0);
+    const actualHDR=HDR+(hasSelo?4.5:0);
     const LEGH=8;    // altura legenda
     const FPL=(CW-1)/2;
     const FPR=(CW-1)/2;
@@ -8789,10 +8788,7 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
   // Selo: linha extra entre Endereço (R7) e Coletor (R8), apenas quando presente
   const hasSelo=v.identificacao&&v.identificacao.selo;
   const h_selo=hasSelo?4.5:0;
-  // Tipo de Construção: linha extra entre R8 (Estado) e R9 (Local), apenas quando presente
-  const hasTipo=!!v.tipo;
-  const h_tipo=hasTipo?5*SC:0;
-  const totalH=h1+h2+h3+h4+h5+h6+h7+h_selo+h8+h_tipo+h9;
+  const totalH=h1+h2+h3+h4+h5+h6+h7+h_selo+h8+h9;
 
   // Posições Y de cada linha
   const lY1=MT+h1;
@@ -8917,25 +8913,16 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
   }
   pdf.setLineWidth(0.3);pdf.line(ML,lY7,ML+CW,lY7);
 
-  // === R8b: Tipo de Construção (linha inteira, entre R8 e R9) ===
-  var _lY7=lY7;
-  if(hasTipo){
-    const lY7b=lY7+h_tipo;
-    const tipoL="Tipo de Construção:  ";
-    pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
-    pdf.text(tipoL,ML+1.5,cy(lY7,h_tipo));
-    pdf.setFont("helvetica","normal");
-    pdf.text(v.tipo,ML+1.5+pdf.getTextWidth(tipoL),cy(lY7,h_tipo));
-    pdf.setLineWidth(0.3);pdf.line(ML,lY7b,ML+CW,lY7b);
-    _lY7=lY7b;
-  }
-
-  // === R9: Local | Data (apenas em páginas de fotos) ===
+  // === R9: Local | Tipo de Construção | Data Vistoria (apenas em páginas de fotos) ===
   if(showLocalBar!==false){
     pdf.setFont("helvetica","bold");pdf.setFontSize(8);
-    pdf.text("Local:  "+local,ML+1.5,cy(_lY7,h9));
-    pdf.text("Data Vistoria:  "+(v.data||""),ML+CW-1.5,cy(_lY7,h9),{align:"right"});
-    pdf.setLineWidth(0.2);pdf.line(ML+CW/2,_lY7,ML+CW/2,MT+totalH);
+    pdf.text("Local:  "+local,ML+1.5,cy(lY7,h9));
+    if(v.tipo){
+      // Tipo de Construção centralizado na linha
+      const tipoTxt="Tipo:  "+v.tipo;
+      pdf.text(tipoTxt,ML+CW/2,cy(lY7,h9),{align:"center"});
+    }
+    pdf.text("Data Vistoria:  "+(v.data||""),ML+CW-1.5,cy(lY7,h9),{align:"right"});
   }
   return totalH;
 }
