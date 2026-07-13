@@ -1607,11 +1607,15 @@ async function localResumoTodas(){
       req.onsuccess=()=>{
         const out=[];
         (req.result||[]).forEach(reg=>{
-          if(!reg||!reg.id)return;
+          if(!reg)return;
+          // O keyPath é "vistoriaId". Ignora o registro de rascunho (chave DRAFT_KEY).
+          const vid=reg.vistoriaId;
+          if(!vid||vid===DRAFT_KEY)return;
           const fotos=reg.fotos||[];
+          if(!fotos.length)return;
           let bytes=0;
           fotos.forEach(f=>{if(f&&f.dataUrl)bytes+=f.dataUrl.length;});
-          out.push({id:reg.id,numFotos:fotos.length,bytesAprox:bytes});
+          out.push({id:vid,numFotos:fotos.length,bytesAprox:bytes});
         });
         res(out);
       };
@@ -2464,21 +2468,24 @@ window.armVerificarDrive=async()=>{
   const origTxt=btn.textContent;
   btn.disabled=true;btn.textContent="Verificando...";
   let verificadas=0;
+  let token=null;
+  if(gdrive_isConnected())token=await gdrive_ensureToken();
   for(const r of _armResumoCache){
     const v=r.vistoriaData;
     if(!v){r._noDrive=false;continue;}
     // Prioridade 1: flag do Firestore (rápido e confiável)
     if(v.driveBackupOk){
       r._noDrive=true;
-    }else if(gdrive_isConnected()){
+    }else if(token){
       // Prioridade 2: verificar direto no Drive (fallback pra vistorias antigas sem flag)
       try{
-        const token=await gdrive_ensureToken();
-        if(token){
-          const existe=await _gdrive_verificarPastaExiste(token,{id:r.id,data:v.data});
-          r._noDrive=existe;
-        }else{
-          r._noDrive=false;
+        const existe=await _gdrive_verificarPastaExiste(token,{
+          id:r.id,data:v.data,coletorNome:v.coletorNome,driveBackupOk:false
+        });
+        r._noDrive=existe;
+        // Se achou no Drive, marca no Firestore pra próxima vez ser instantâneo
+        if(existe){
+          try{await _gdrive_marcarBackupOk(r.id,{});v.driveBackupOk=true;}catch(_){}
         }
       }catch(e){r._noDrive=false;}
     }else{
@@ -3795,6 +3802,13 @@ window.detectarBairroPorGPS=async()=>{
     const data=await resp.json();
     const a=data&&data.address||{};
     const bairro=a.suburb||a.neighbourhood||a.city_district||a.district||a.quarter||a.village||"";
+    // Salvar cidade e CEP detectados pelo GPS para uso no relatório
+    const cidadeGPS=a.city||a.town||a.municipality||"";
+    const ufGPS=a.state||"";
+    const cepGPS=a.postcode||"";
+    if(cidadeGPS)window._cidadeDetectadaGPS=cidadeGPS;
+    if(ufGPS)window._ufDetectadaGPS=ufGPS;
+    if(cepGPS){const cepEl=document.getElementById("nv-cep");if(cepEl&&!cepEl.value)cepEl.value=cepGPS;}
     if(!bairro){
       alert("GPS detectado, mas não foi possível identificar o bairro automaticamente.\n\nAs coordenadas foram salvas — o mapa funcionará. Preencha o bairro manualmente.");
       return;
@@ -3841,7 +3855,7 @@ window.criarVistoria=async()=>{
   const activeCard=document.querySelector("#s-nova-vistoria .laudo-tipo-card.active");
   const tipoLaudo=(activeCard&&activeCard.dataset.tipo)||window._tipoLaudoAtual||localStorage.getItem("lastTipoLaudo")||"simplificado";
   localStorage.setItem("lastTipoLaudo",tipoLaudo);
-  currentVistoria={clienteId:cId,coletorId:colId,clienteNome:clD.nome,clienteRRT:clD.rrt,coletorNome:colD.nome,responsavel:{nome,doc:docR,tel},endereco:{rua,num,comp,bairro},ocupacao:document.getElementById("nv-ocupacao").value,tipo:document.getElementById("nv-tipo").value,tipoLaudo,data:now.toLocaleDateString("pt-BR"),dataCompleta:now.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}),userId:currentUser.uid,checklist:{},observacoes:"",estado:"",idade:"",status:"em_andamento"};
+  currentVistoria={clienteId:cId,coletorId:colId,clienteNome:clD.nome,clienteRRT:clD.rrt,coletorNome:colD.nome,responsavel:{nome,doc:docR,tel},endereco:{rua,num,comp,bairro,cidade:window._cidadeDetectadaGPS||"",uf:window._ufDetectadaGPS||""},ocupacao:document.getElementById("nv-ocupacao").value,tipo:document.getElementById("nv-tipo").value,tipoLaudo,data:now.toLocaleDateString("pt-BR"),dataCompleta:now.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}),userId:currentUser.uid,checklist:{},observacoes:"",estado:"",idade:"",status:"em_andamento"};
   // Se o usuário clicou "📍 Detectar bairro", aproveita as coordenadas pro mapa do PDF
   if(window._coordenadasGPSAtuais){
     currentVistoria.gps={lat:window._coordenadasGPSAtuais.lat,lng:window._coordenadasGPSAtuais.lon,lon:window._coordenadasGPSAtuais.lon};
@@ -3922,7 +3936,23 @@ function renderFotos(){
     badgeText.textContent="Nenhuma foto ainda";
   }
   const g={};Object.values(fotosPendentes).forEach(f=>{if(!g[f.ambiente])g[f.ambiente]=[];g[f.ambiente].push(f);});
-  if(!Object.keys(g).length){c.innerHTML='<div class="card" style="text-align:center;color:#aaa;padding:24px">Nenhuma foto ainda</div>';return;}
+  if(!Object.keys(g).length){
+    let emptyHtml='<div class="card" style="text-align:center;color:#aaa;padding:24px">Nenhuma foto ainda</div>';
+    // Se tem foto de fachada da vistoria anterior, oferecer reutilização
+    if(window._ultimaFotoFachada&&window._ultimaFotoFachada.dataUrl){
+      emptyHtml='<div class="card" style="border:2px solid #3b82f6;background:#eff6ff;padding:14px">'
+        +'<p style="margin:0 0 10px;font-size:14px;color:#1e40af;font-weight:600">📸 Mesmo lote? Reutilizar foto da fachada?</p>'
+        +'<p style="margin:0 0 10px;font-size:12px;color:#555">A foto da fachada da vistoria anterior pode ser usada quando o imóvel está no mesmo lote.</p>'
+        +'<div style="display:flex;gap:10px;align-items:center">'
+        +'<img src="'+window._ultimaFotoFachada.dataUrl+'" style="width:80px;height:60px;object-fit:cover;border-radius:6px;border:1px solid #d1d5db">'
+        +'<div style="flex:1;display:flex;flex-direction:column;gap:6px">'
+        +'<button class="btn primary" onclick="_usarFotoFachadaAnterior()" style="font-size:13px;padding:8px">Usar esta fachada</button>'
+        +'<button class="btn" onclick="_descartarFotoFachadaAnterior()" style="font-size:12px;padding:6px;color:#888">Não, tirar nova foto</button>'
+        +'</div></div></div>';
+    }
+    c.innerHTML=emptyHtml;
+    return;
+  }
   const ordered=[...AMBIENTES,...ambientesExtras].filter(a=>g[a]);
   ordered.forEach(amb=>{
     const fotos=g[amb];const s=document.createElement("div");s.className="card";
@@ -4114,6 +4144,27 @@ async function detectarCameras(){
   }
   return _camerasCache;
 }
+
+// --- Reutilizar foto da fachada da vistoria anterior ---
+window._usarFotoFachadaAnterior=function(){
+  if(!window._ultimaFotoFachada||!window._ultimaFotoFachada.dataUrl)return;
+  const fotoId="foto_"+Date.now();
+  fotosPendentes[fotoId]={
+    dataUrl:window._ultimaFotoFachada.dataUrl,
+    ambiente:"Fachada",
+    tipo:window._ultimaFotoFachada.tipo||"Vista",
+    timestamp:new Date().toISOString(),
+    combinacoes:[],
+    _reutilizada:true
+  };
+  window._ultimaFotoFachada=null;
+  showToast("📸 Foto da fachada adicionada",2000);
+  renderFotos();
+};
+window._descartarFotoFachadaAnterior=function(){
+  window._ultimaFotoFachada=null;
+  renderFotos();
+};
 
 window.abrirCamera=async(ambParam)=>{
   // Dois caminhos:
@@ -6438,17 +6489,23 @@ async function gerarComprovanteBlob(data,conclusaoLinhas,assinaturaResp,assinatu
     return ycLocal+hdrH;
   };
   yc=renderCKHeader(yc);
-  const ROW_MIN=10;
-  const ROW_MAX=22;
-  const availForRows=(CKH-CKMB)-yc-1;
-  const rowHCalc=ambTotal.length?Math.floor((availForRows/ambTotal.length)*10)/10:ROW_MIN;
-  const rowH=Math.min(ROW_MAX,Math.max(ROW_MIN,rowHCalc));
+  // rowH FIXO em 20mm: garante legibilidade das 7 patologias empilhadas (step=~2.57mm/patologia,
+  // adequado para o texto 5.8pt). Quando o total não cabe numa página, a lógica de quebra
+  // abaixo cria páginas adicionais mantendo cabeçalho. Estratégia antiga (dividir espaço/N)
+  // espremia até 1.14mm/patologia com 24+ ambientes e sobrepunha texto.
+  const rowH=20;
   let cx;
   ambTotal.forEach((amb,ri)=>{
     if(yc+rowH>(CKH-CKMB)-1){
       pdf.addPage();
       pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(CKML,CKML,CKCW,CKH-CKML-CKMB,"S");
       yc=CKML+4;
+      // Rótulo de continuação (barra cinza fina)
+      pdf.setFillColor(220,220,220);pdf.rect(CKML,yc,CKCW,6,"F");
+      pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(CKML,yc,CKCW,6,"S");
+      pdf.setFontSize(8.5);pdf.setFont("helvetica","bold");pdf.setTextColor(0,0,0);
+      pdf.text("IDENTIFICAÇÃO DE PATOLOGIAS (continuação)",CKML+CKCW/2,yc+4,{align:"center"});
+      yc+=8;
       yc=renderCKHeader(yc);
     }
     const vals=COLS.map(k=>{const v=(data.checklist&&data.checklist[amb]&&data.checklist[amb][k])||[];return Array.isArray(v)?v:[];});
@@ -6505,14 +6562,32 @@ async function gerarComprovanteBlob(data,conclusaoLinhas,assinaturaResp,assinatu
     pdf.setFont("helvetica","normal");pdf.setFontSize(8);
     pdf.text("Foram observadas as seguintes manifestações patológicas no imóvel vistoriado:",FLML+2,yf+5);
     yf+=10;
+    // Helper: quebra de página dentro do bloco de manifestações.
+    // Reserva 60mm no rodapé pra assinatura + data — nunca renderiza sobre a assinatura.
+    const _mfNovaPagC=(esp)=>{
+      if(yf+esp>FLPH-FLMB-60){
+        pdf.addPage();
+        pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);
+        pdf.rect(FLML,FLML,FLCW,FLPH-FLML-FLMB,"S");
+        yf=FLMT+8;
+        pdf.setFillColor(230,230,230);pdf.rect(FLML,yf,FLCW,7,"F");
+        pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(FLML,yf,FLCW,7,"S");
+        pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.setTextColor(0,0,0);
+        pdf.text("MANIFESTAÇÕES PATOLÓGICAS (continuação)",FLML+FLCW/2,yf+5,{align:"center"});
+        yf+=12;
+      }
+    };
     conclusaoLinhas.forEach(item=>{
+      pdf.setFont("helvetica","normal");pdf.setFontSize(8);
+      const wrapped=pdf.splitTextToSize(item.texto,FLCW-10);
+      const blocoH=5.5+wrapped.length*5+5;
+      _mfNovaPagC(blocoH);
       pdf.setFont("helvetica","bold");pdf.setFontSize(8.5);
       pdf.text(item.amb+":",FLML+4,yf);
       yf+=5.5;
       pdf.setFont("helvetica","normal");pdf.setFontSize(8);
-      const wrapped=pdf.splitTextToSize(item.texto,FLCW-10);
       wrapped.forEach(l=>{pdf.text(l,FLML+6,yf);yf+=5;});
-      yf+=2;
+      yf+=5; // ← antes 2mm; agora 5mm entre ambientes
     });
   }
   // === OBSERVAÇÕES GERAIS ===
@@ -6533,9 +6608,18 @@ async function gerarComprovanteBlob(data,conclusaoLinhas,assinaturaResp,assinatu
   const sigImgH=20;
   const sigXL=FLML+FLCW*0.05;const sigXR=FLML+FLCW*0.55;
   const sigW=FLCW*0.38;
-  yf+=10;
+  // Bloco da assinatura ocupa ~55mm: se não cabe na página atual, nova página exclusiva
+  // pra assinatura NÃO ser cortada.
+  if(yf+55>FLPH-FLMB-2){
+    pdf.addPage();
+    pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);
+    pdf.rect(FLML,FLML,FLCW,FLPH-FLML-FLMB,"S");
+    yf=FLMT+20;
+  } else {
+    yf+=10;
+  }
   pdf.setFontSize(10);pdf.setFont("helvetica","normal");
-  pdf.text("São Paulo, "+(data.dataCompleta||data.data||""),FLML+FLCW/2,yf,{align:"center"});yf+=16;
+  pdf.text((data.endereco&&data.endereco.cidade||"São Paulo")+", "+(data.dataCompleta||data.data||""),FLML+FLCW/2,yf,{align:"center"});yf+=16;
   if(assinaturaResp&&assinaturaResp!=="RECUSOU"){try{pdf.addImage(assinaturaResp,"PNG",sigXL,yf,sigW,sigImgH);}catch(e){}}
   else if(assinaturaResp==="RECUSOU"){pdf.setFontSize(8);pdf.setFont("helvetica","italic");pdf.setTextColor(180,0,0);pdf.text("Responsável se recusou a assinar",sigXL+sigW/2,yf+sigImgH/2,{align:"center"});pdf.setTextColor(0,0,0);}
   if(assinaturaTec){try{pdf.addImage(assinaturaTec,"PNG",sigXR,yf,sigW,sigImgH);}catch(e){}}
@@ -7037,16 +7121,14 @@ window.finalizarVistoria=async()=>{
     pdf.setDrawColor(0,0,0);
     cx=CKML;pdf.setFontSize(7);pdf.setFont("helvetica","bold");
     colsH.forEach((c,i)=>{pdf.text(c,cx+colWN[i]/2,yc+4.8,{align:"center"});cx+=colWN[i];});yc+=hdrH;
-    // rowH: cada linha precisa caber 5 grupos de patologia legíveis.
-    // Antes: dividíamos a área disponível por N (sempre ~18) → ~14mm/linha. Agora N pode ser
-    // pequeno (poucos cômodos fotografados), então sem teto a linha vira um bloco gigante.
-    // Limitamos a um MÁXIMO razoável e empurramos o restante do espaço para depois (preenchemos
-    // só o que precisa, deixando o final em branco).
-    const ROW_MIN=10;
-    const ROW_MAX=22;
-    const availForRows=(CKH-CKMB)-yc-1;
-    const rowHCalc=ambTotal.length?Math.floor((availForRows/ambTotal.length)*10)/10:ROW_MIN;
-    const rowH=Math.min(ROW_MAX,Math.max(ROW_MIN,rowHCalc));
+    // rowH FIXO em 20mm: garante legibilidade das 7 patologias empilhadas
+    // (step=(20-2)/7=~2.57mm por patologia, adequado para o texto 5.8pt).
+    // Quando o total de ambientes não cabe numa página, a lógica de quebra abaixo cria páginas
+    // adicionais mantendo o cabeçalho da tabela. Assinatura vai em pdf.addPage() separado
+    // logo após o forEach, então nunca é cortada pela tabela.
+    // Estratégia antiga (dividir espaço/N) espremia até rowH=10mm com 24+ ambientes, o que
+    // resultava em step=1.14mm/patologia e sobreposição visual de texto.
+    const rowH=20;
     // Função auxiliar para renderizar o cabeçalho da tabela numa página de checklist
     const renderCKHeader=(ycLocal)=>{
       pdf.setFillColor(200,200,200);
@@ -7058,11 +7140,18 @@ window.finalizarVistoria=async()=>{
       return ycLocal+hdrH;
     };
     ambTotal.forEach((amb,ri)=>{
-      // Quebra de página quando necessário
+      // Quebra de página quando necessário. Repete o cabeçalho da tabela E adiciona
+      // rótulo "(continuação)" no topo pra deixar claro que é continuidade da anterior.
       if(yc+rowH>(CKH-CKMB)-1){
         pdf.addPage();
         pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(CKML,CKML,CKCW,CKH-CKML-CKMB,"S");
         yc=CKML+4;
+        // Rótulo de continuação (barra cinza fina, altura 6mm)
+        pdf.setFillColor(220,220,220);pdf.rect(CKML,yc,CKCW,6,"F");
+        pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(CKML,yc,CKCW,6,"S");
+        pdf.setFontSize(8.5);pdf.setFont("helvetica","bold");pdf.setTextColor(0,0,0);
+        pdf.text("IDENTIFICAÇÃO DE PATOLOGIAS (continuação)",CKML+CKCW/2,yc+4,{align:"center"});
+        yc+=8;
         yc=renderCKHeader(yc);
       }
       const vals=COLS.map(k=>{const v=(currentVistoria.checklist&&currentVistoria.checklist[amb]&&currentVistoria.checklist[amb][k])||[];return Array.isArray(v)?v:[];});
@@ -7132,36 +7221,77 @@ window.finalizarVistoria=async()=>{
       pdf.setFont("helvetica","normal");pdf.setFontSize(8);
       pdf.text("Foram observadas as seguintes manifestações patológicas no imóvel vistoriado:",FLML+2,yf+5);
       yf+=10;
+      // Helper: quebra de página dentro do bloco de manifestações.
+      // Reserva 60mm no rodapé pra assinatura + data — nunca renderiza sobre a assinatura.
+      // Se o bloco do ambiente (título + linhas + espaço) não cabe, quebra ANTES de escrever.
+      const _mfNovaPag=(esp)=>{
+        if(yf+esp>FLPH-FLMB-60){
+          pdf.addPage();
+          pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);
+          pdf.rect(FLML,FLML,FLCW,FLPH-FLML-FLMB,"S");
+          yf=FLMT+8;
+          pdf.setFillColor(230,230,230);pdf.rect(FLML,yf,FLCW,7,"F");
+          pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);pdf.rect(FLML,yf,FLCW,7,"S");
+          pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.setTextColor(0,0,0);
+          pdf.text("MANIFESTAÇÕES PATOLÓGICAS (continuação)",FLML+FLCW/2,yf+5,{align:"center"});
+          yf+=12;
+        }
+      };
       conclusaoLinhas.forEach(item=>{
+        // Estima altura do bloco (título + linhas de patologia + espaço entre ambientes)
+        // pra decidir a quebra ANTES de escrever qualquer coisa desse ambiente.
+        pdf.setFont("helvetica","normal");pdf.setFontSize(8);
+        const wrapped=pdf.splitTextToSize(item.texto,FLCW-10);
+        const blocoH=5.5+wrapped.length*5+5;
+        _mfNovaPag(blocoH);
         // Linha do ambiente em negrito
         pdf.setFont("helvetica","bold");pdf.setFontSize(8.5);
         pdf.text(item.amb+":",FLML+4,yf);
         yf+=5.5;
         // Patologias em normal com wrap
         pdf.setFont("helvetica","normal");pdf.setFontSize(8);
-        const wrapped=pdf.splitTextToSize(item.texto,FLCW-10);
         wrapped.forEach(l=>{pdf.text(l,FLML+6,yf);yf+=5;});
-        yf+=2;
+        yf+=5; // ← antes 2mm; agora 5mm entre ambientes pra não ficar grudado
       });
     }
-    // Observações gerais (integradas na página de manifestações)
+    // Observações gerais (integradas na página de manifestações).
+    // Também respeita a reserva de 60mm pra assinatura — se não cabe, quebra e continua.
     const obsText=(currentVistoria.observacoes||"").trim();
     if(obsText){
-      yf+=4;
+      // Estima altura do bloco de obs (título + linhas). Se não cabe com reserva, quebra.
+      pdf.setFont("helvetica","normal");pdf.setFontSize(8);
+      const obsWrapped=pdf.splitTextToSize(obsText,FLCW-10);
+      const obsH=4+6+obsWrapped.length*5;
+      if(yf+obsH>FLPH-FLMB-60){
+        pdf.addPage();
+        pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);
+        pdf.rect(FLML,FLML,FLCW,FLPH-FLML-FLMB,"S");
+        yf=FLMT+8;
+      } else {
+        yf+=4;
+      }
       pdf.setFont("helvetica","bold");pdf.setFontSize(9);
       pdf.text("OBSERVAÇÕES GERAIS",FLML+4,yf);
       yf+=6;
       pdf.setFont("helvetica","normal");pdf.setFontSize(8);
-      const obsWrapped=pdf.splitTextToSize(obsText,FLCW-10);
       obsWrapped.forEach(l=>{pdf.text(l,FLML+6,yf);yf+=5;});
     }
     // Assinaturas
     const sigImgH=20;
     const sigXL=FLML+FLCW*0.05;const sigXR=FLML+FLCW*0.55;
     const sigW=FLCW*0.38;
-    yf+=10;
+    // Bloco da assinatura ocupa ~55mm: 10 (esp) + 16 (data) + 20 (imagem) + 3 + 5 + 9.5 (nomes).
+    // Se não cabe na página atual, nova página exclusiva pra assinatura NÃO ser cortada.
+    if(yf+55>FLPH-FLMB-2){
+      pdf.addPage();
+      pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);
+      pdf.rect(FLML,FLML,FLCW,FLPH-FLML-FLMB,"S");
+      yf=FLMT+20;
+    } else {
+      yf+=10;
+    }
     pdf.setFontSize(10);pdf.setFont("helvetica","normal");
-    pdf.text("São Paulo, "+currentVistoria.dataCompleta,FLML+FLCW/2,yf,{align:"center"});yf+=16;
+    pdf.text((currentVistoria.endereco&&currentVistoria.endereco.cidade||"São Paulo")+", "+currentVistoria.dataCompleta,FLML+FLCW/2,yf,{align:"center"});yf+=16;
     if(assinaturaData&&assinaturaData!=="RECUSOU"){try{pdf.addImage(assinaturaData,"PNG",sigXL,yf,sigW,sigImgH);}catch(e){}}
     else if(assinaturaData==="RECUSOU"){pdf.setFontSize(8);pdf.setFont("helvetica","italic");pdf.setTextColor(180,0,0);pdf.text("Responsável se recusou a assinar",sigXL+sigW/2,yf+sigImgH/2,{align:"center"});pdf.setTextColor(0,0,0);}
     if(assinaturaTecnico){try{pdf.addImage(assinaturaTecnico,"PNG",sigXR,yf,sigW,sigImgH);}catch(e){}}
@@ -7346,6 +7476,14 @@ window.finalizarVistoria=async()=>{
       _zipBlob:_zipBlobGerado,
       _zipNomeBase:nomeBase
     };
+    // Guardar a primeira foto de fachada (Vista) pra oferecer reutilização no próximo imóvel
+    try{
+      const fotosArr=Object.values(fotosPendentes);
+      const fachada=fotosArr.find(f=>f.ambiente==="Fachada"&&(f.tipo==="Vista"||f.tipo==="Vista - ambiente geral"));
+      if(fachada&&fachada.dataUrl){
+        window._ultimaFotoFachada={dataUrl:fachada.dataUrl,ambiente:"Fachada",tipo:fachada.tipo||"Vista",timestamp:fachada.timestamp||"",combinacoes:[]};
+      }
+    }catch(_){}
     currentVistoria=null;fotosPendentes={};assinaturaData=null;ambientesExtras=[];
     localApagarRascunho(); // vistoria finalizada: rascunho não é mais necessário
     // Recarrega a tela de Finalização para mostrar o estado de sucesso com botões
@@ -9464,8 +9602,8 @@ function gdrive_conexaoTipo(){
 function gdrive_deveEsperarWifi(){
   if(!gdrive_getWifiOnly())return false; // preferência desligada
   const tipo=gdrive_conexaoTipo();
-  // WiFi ou ethernet = enviar. Celular = esperar. Unknown = enviar (não bloqueia iOS sem a API).
-  if(tipo==="wifi"||tipo==="ethernet")return false;
+  // WiFi ou ethernet = enviar. Celular = esperar. Unknown (iOS Safari) = enviar (não bloqueia).
+  if(tipo==="wifi"||tipo==="ethernet"||tipo==="unknown")return false;
   if(tipo==="cellular"||tipo==="2g"||tipo==="3g"||tipo==="4g"||tipo==="5g")return true;
   return false;
 }
@@ -9883,6 +10021,8 @@ async function gdrive_tentarRefreshSeNecessario(){
 // Verificação leve de existência (sem baixar fotos) — usado no status do perfil
 async function _gdrive_verificarPastaExiste(token,vDoc){
   try{
+    // Se o Firestore já marcou como backup ok, retorna direto (rápido)
+    if(vDoc.driveBackupOk)return true;
     // Converter data pra yyyy-mm-dd
     const dataRaw=(vDoc.data||"").toString().slice(0,10);
     const partes=dataRaw.replace(/[\/]/g,"-").split("-");
@@ -9900,8 +10040,25 @@ async function _gdrive_verificarPastaExiste(token,vDoc){
     const dr=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(dq)+"&fields=files(id)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
     const dd=await dr.json();
     if(!dd.files||!dd.files.length)return false;
-    // Se pasta da data existe, considera que a vistoria foi enviada
-    // (verificação mais precisa exigiria baixar as fotos, o que é pesado)
+    const dataDirId=dd.files[0].id;
+    // Se tem coletor, checa a pasta do coletor pra confirmar melhor
+    if(vDoc.coletorNome){
+      const cn=vDoc.coletorNome.replace(/[\/\\:*?"<>|]/g,"_").replace(/'/g,"\\'");
+      const cq="mimeType='application/vnd.google-apps.folder' and name='"+cn+"' and '"+dataDirId+"' in parents and trashed=false";
+      const cr=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(cq)+"&fields=files(id)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
+      const cd=await cr.json();
+      if(!cd.files||!cd.files.length)return false;
+      // Se tem id da vistoria, checa a pasta específica (mais rigoroso)
+      if(vDoc.id){
+        const idCurto=vDoc.id.slice(-6);
+        const vq="mimeType='application/vnd.google-apps.folder' and '"+cd.files[0].id+"' in parents and trashed=false";
+        const vr=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(vq)+"&fields=files(name)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
+        const vd=await vr.json();
+        if(!vd.files||!vd.files.length)return false;
+        return vd.files.some(f=>f.name.includes(idCurto));
+      }
+      return true;
+    }
     return true;
   }catch(_){return false;}
 }
@@ -9927,14 +10084,17 @@ window.gdrive_verStatusBackup=async function(){
         const v=d.data();
         if(v.status==="concluida"||v.status==="externa"||v.status==="parcial"){
           totalUsuario++;
-          ultimas.push({id:d.id,endereco:(v.endereco&&v.endereco.rua)||"—",data:v.data_finalizacao||v.criadoEm});
+          ultimas.push({
+            id:d.id,
+            endereco:(v.endereco&&v.endereco.rua)||"—",
+            data:v.data||v.data_finalizacao||v.criadoEm,
+            coletorNome:v.coletorNome||"",
+            driveBackupOk:!!v.driveBackupOk,
+            _tsSort:v.data_finalizacao&&v.data_finalizacao.seconds||v.criadoEm&&v.criadoEm.seconds||0
+          });
         }
       });
-      ultimas.sort((a,b)=>{
-        const da=a.data&&a.data.seconds||0;
-        const db2=b.data&&b.data.seconds||0;
-        return db2-da;
-      });
+      ultimas.sort((a,b)=>b._tsSort-a._tsSort);
       ultimas=ultimas.slice(0,5);
     }catch(e){console.warn("Status backup query:",e);}
     // 3. Verificar quais das últimas 5 estão no Drive
@@ -9942,19 +10102,14 @@ window.gdrive_verStatusBackup=async function(){
     if(gdrive_isConnected()&&ultimas.length){
       const token=await gdrive_ensureToken();
       if(token){
-        // Buscar pasta raiz Vistorias
         try{
-          const rq="mimeType='application/vnd.google-apps.folder' and name='Vistorias' and trashed=false";
-          const rr=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(rq)+"&fields=files(id)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
-          const rd=await rr.json();
-          if(rd.files&&rd.files.length){
-            // Para cada uma das últimas, verifica se pasta existe (leve, sem baixar fotos)
-            for(const u of ultimas){
-              try{
-                const existe=await _gdrive_verificarPastaExiste(token,{id:u.id,data:u.data});
-                if(existe)noDrive.push(u.id);
-              }catch(_){}
-            }
+          for(const u of ultimas){
+            try{
+              const existe=await _gdrive_verificarPastaExiste(token,{
+                id:u.id,data:u.data,coletorNome:u.coletorNome,driveBackupOk:u.driveBackupOk
+              });
+              if(existe)noDrive.push(u.id);
+            }catch(_){}
           }
         }catch(e){console.warn("check drive:",e);}
       }
