@@ -236,6 +236,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <button class="btn primary" id="perfil-gdrive-btn" onclick="gdrive_conectar()">Conectar Google Drive</button>
       <button class="btn" id="perfil-gdrive-backup" onclick="gdrive_backupLocal()" style="margin-top:8px;display:none;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd">📤 Enviar fotos locais para o Drive</button>
       <div id="perfil-gdrive-backup-status" style="font-size:12px;color:#666;margin-top:6px;display:none"></div>
+      <div style="border-top:1px solid #e5e7eb;margin-top:12px;padding-top:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <strong style="font-size:13px">Status do Backup</strong>
+          <button class="btn small" onclick="gdrive_verStatusBackup()" style="padding:4px 10px;font-size:12px">🔄 Atualizar</button>
+        </div>
+        <div id="perfil-gdrive-fila" style="font-size:12px;color:#555">Toque em "Atualizar" para verificar</div>
+      </div>
     </div>
     <div class="card" style="background:#fef3c7;border-color:#fcd34d"><h2 style="color:#92400e">🔬 Diagnóstico (temporário)</h2>
       <p style="font-size:13px;color:#78350f;margin-bottom:10px">Após gerar um PDF, toque aqui para ver os logs técnicos. Útil para investigar problemas de rotação de foto.</p>
@@ -5476,16 +5483,20 @@ window.irParaFinalizacaoConfirmado=()=>{
     currentVistoria.endereco.num=(g("rev-num")||{}).value||"";
     currentVistoria.endereco.comp=(g("rev-comp")||{}).value||"";
     currentVistoria.endereco.bairro=(g("rev-bairro")||{}).value||"";
-    currentVistoria.coletorNome=(g("rev-coletor")||{}).value||"";
-    currentVistoria.ocupacao=(g("rev-ocupacao")||{}).value||"";
-    currentVistoria.estado=(g("rev-conservacao")||{}).value||"";
-    currentVistoria.idade=(g("rev-idade")||{}).value||"";
+    // Coletor e Cliente: dropdown salva o ID, precisa buscar o nome
+    const colSel=g("rev-coletor");
+    if(colSel&&colSel.value){
+      currentVistoria.coletorId=colSel.value;
+      currentVistoria.coletorNome=colSel.options[colSel.selectedIndex].text;
+    }
+    currentVistoria.ocupacao=(g("rev-ocupacao")||{}).value||currentVistoria.ocupacao;
+    currentVistoria.tipo=(g("rev-tipo")||{}).value||currentVistoria.tipo;
     currentVistoria.observacoes=(g("rev-obs")||{}).value||"";
   }
   goTo("s-finalizacao");
 };
 
-function renderRevisao(){
+async function renderRevisao(){
   const el=document.getElementById("revisao-conteudo");
   if(!el||!currentVistoria)return;
   const v=currentVistoria;
@@ -5496,6 +5507,22 @@ function renderRevisao(){
   const ambientes=[...new Set(fotos.map(f=>f.ambiente).filter(Boolean))];
   const pats=[...new Set(fotos.flatMap(f=>(f.combinacoes||[]).flatMap(c=>c.pats||[])).filter(Boolean))];
   const inp=(id,val,ph,w)=>'<input id="'+id+'" value="'+_esc(val||"")+'" placeholder="'+(ph||"")+'" style="width:'+(w||"100%")+';padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;margin:2px 0;box-sizing:border-box">';
+  const selOpts=(opts,cur)=>opts.map(o=>'<option value="'+_esc(o)+'"'+(o===cur?" selected":"")+'>'+_esc(o)+'</option>').join("");
+  const sel=(id,cur,opts,w)=>'<select id="'+id+'" style="width:'+(w||"100%")+';padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;margin:2px 0;box-sizing:border-box;background:#fff"><option value="">Selecione...</option>'+selOpts(opts,cur)+'</select>';
+  // Buscar coletores do cliente atual pra montar dropdown
+  let coletoresHtml='<input id="rev-coletor-nome-fixo" value="'+_esc(v.coletorNome||"")+'" readonly style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;margin:2px 0;box-sizing:border-box;background:#f3f4f6;color:#555">';
+  try{
+    if(v.clienteId){
+      const qc=query(collection(db,"coletores"),where("clienteId","==",v.clienteId));
+      const snap=await getDocs(qc);
+      const cols=[];
+      snap.forEach(d=>cols.push({id:d.id,nome:d.data().nome}));
+      cols.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
+      coletoresHtml='<select id="rev-coletor" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;margin:2px 0;box-sizing:border-box;background:#fff">'
+        +cols.map(c=>'<option value="'+c.id+'"'+(c.id===v.coletorId?" selected":"")+'>'+_esc(c.nome)+'</option>').join("")
+        +'</select>';
+    }
+  }catch(_){}
   let h='<div class="card" style="margin-bottom:10px"><h2 style="margin-bottom:8px">👤 Responsável</h2>';
   h+=inp("rev-nome",r.nome,"Nome do responsável");
   h+='<div style="display:flex;gap:6px">'+inp("rev-cpf",r.doc,"CPF/RG","48%")+inp("rev-tel",r.tel,"Contato","48%")+'</div>';
@@ -5506,18 +5533,19 @@ function renderRevisao(){
   h+=inp("rev-bairro",e.bairro,"Bairro");
   h+='</div>';
   h+='<div class="card" style="margin-bottom:10px"><h2 style="margin-bottom:8px">📋 Vistoria</h2>';
-  h+='<div class="field" style="margin:4px 0"><label style="font-size:12px;color:#888">Coletor</label>'+inp("rev-coletor",v.coletorNome,"Coletor")+'</div>';
-  h+='<p style="margin:4px 0;font-size:13px">Cliente: <strong>'+(v.clienteNome||"—")+'</strong></p>';
-  h+='<p style="margin:4px 0;font-size:13px">Tipo: <strong>'+((v.tipoLaudo||"simplificado")==="completo"?"Completo":"Simplificado")+'</strong></p>';
-  h+='<div style="display:flex;gap:6px">'+inp("rev-ocupacao",v.ocupacao,"Ocupação","48%")+inp("rev-conservacao",v.estado,"Conservação","48%")+'</div>';
-  h+=inp("rev-idade",v.idade,"Idade aparente");
+  h+='<div style="margin:4px 0"><label style="font-size:12px;color:#888">Coletor</label>'+coletoresHtml+'</div>';
+  h+='<p style="margin:6px 0;font-size:13px">Cliente: <strong>'+(v.clienteNome||"—")+'</strong></p>';
+  h+='<p style="margin:6px 0;font-size:13px">Tipo de laudo: <strong>'+((v.tipoLaudo||"simplificado")==="completo"?"Completo":"Simplificado")+'</strong></p>';
+  h+='<div style="margin:4px 0"><label style="font-size:12px;color:#888">Ocupação</label>'+sel("rev-ocupacao",v.ocupacao,["Residencial","Comercial","Institucional","Religioso","Servicos","Outros"])+'</div>';
+  h+='<div style="margin:4px 0"><label style="font-size:12px;color:#888">Tipo de construção</label>'+sel("rev-tipo",v.tipo,["Terrea","Sobrado","Galpao","Soleira Negativa","Outros"])+'</div>';
+  h+='<p style="margin:8px 0 0;font-size:12px;color:#888">Estado de conservação e idade aparente são preenchidos na próxima tela.</p>';
   h+='</div>';
   h+='<div class="card" style="margin-bottom:10px"><h2 style="margin-bottom:8px">📸 Fotos: '+totalFotos+'</h2>';
   if(ambientes.length)h+='<p style="margin:2px 0;font-size:13px;color:#555">Ambientes: '+ambientes.join(", ")+'</p>';
   if(pats.length)h+='<p style="margin:2px 0;font-size:13px;color:#555">Patologias: '+pats.join(", ")+'</p>';
   h+='</div>';
   h+='<div class="card" style="margin-bottom:10px"><h2 style="margin-bottom:8px">📝 Observações Gerais</h2>';
-  h+='<textarea id="rev-obs" rows="3" placeholder="Anotações livres (opcional)" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;resize:vertical;box-sizing:border-box">'+(v.observacoes||"")+'</textarea>';
+  h+='<textarea id="rev-obs" rows="3" placeholder="Anotações livres (opcional)" oninput="if(currentVistoria)currentVistoria.observacoes=this.value" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;resize:vertical;box-sizing:border-box">'+_esc(v.observacoes||"")+'</textarea>';
   h+='</div>';
   el.innerHTML=h;
 }
@@ -9609,6 +9637,83 @@ async function gdrive_tentarRefreshSeNecessario(){
     await gdrive_processQueue();
   }catch(e){}
 }
+
+// --- Verificar status do backup: fila local + últimas enviadas ---
+window.gdrive_verStatusBackup=async function(){
+  const el=document.getElementById("perfil-gdrive-fila");
+  if(!el)return;
+  el.innerHTML='<span style="color:#888">Verificando...</span>';
+  try{
+    // 1. Fila local (pendentes de retry)
+    const fila=await gdriveQueueGetAll();
+    // 2. Total de vistorias finalizadas do usuário
+    let totalUsuario=0,ultimas=[];
+    try{
+      let q;
+      if(currentRole&&currentRole.toLowerCase()==="master"){
+        q=query(collection(db,"vistorias"));
+      }else{
+        q=query(collection(db,"vistorias"),where("userId","==",currentUser.uid));
+      }
+      const snap=await getDocs(q);
+      snap.forEach(d=>{
+        const v=d.data();
+        if(v.status==="concluida"||v.status==="externa"||v.status==="parcial"){
+          totalUsuario++;
+          ultimas.push({id:d.id,endereco:(v.endereco&&v.endereco.rua)||"—",data:v.data_finalizacao||v.criadoEm});
+        }
+      });
+      ultimas.sort((a,b)=>{
+        const da=a.data&&a.data.seconds||0;
+        const db2=b.data&&b.data.seconds||0;
+        return db2-da;
+      });
+      ultimas=ultimas.slice(0,5);
+    }catch(e){console.warn("Status backup query:",e);}
+    // 3. Verificar quais das últimas 5 estão no Drive
+    let noDrive=[];
+    if(gdrive_isConnected()&&ultimas.length){
+      const token=await gdrive_ensureToken();
+      if(token){
+        // Buscar pasta raiz Vistorias
+        try{
+          const rq="mimeType='application/vnd.google-apps.folder' and name='Vistorias' and trashed=false";
+          const rr=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(rq)+"&fields=files(id)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
+          const rd=await rr.json();
+          if(rd.files&&rd.files.length){
+            // Para cada uma das últimas, tenta buscar
+            for(const u of ultimas){
+              const fotos=await gdrive_buscarFotosVistoria({id:u.id,data:u.data});
+              if(fotos&&fotos.length)noDrive.push(u.id);
+            }
+          }
+        }catch(e){console.warn("check drive:",e);}
+      }
+    }
+    // 4. Render
+    let html='';
+    if(fila.length){
+      html+='<div style="color:#dc2626;margin-bottom:6px">⚠️ '+fila.length+' vistoria(s) na fila (aguardando token para enviar)</div>';
+    }else{
+      html+='<div style="color:#059669;margin-bottom:6px">✅ Nenhuma vistoria pendente na fila</div>';
+    }
+    if(ultimas.length){
+      html+='<div style="margin-top:6px"><strong>Últimas 5 finalizadas:</strong></div>';
+      ultimas.forEach(u=>{
+        const noDr=noDrive.includes(u.id);
+        html+='<div style="padding:3px 0;border-bottom:1px solid #f3f4f6">'
+          +(noDr?'<span style="color:#059669">✅</span> ':'<span style="color:#dc2626">❌</span> ')
+          +_esc(u.endereco.substring(0,40))
+          +(noDr?' <span style="color:#888;font-size:11px">(no Drive)</span>':' <span style="color:#dc2626;font-size:11px">(sem confirmação)</span>')
+          +'</div>';
+      });
+    }
+    html+='<div style="margin-top:8px;font-size:11px;color:#888">Total finalizadas: '+totalUsuario+'</div>';
+    el.innerHTML=html;
+  }catch(e){
+    el.innerHTML='<span style="color:#dc2626">Erro ao verificar: '+(e.message||e)+'</span>';
+  }
+};
 
 
 </script>
