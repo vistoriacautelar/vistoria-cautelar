@@ -471,8 +471,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       </div>
     </div>
     <div class="card"><h2>Tipo de imovel</h2>
-      <div class="field"><label>Ocupacao</label><select id="nv-ocupacao"><option value="">Selecione...</option><option>Residencial</option><option>Comercial</option><option>Institucional</option><option>Religioso</option><option>Servicos</option><option>Outros</option></select></div>
-      <div class="field"><label>Tipo de construcao</label><select id="nv-tipo"><option value="">Selecione...</option><option>Terrea</option><option>Sobrado</option><option>Galpao</option><option>Soleira Negativa</option><option>Outros</option></select></div>
+      <div class="field"><label>Ocupação</label><select id="nv-ocupacao"><option value="">Selecione...</option><option>Residencial</option><option>Comercial</option><option>Institucional</option><option>Religioso</option><option>Serviços</option><option>Outros</option></select></div>
+      <div class="field"><label>Tipo de construção</label><select id="nv-tipo"><option value="">Selecione...</option><option>Térrea</option><option>Sobrado</option><option>Galpão</option><option>Soleira Negativa</option><option>Outros</option></select></div>
     </div>
     <button class="btn primary" onclick="criarVistoria()">Iniciar Vistoria</button>
     <div style="margin-top:18px;padding-top:14px;border-top:1px dashed #d4d4d8">
@@ -888,9 +888,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div class="field"><label>Numero</label><input type="text" id="er-num"></div>
       <div class="field"><label>Complemento</label><input type="text" id="er-comp"></div>
     </div>
-    <div class="field"><label>Ocupação</label><select id="er-ocupacao"><option value="">Selecione...</option><option>Residencial</option><option>Comercial</option><option>Institucional</option><option>Religioso</option><option>Servicos</option><option>Outros</option></select></div>
+    <div class="field"><label>Ocupação</label><select id="er-ocupacao"><option value="">Selecione...</option><option>Residencial</option><option>Comercial</option><option>Institucional</option><option>Religioso</option><option>Serviços</option><option>Outros</option></select></div>
     <div class="field"><label>Coletor</label><select id="er-coletor"></select></div>
-    <div class="field"><label>Tipo de construção</label><select id="er-tipo"><option value="">Selecione...</option><option>Terrea</option><option>Sobrado</option><option>Galpao</option><option>Soleira Negativa</option><option>Outros</option></select></div>
+    <div class="field"><label>Tipo de construção</label><select id="er-tipo"><option value="">Selecione...</option><option>Térrea</option><option>Sobrado</option><option>Galpão</option><option>Soleira Negativa</option><option>Outros</option></select></div>
     <div class="field"><label>Estado de Conservação</label><select id="er-estado"><option value="">Selecione...</option><option>Bom</option><option>Regular</option><option>Ruim</option><option>Péssimo</option></select></div>
     <div class="field"><label>Idade Aparente (anos)</label><input type="number" id="er-idade" placeholder="Ex: 30" min="0" max="200" inputmode="numeric"></div>
     <div class="field"><label>Status da Vistoria</label><select id="er-status"><option value="concluida">Finalizado</option><option value="parcial">Parcial</option><option value="externa">Externa</option><option value="ausente">Ausente</option><option value="recusa">Recusa</option></select></div>
@@ -2427,23 +2427,41 @@ async function loadArmazenamento(){
       el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhuma vistoria com fotos no aparelho.</p>';
       return;
     }
-    // Enriquece com dados das vistorias (data, responsável) consultando Firestore em paralelo
-    const promises=_armResumoCache.map(async r=>{
+    // Enriquece com dados das vistorias — sequencial (Promise.all pode travar em iOS)
+    // com recovery de erro de conexão Firestore
+    for(const r of _armResumoCache){
       try{
         const ds=await getDoc(doc(db,"vistorias",r.id));
         if(ds.exists())r.vistoriaData=ds.data();
-      }catch(e){}
-      return r;
-    });
-    await Promise.all(promises);
-    // Ordena: mais antigas primeiro (são as mais candidatas a apagar)
+      }catch(e){
+        if(/terminated|connection.*lost|unavailable/i.test(e.message||"")){
+          _initDb();
+          try{
+            const ds=await getDoc(doc(db,"vistorias",r.id));
+            if(ds.exists())r.vistoriaData=ds.data();
+          }catch(_){}
+        }
+      }
+    }
     _armResumoCache.sort((a,b)=>{
       const ta=a.vistoriaData&&a.vistoriaData.criadoEm&&a.vistoriaData.criadoEm.seconds||0;
       const tb=b.vistoriaData&&b.vistoriaData.criadoEm&&b.vistoriaData.criadoEm.seconds||0;
       return ta-tb;
     });
     _renderArmazenamento();
-  }catch(e){el.innerHTML='<p style="text-align:center;color:#dc2626;padding:24px">Erro: '+e.message+"</p>";}
+  }catch(e){
+    if(/terminated|connection.*lost|unavailable/i.test(e.message||"")){
+      _initDb();
+      el.innerHTML='<p style="text-align:center;color:#888;padding:24px">Reconectando...</p>';
+      setTimeout(()=>{
+        if(document.getElementById("s-armazenamento").classList.contains("active")){
+          loadArmazenamento();
+        }
+      },1500);
+    }else{
+      el.innerHTML='<p style="text-align:center;color:#dc2626;padding:24px">Erro: '+e.message+"</p>";
+    }
+  }
 }
 
 function _renderArmazenamento(){
@@ -5536,8 +5554,8 @@ async function renderRevisao(){
   h+='<div style="margin:4px 0"><label style="font-size:12px;color:#888">Coletor</label>'+coletoresHtml+'</div>';
   h+='<p style="margin:6px 0;font-size:13px">Cliente: <strong>'+(v.clienteNome||"—")+'</strong></p>';
   h+='<p style="margin:6px 0;font-size:13px">Tipo de laudo: <strong>'+((v.tipoLaudo||"simplificado")==="completo"?"Completo":"Simplificado")+'</strong></p>';
-  h+='<div style="margin:4px 0"><label style="font-size:12px;color:#888">Ocupação</label>'+sel("rev-ocupacao",v.ocupacao,["Residencial","Comercial","Institucional","Religioso","Servicos","Outros"])+'</div>';
-  h+='<div style="margin:4px 0"><label style="font-size:12px;color:#888">Tipo de construção</label>'+sel("rev-tipo",v.tipo,["Terrea","Sobrado","Galpao","Soleira Negativa","Outros"])+'</div>';
+  h+='<div style="margin:4px 0"><label style="font-size:12px;color:#888">Ocupação</label>'+sel("rev-ocupacao",v.ocupacao,["Residencial","Comercial","Institucional","Religioso","Serviços","Outros"])+'</div>';
+  h+='<div style="margin:4px 0"><label style="font-size:12px;color:#888">Tipo de construção</label>'+sel("rev-tipo",v.tipo,["Térrea","Sobrado","Galpão","Soleira Negativa","Outros"])+'</div>';
   h+='<p style="margin:8px 0 0;font-size:12px;color:#888">Estado de conservação e idade aparente são preenchidos na próxima tela.</p>';
   h+='</div>';
   h+='<div class="card" style="margin-bottom:10px"><h2 style="margin-bottom:8px">📸 Fotos: '+totalFotos+'</h2>';
@@ -8913,15 +8931,22 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
   }
   pdf.setLineWidth(0.3);pdf.line(ML,lY7,ML+CW,lY7);
 
-  // === R9: Local | Tipo de Construção | Data Vistoria (apenas em páginas de fotos) ===
+  // === R9: Local | Tipo (alinhado abaixo de Estado) | Data Vistoria ===
   if(showLocalBar!==false){
     pdf.setFont("helvetica","bold");pdf.setFontSize(8);
     pdf.text("Local:  "+local,ML+1.5,cy(lY7,h9));
+    // Divisor à esquerda do Tipo (alinhado com o divisor de Estado de Conservação em R8)
+    pdf.setLineWidth(0.2);pdf.line(ML+CW*(6/12),lY7,ML+CW*(6/12),lY7+h9);
     if(v.tipo){
-      // Tipo de Construção centralizado na linha
-      const tipoTxt="Tipo:  "+v.tipo;
-      pdf.text(tipoTxt,ML+CW/2,cy(lY7,h9),{align:"center"});
+      const tipoL="Tipo:  ";
+      pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
+      pdf.text(tipoL,ML+CW*(6/12)+1.5,cy(lY7,h9));
+      pdf.setFont("helvetica","normal");
+      pdf.text(" "+v.tipo,ML+CW*(6/12)+1.5+pdf.getTextWidth(tipoL),cy(lY7,h9));
     }
+    // Divisor à esquerda da Data (alinhado com Idade Aparente em R8)
+    pdf.setLineWidth(0.2);pdf.line(ML+CW*(9.5/12),lY7,ML+CW*(9.5/12),lY7+h9);
+    pdf.setFont("helvetica","bold");pdf.setFontSize(8);
     pdf.text("Data Vistoria:  "+(v.data||""),ML+CW-1.5,cy(lY7,h9),{align:"right"});
   }
   return totalH;
@@ -9339,9 +9364,12 @@ async function gdriveQueueRemove(id){
   }catch(e){}
 }
 
-// --- WiFi-only preference ---
+// --- WiFi-only preference (default ligado — envia só no WiFi) ---
 const GDRIVE_WIFI_ONLY_KEY="gdrive_wifi_only";
-function gdrive_getWifiOnly(){return localStorage.getItem(GDRIVE_WIFI_ONLY_KEY)==="1";}
+function gdrive_getWifiOnly(){
+  const v=localStorage.getItem(GDRIVE_WIFI_ONLY_KEY);
+  return v===null?true:v==="1"; // default true
+}
 window.gdrive_setWifiOnly=function(on){
   localStorage.setItem(GDRIVE_WIFI_ONLY_KEY,on?"1":"0");
   showToast(on?"📶 Envio limitado ao WiFi":"📱 Envio em qualquer conexão",2500);
@@ -9700,6 +9728,32 @@ async function gdrive_tentarRefreshSeNecessario(){
 }
 
 // --- Verificar status do backup: fila local + últimas enviadas ---
+// Verificação leve de existência (sem baixar fotos) — usado no status do perfil
+async function _gdrive_verificarPastaExiste(token,vDoc){
+  try{
+    // Converter data pra yyyy-mm-dd
+    const dataRaw=(vDoc.data||"").toString().slice(0,10);
+    const partes=dataRaw.replace(/[\/]/g,"-").split("-");
+    const dataPasta=partes.length===3&&partes[0].length===4?partes.join("-")
+      :partes.length===3?(partes[2]+"-"+partes[1]+"-"+partes[0]):"";
+    if(!dataPasta)return false;
+    // Buscar pasta raiz Vistorias
+    const rq="mimeType='application/vnd.google-apps.folder' and name='Vistorias' and trashed=false";
+    const rr=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(rq)+"&fields=files(id)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
+    const rd=await rr.json();
+    if(!rd.files||!rd.files.length)return false;
+    const rootId=rd.files[0].id;
+    // Buscar pasta da data
+    const dq="mimeType='application/vnd.google-apps.folder' and name='"+dataPasta+"' and '"+rootId+"' in parents and trashed=false";
+    const dr=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(dq)+"&fields=files(id)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
+    const dd=await dr.json();
+    if(!dd.files||!dd.files.length)return false;
+    // Se pasta da data existe, considera que a vistoria foi enviada
+    // (verificação mais precisa exigiria baixar as fotos, o que é pesado)
+    return true;
+  }catch(_){return false;}
+}
+
 window.gdrive_verStatusBackup=async function(){
   const el=document.getElementById("perfil-gdrive-fila");
   if(!el)return;
@@ -9742,10 +9796,12 @@ window.gdrive_verStatusBackup=async function(){
           const rr=await fetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent(rq)+"&fields=files(id)&spaces=drive",{headers:{Authorization:"Bearer "+token}});
           const rd=await rr.json();
           if(rd.files&&rd.files.length){
-            // Para cada uma das últimas, tenta buscar
+            // Para cada uma das últimas, verifica se pasta existe (leve, sem baixar fotos)
             for(const u of ultimas){
-              const fotos=await gdrive_buscarFotosVistoria({id:u.id,data:u.data});
-              if(fotos&&fotos.length)noDrive.push(u.id);
+              try{
+                const existe=await _gdrive_verificarPastaExiste(token,{id:u.id,data:u.data});
+                if(existe)noDrive.push(u.id);
+              }catch(_){}
             }
           }
         }catch(e){console.warn("check drive:",e);}
