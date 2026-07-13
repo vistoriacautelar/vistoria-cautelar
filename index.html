@@ -503,6 +503,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleFileUpload(event)">
 </div>
 
+<div id="s-revisao" class="screen">
+  <div class="topbar"><button class="back" onclick="goTo('s-vistoria')">&#8249; Voltar</button><h1>Revisar Dados</h1></div>
+  <div class="content">
+    <div class="card" style="background:#eff6ff;border:1px solid #93c5fd;margin-bottom:12px">
+      <p style="font-size:13px;color:#1e40af;margin:0">Confira os dados antes de finalizar. Se algo estiver errado, toque em <strong>Corrigir</strong>.</p>
+    </div>
+    <div id="revisao-conteudo"></div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn" onclick="goTo('s-vistoria')" style="flex:1;border-color:#dc2626;color:#dc2626">Corrigir</button>
+      <button class="btn success" onclick="irParaFinalizacaoConfirmado()" style="flex:2">Confirmar e Finalizar</button>
+    </div>
+  </div>
+</div>
+
 <div id="s-finalizacao" class="screen">
   <div class="topbar"><button class="back" onclick="goTo('s-vistoria')" id="fin-back">&#8249; Voltar</button><h1>Finalizacao</h1></div>
   <div class="content">
@@ -1644,7 +1658,7 @@ window.goTo=(id)=>{
   }
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   document.getElementById(id).classList.add("active");window.scrollTo(0,0);
-  const m={"s-dash":loadDash,"s-prestadores":loadPrestadores,"s-clientes":loadClientes,"s-coletores":loadColetores,"s-usuarios":loadUsuarios,"s-nova-vistoria":loadNovVistoriaForm,"s-historico":loadHistorico,"s-finalizacao":renderFinalizacao,"s-identificacao":renderIdentificacao,"s-perfil":renderPerfil,"s-vistoria":iniciarGPS,"s-pendentes":loadPendentes,"s-editor-fotos":renderEditorFotos,"s-armazenamento":loadArmazenamento,"s-ambientes-custom":loadAmbientesCustomList,"s-resumo":loadResumo,"s-gastos":loadGastos,"s-metricas":()=>carregarMetricas("mes")};
+  const m={"s-dash":loadDash,"s-prestadores":loadPrestadores,"s-clientes":loadClientes,"s-coletores":loadColetores,"s-usuarios":loadUsuarios,"s-nova-vistoria":loadNovVistoriaForm,"s-historico":loadHistorico,"s-revisao":renderRevisao,"s-finalizacao":renderFinalizacao,"s-identificacao":renderIdentificacao,"s-perfil":renderPerfil,"s-vistoria":iniciarGPS,"s-pendentes":loadPendentes,"s-editor-fotos":renderEditorFotos,"s-armazenamento":loadArmazenamento,"s-ambientes-custom":loadAmbientesCustomList,"s-resumo":loadResumo,"s-gastos":loadGastos,"s-metricas":()=>carregarMetricas("mes")};
   if(m[id])m[id]();
 };
 window.showModal=(id)=>{if(id==="modal-coletor")populateClienteSelect("mcol-cliente");document.getElementById(id).style.display="flex";};
@@ -5258,7 +5272,7 @@ function renderChecklist(){
   const obsEl=document.getElementById("cl-obs");if(obsEl&&currentVistoria)obsEl.value=currentVistoria.observacoes||"";
 }
 window.togglePatologia=(amb,col,pat,checked)=>{if(!currentVistoria.checklist)currentVistoria.checklist={};if(!currentVistoria.checklist[amb])currentVistoria.checklist[amb]={};const arr=currentVistoria.checklist[amb][col]||[];if(checked){if(!arr.includes(pat))arr.push(pat);}else{const i=arr.indexOf(pat);if(i>=0)arr.splice(i,1);}currentVistoria.checklist[amb][col]=arr;};
-window.salvarChecklist=()=>{if(currentVistoria){const obsEl=document.getElementById("cl-obs");if(obsEl)currentVistoria.observacoes=obsEl.value;}const tipoLaudo=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";goTo(tipoLaudo==="completo"?"s-identificacao":"s-finalizacao");};
+window.salvarChecklist=()=>{if(currentVistoria){const obsEl=document.getElementById("cl-obs");if(obsEl)currentVistoria.observacoes=obsEl.value;}const tipoLaudo=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";goTo(tipoLaudo==="completo"?"s-identificacao":"s-revisao");};
 
 // ===== IDENTIFICAÇÃO DO IMÓVEL (Laudo Completo — Fase 1) =====
 function renderIdentificacao(){
@@ -5326,7 +5340,7 @@ window.confirmarIdentificacao=()=>{
       paredes:parArr
     }
   };
-  goTo("s-finalizacao");
+  goTo("s-revisao");
 };
 
 function renderFinalizacao(){
@@ -5441,13 +5455,62 @@ window.irParaFinalizacao=()=>{
   if(total===0){
     if(!confirm("Nenhuma foto registrada nesta vistoria.\n\nDeseja prosseguir para a Finalização mesmo assim?\n\nSe foi uma vistoria ausente, use o botão laranja \"Ausente — Passível de Retorno\" no fim da tela."))return;
   }
-  // ROTEAMENTO POR TIPO DE LAUDO:
-  // - Simplificado → direto para Finalização
-  // - Completo     → passa pela tela de Identificação do Imóvel primeiro (serviços públicos,
-  //                  zoneamento, garagem, pavimentos, materiais), depois Finalização.
   const tipoLaudo=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";
-  goTo(tipoLaudo==="completo"?"s-identificacao":"s-finalizacao");
+  if(tipoLaudo==="completo"){
+    goTo("s-identificacao");
+  }else{
+    goTo("s-revisao");
+  }
 };
+
+window.irParaFinalizacaoConfirmado=()=>{
+  goTo("s-finalizacao");
+};
+
+function renderRevisao(){
+  const el=document.getElementById("revisao-conteudo");
+  if(!el||!currentVistoria)return;
+  const v=currentVistoria;
+  const fotos=Object.values(fotosPendentes||{});
+  const totalFotos=fotos.length;
+  const tipoLaudo=(v.tipoLaudo||"simplificado")==="completo"?"Completo":"Simplificado";
+  // Ambientes com fotos
+  const ambientes=[...new Set(fotos.map(f=>f.ambiente).filter(Boolean))];
+  // Patologias
+  const pats=[...new Set(fotos.flatMap(f=>(f.combinacoes||[]).flatMap(c=>c.pats||[])).filter(Boolean))];
+  let html='<div class="card" style="margin-bottom:10px"><h2 style="margin-bottom:8px">👤 Responsável</h2>';
+  html+='<p style="margin:2px 0;font-size:14px"><strong>'+_esc(v.nome||"—")+'</strong></p>';
+  html+='<p style="margin:2px 0;font-size:13px;color:#555">CPF/RG: '+(v.cpf||"Não informado")+'</p>';
+  html+='<p style="margin:2px 0;font-size:13px;color:#555">Contato: '+(v.contato||"Não informado")+'</p>';
+  html+='</div>';
+  html+='<div class="card" style="margin-bottom:10px"><h2 style="margin-bottom:8px">📍 Endereço</h2>';
+  html+='<p style="margin:2px 0;font-size:14px">'+(v.rua||"—")+', '+(v.numero||"SN")+'</p>';
+  if(v.complemento)html+='<p style="margin:2px 0;font-size:13px;color:#555">Compl.: '+_esc(v.complemento)+'</p>';
+  html+='<p style="margin:2px 0;font-size:13px;color:#555">'+(v.bairro||"")+(v.cidade?" — "+v.cidade:"")+'</p>';
+  if(v.cep)html+='<p style="margin:2px 0;font-size:13px;color:#555">CEP: '+v.cep+'</p>';
+  html+='</div>';
+  html+='<div class="card" style="margin-bottom:10px"><h2 style="margin-bottom:8px">📋 Vistoria</h2>';
+  html+='<p style="margin:2px 0;font-size:13px">Coletor: <strong>'+(v.coletorNome||"—")+'</strong></p>';
+  html+='<p style="margin:2px 0;font-size:13px">Cliente: <strong>'+(v.clienteNome||"—")+'</strong></p>';
+  html+='<p style="margin:2px 0;font-size:13px">Tipo: <strong>'+tipoLaudo+'</strong></p>';
+  html+='<p style="margin:2px 0;font-size:13px">Ocupação: <strong>'+(v.ocupacao||"—")+'</strong></p>';
+  html+='<p style="margin:2px 0;font-size:13px">Conservação: <strong>'+(v.conservacao||"—")+'</strong></p>';
+  html+='<p style="margin:2px 0;font-size:13px">Idade aparente: <strong>'+(v.idade||"—")+'</strong></p>';
+  html+='</div>';
+  html+='<div class="card" style="margin-bottom:10px"><h2 style="margin-bottom:8px">📸 Fotos: '+totalFotos+'</h2>';
+  if(ambientes.length){
+    html+='<p style="margin:2px 0;font-size:13px;color:#555">Ambientes: '+ambientes.join(", ")+'</p>';
+  }
+  if(pats.length){
+    html+='<p style="margin:2px 0;font-size:13px;color:#555">Patologias: '+pats.join(", ")+'</p>';
+  }
+  if(v.observacoes){
+    html+='<p style="margin:6px 0 0;font-size:13px"><strong>Obs:</strong> '+_esc(v.observacoes)+'</p>';
+  }
+  html+='</div>';
+  el.innerHTML=html;
+}
+function _esc(s){return(s||"").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 
 // ===== HISTORICO COM DETALHE/EDITAR/EXCLUIR =====
 // Estado da seleção múltipla
@@ -5710,7 +5773,12 @@ async function loadHistorico(){
     // Restaura a posição do scroll (preservação ao voltar do detalhe)
     if(_histScrollY)setTimeout(()=>{window.scrollTo(0,_histScrollY);},0);
   }catch(e){
-    el.innerHTML='<p style="text-align:center;color:#dc2626;padding:24px">Erro: '+e.message+"</p>";
+    if(/terminated|connection.*lost|unavailable/i.test(e.message||"")){
+      _initDb();
+      el.innerHTML='<p style="text-align:center;color:#888;padding:24px">Reconectando... Toque em "Voltar" e abra novamente.</p>';
+    }else{
+      el.innerHTML='<p style="text-align:center;color:#dc2626;padding:24px">Erro: '+e.message+"</p>";
+    }
   }
 }
 
@@ -6283,6 +6351,21 @@ async function gerarComprovanteBlob(data,conclusaoLinhas,assinaturaResp,assinatu
       const wrapped=pdf.splitTextToSize(item.texto,FLCW-10);
       wrapped.forEach(l=>{pdf.text(l,FLML+6,yf);yf+=5;});
       yf+=2;
+    });
+  }
+  // === OBSERVAÇÕES GERAIS ===
+  const obsGerais=(data.observacoes||"").trim();
+  if(obsGerais){
+    if(yf>FLPH-FLMB-50){pdf.addPage();pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(FLML,FLML,FLCW,FLPH-FLML-FLMB,"S");yf=FLMT+8;}
+    yf+=4;
+    pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.setTextColor(0,0,0);
+    pdf.text("OBSERVAÇÕES GERAIS",FLML+4,yf);
+    yf+=6;
+    pdf.setFont("helvetica","normal");pdf.setFontSize(8);
+    const obsWrapped=pdf.splitTextToSize(obsGerais,FLCW-10);
+    obsWrapped.forEach(l=>{
+      if(yf>FLPH-FLMB-20){pdf.addPage();pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(FLML,FLML,FLCW,FLPH-FLML-FLMB,"S");yf=FLMT+8;}
+      pdf.text(l,FLML+6,yf);yf+=5;
     });
   }
   const sigImgH=20;
@@ -6899,13 +6982,13 @@ window.finalizarVistoria=async()=>{
         yf+=2;
       });
     }
-    // Observações do cadastrador (integradas na página de manifestações)
+    // Observações gerais (integradas na página de manifestações)
     const obsText=(currentVistoria.observacoes||"").trim();
     if(obsText){
       yf+=4;
-      pdf.setFont("helvetica","bold");pdf.setFontSize(8.5);
-      pdf.text("Observações:",FLML+4,yf);
-      yf+=5.5;
+      pdf.setFont("helvetica","bold");pdf.setFontSize(9);
+      pdf.text("OBSERVAÇÕES GERAIS",FLML+4,yf);
+      yf+=6;
       pdf.setFont("helvetica","normal");pdf.setFontSize(8);
       const obsWrapped=pdf.splitTextToSize(obsText,FLCW-10);
       obsWrapped.forEach(l=>{pdf.text(l,FLML+6,yf);yf+=5;});
@@ -7450,6 +7533,18 @@ function addImgPDF(pdf,dataUrl,x,y,w,h){
   });
 }
 async function shareOrDownload(blob,nome,mime){
+  // iOS: a.click() não baixa arquivos — usar share sheet primeiro
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(/Mac/.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
+  if(isIOS&&navigator.share&&navigator.canShare){
+    try{
+      const file=new File([blob],nome,{type:mime});
+      if(navigator.canShare({files:[file]})){
+        await navigator.share({files:[file]});
+        return;
+      }
+    }catch(e){if(e.name!=="AbortError")console.warn("share falhou:",e);}
+  }
+  // Desktop ou fallback: a.click()
   const url=URL.createObjectURL(blob);
   try{
     const a=document.createElement("a");
@@ -7457,16 +7552,8 @@ async function shareOrDownload(blob,nome,mime){
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    showToast("📥 "+nome+" baixado!",2500);
+    showToast("📥 "+nome,2500);
   }catch(e){
-    // Fallback: share sheet
-    try{
-      if(navigator.share){
-        const file=new File([blob],nome,{type:mime});
-        await navigator.share({files:[file]});
-        return;
-      }
-    }catch(_){}
     try{window.open(url,"_blank");}catch(_){}
   }
   setTimeout(()=>URL.revokeObjectURL(url),10000);
