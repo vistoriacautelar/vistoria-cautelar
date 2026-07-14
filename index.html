@@ -9947,6 +9947,13 @@ async function _gdrive_buscarFotosEmPastaColetor(token,coletorFolderId,vDoc,onPr
       if(meta.patologias)foto.patologias=meta.patologias;
       if(meta.combos)foto.combos=meta.combos;
       if(meta.comodo)foto.comodo=meta.comodo;
+      // CRÍTICO: legenda e combinacoes precisam ser restauradas pra o PDF regenerado
+      // ter as patologias corretas. `combinacoes` alimenta o checklist (linhas 1158,
+      // 1216, 6770, 7094) e as manifestações patológicas. `legenda` é o texto exibido
+      // na legenda da foto (linha 7038 etc.) — sem ela cai em f.tipo ("Vista"/"Detalhe").
+      // Ambas são salvas no metadata.json (linhas 9751-9752) mas não estavam sendo lidas.
+      if(meta.legenda)foto.legenda=meta.legenda;
+      if(meta.combinacoes)foto.combinacoes=meta.combinacoes;
       fotos.push(foto);
     }catch(ef){console.warn("GDrive download foto:",f.name,ef);}
   }
