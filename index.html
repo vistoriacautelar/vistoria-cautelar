@@ -7354,6 +7354,15 @@ window.finalizarVistoria=async()=>{
     setStatus("Gerando PDF...");
     await yieldThread();
     const _pdfBlobGerado=pdf.output("blob");
+    // iOS Safari transfere posse do Blob quando ele é passado pra navigator.share({files:[...]}).
+    // Depois do share sheet, o Blob original pode ficar "neutered" (tamanho 0). Isso quebra
+    // o upload do PDF pro Drive lá embaixo (linha 7522+): o Android manda certinho porque
+    // a.click() só LÊ o blob, mas no iPhone o PDF nunca chegava no Drive — só o ZIP, que
+    // é gerado depois do share sheet e não passa por navigator.share.
+    // Solução: guardar os bytes num ArrayBuffer independente. ArrayBuffer é copia crua de
+    // memória, imune ao neutering do Blob. Reconstruímos um Blob novo desses bytes na hora
+    // do upload pro Drive.
+    const _pdfBytesParaDrive=await _pdfBlobGerado.arrayBuffer();
     await shareOrDownload(_pdfBlobGerado,nomeBase+".pdf","application/pdf");
     // Restaurar fotos originais (qualidade máxima) ANTES do ZIP — a recompressão só serve para o PDF
     fotosPendentes=_backupFotos;
@@ -7519,7 +7528,11 @@ window.finalizarVistoria=async()=>{
     if(_vDocComprov&&!window._modoRegerar){
       (async()=>{
         try{
-          await gdrive_uploadVistoria(_vDocComprov,_pdfBlobGerado,_backupFotos,nomeBase);
+          // Reconstrói o Blob a partir dos bytes capturados antes do share sheet
+          // (ver comentário em _pdfBytesParaDrive lá em cima). Não usar _pdfBlobGerado
+          // aqui: no iPhone ele pode ter sido consumido pelo navigator.share e estar vazio.
+          const pdfBlobDrive=new Blob([_pdfBytesParaDrive],{type:"application/pdf"});
+          await gdrive_uploadVistoria(_vDocComprov,pdfBlobDrive,_backupFotos,nomeBase);
         }catch(eg){console.error("GDrive auto-upload:",eg);}
       })();
     }
