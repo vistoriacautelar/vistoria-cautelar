@@ -6970,6 +6970,12 @@ window.finalizarVistoria=async()=>{
     // encerramento, anexos I e II) ANTES das páginas de fotos. As páginas de
     // fotos são geradas pelo mesmo loop, com cabeçalho enxuto (_pdfHeaderFotosCompleto).
     const _tipoLaudoPDF=(currentVistoria.tipoLaudo||"simplificado");
+    // Y0 do Completo usa o header enxuto (8mm) em vez do header completo (47mm+).
+    // Antes, Y0 era sempre MT+actualHDR (=57mm), mesmo no Completo cujo header
+    // (_pdfHeaderFotosCompleto) mede só 8mm → 39mm de espaço em branco antes da
+    // primeira foto. Com Y0 correto, as fotos ganham ~39mm extras de espaço vertical,
+    // o que também aumenta a largura renderizada de fotos em retrato (~42→51mm).
+    const _Y0foto=_tipoLaudoPDF==="completo"?MT+8:Y0;
     if(_tipoLaudoPDF==="completo"){
       setStatus("Gerando capa e anexos...");
       try{
@@ -7006,14 +7012,14 @@ window.finalizarVistoria=async()=>{
       }else{
         pdfHeader(pdf,ML,PW,CW,currentVistoria,locais.join(" / "),logoSrc,HDR,MT,logoPrep);
       }
-      let y=Y0;
+      let y=_Y0foto;
 
       if(isP&&pF.length>0){
         // Pg1: faixa 1 = fachada (largura total), faixas 2-3 = pares
         // Calcular alturas para preencher PGB exatamente
-        // 3 faixas: F01H + LEGH + 2*(FPH + LEGH) = PGB - Y0
-        // F01H = (PGB-Y0 - 3*LEGH) * 0.4  FPH = (PGB-Y0 - 3*LEGH) * 0.3
-        const totalH=PGB-Y0;
+        // 3 faixas: F01H + LEGH + 2*(FPH + LEGH) = PGB - _Y0foto
+        // F01H = (PGB-_Y0foto - 3*LEGH) * 0.4  FPH = (PGB-_Y0foto - 3*LEGH) * 0.3
+        const totalH=PGB-_Y0foto;
         const totalImgH=totalH-3*LEGH;
         const F01H=Math.floor(totalImgH*0.40);
         const FPH=Math.floor(totalImgH*0.30);
@@ -7050,7 +7056,7 @@ window.finalizarVistoria=async()=>{
         }
       } else {
         // Pg2+: 3 faixas de par, altura igual dividindo o espaço disponível
-        const totalH=PGB-Y0;
+        const totalH=PGB-_Y0foto;
         const FPH=Math.floor((totalH-3*LEGH)/3);
         for(let i=0;i<pF.length;i+=2){
           const count=Math.min(2,pF.length-i);
