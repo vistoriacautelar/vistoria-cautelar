@@ -6489,11 +6489,11 @@ async function gerarComprovanteBlob(data,conclusaoLinhas,assinaturaResp,assinatu
     return ycLocal+hdrH;
   };
   yc=renderCKHeader(yc);
-  // rowH FIXO em 20mm: garante legibilidade das 7 patologias empilhadas (step=~2.57mm/patologia,
-  // adequado para o texto 5.8pt). Quando o total não cabe numa página, a lógica de quebra
-  // abaixo cria páginas adicionais mantendo cabeçalho. Estratégia antiga (dividir espaço/N)
-  // espremia até 1.14mm/patologia com 24+ ambientes e sobrepunha texto.
-  const rowH=20;
+  const ROW_MIN=10;
+  const ROW_MAX=22;
+  const availForRows=(CKH-CKMB)-yc-1;
+  const rowHCalc=ambTotal.length?Math.floor((availForRows/ambTotal.length)*10)/10:ROW_MIN;
+  const rowH=Math.min(ROW_MAX,Math.max(ROW_MIN,rowHCalc));
   let cx;
   ambTotal.forEach((amb,ri)=>{
     if(yc+rowH>(CKH-CKMB)-1){
@@ -6970,12 +6970,6 @@ window.finalizarVistoria=async()=>{
     // encerramento, anexos I e II) ANTES das páginas de fotos. As páginas de
     // fotos são geradas pelo mesmo loop, com cabeçalho enxuto (_pdfHeaderFotosCompleto).
     const _tipoLaudoPDF=(currentVistoria.tipoLaudo||"simplificado");
-    // Y0 do Completo usa o header enxuto (8mm) em vez do header completo (47mm+).
-    // Antes, Y0 era sempre MT+actualHDR (=57mm), mesmo no Completo cujo header
-    // (_pdfHeaderFotosCompleto) mede só 8mm → 39mm de espaço em branco antes da
-    // primeira foto. Com Y0 correto, as fotos ganham ~39mm extras de espaço vertical,
-    // o que também aumenta a largura renderizada de fotos em retrato (~42→51mm).
-    const _Y0foto=_tipoLaudoPDF==="completo"?MT+8:Y0;
     if(_tipoLaudoPDF==="completo"){
       setStatus("Gerando capa e anexos...");
       try{
@@ -7012,14 +7006,14 @@ window.finalizarVistoria=async()=>{
       }else{
         pdfHeader(pdf,ML,PW,CW,currentVistoria,locais.join(" / "),logoSrc,HDR,MT,logoPrep);
       }
-      let y=_Y0foto;
+      let y=Y0;
 
       if(isP&&pF.length>0){
         // Pg1: faixa 1 = fachada (largura total), faixas 2-3 = pares
         // Calcular alturas para preencher PGB exatamente
-        // 3 faixas: F01H + LEGH + 2*(FPH + LEGH) = PGB - _Y0foto
-        // F01H = (PGB-_Y0foto - 3*LEGH) * 0.4  FPH = (PGB-_Y0foto - 3*LEGH) * 0.3
-        const totalH=PGB-_Y0foto;
+        // 3 faixas: F01H + LEGH + 2*(FPH + LEGH) = PGB - Y0
+        // F01H = (PGB-Y0 - 3*LEGH) * 0.4  FPH = (PGB-Y0 - 3*LEGH) * 0.3
+        const totalH=PGB-Y0;
         const totalImgH=totalH-3*LEGH;
         const F01H=Math.floor(totalImgH*0.40);
         const FPH=Math.floor(totalImgH*0.30);
@@ -7056,7 +7050,7 @@ window.finalizarVistoria=async()=>{
         }
       } else {
         // Pg2+: 3 faixas de par, altura igual dividindo o espaço disponível
-        const totalH=PGB-_Y0foto;
+        const totalH=PGB-Y0;
         const FPH=Math.floor((totalH-3*LEGH)/3);
         for(let i=0;i<pF.length;i+=2){
           const count=Math.min(2,pF.length-i);
@@ -7127,14 +7121,16 @@ window.finalizarVistoria=async()=>{
     pdf.setDrawColor(0,0,0);
     cx=CKML;pdf.setFontSize(7);pdf.setFont("helvetica","bold");
     colsH.forEach((c,i)=>{pdf.text(c,cx+colWN[i]/2,yc+4.8,{align:"center"});cx+=colWN[i];});yc+=hdrH;
-    // rowH FIXO em 20mm: garante legibilidade das 7 patologias empilhadas
-    // (step=(20-2)/7=~2.57mm por patologia, adequado para o texto 5.8pt).
-    // Quando o total de ambientes não cabe numa página, a lógica de quebra abaixo cria páginas
-    // adicionais mantendo o cabeçalho da tabela. Assinatura vai em pdf.addPage() separado
-    // logo após o forEach, então nunca é cortada pela tabela.
-    // Estratégia antiga (dividir espaço/N) espremia até rowH=10mm com 24+ ambientes, o que
-    // resultava em step=1.14mm/patologia e sobreposição visual de texto.
-    const rowH=20;
+    // rowH: cada linha precisa caber 5 grupos de patologia legíveis.
+    // Antes: dividíamos a área disponível por N (sempre ~18) → ~14mm/linha. Agora N pode ser
+    // pequeno (poucos cômodos fotografados), então sem teto a linha vira um bloco gigante.
+    // Limitamos a um MÁXIMO razoável e empurramos o restante do espaço para depois (preenchemos
+    // só o que precisa, deixando o final em branco).
+    const ROW_MIN=10;
+    const ROW_MAX=22;
+    const availForRows=(CKH-CKMB)-yc-1;
+    const rowHCalc=ambTotal.length?Math.floor((availForRows/ambTotal.length)*10)/10:ROW_MIN;
+    const rowH=Math.min(ROW_MAX,Math.max(ROW_MIN,rowHCalc));
     // Função auxiliar para renderizar o cabeçalho da tabela numa página de checklist
     const renderCKHeader=(ycLocal)=>{
       pdf.setFillColor(200,200,200);
@@ -7360,15 +7356,6 @@ window.finalizarVistoria=async()=>{
     setStatus("Gerando PDF...");
     await yieldThread();
     const _pdfBlobGerado=pdf.output("blob");
-    // iOS Safari transfere posse do Blob quando ele é passado pra navigator.share({files:[...]}).
-    // Depois do share sheet, o Blob original pode ficar "neutered" (tamanho 0). Isso quebra
-    // o upload do PDF pro Drive lá embaixo (linha 7522+): o Android manda certinho porque
-    // a.click() só LÊ o blob, mas no iPhone o PDF nunca chegava no Drive — só o ZIP, que
-    // é gerado depois do share sheet e não passa por navigator.share.
-    // Solução: guardar os bytes num ArrayBuffer independente. ArrayBuffer é copia crua de
-    // memória, imune ao neutering do Blob. Reconstruímos um Blob novo desses bytes na hora
-    // do upload pro Drive.
-    const _pdfBytesParaDrive=await _pdfBlobGerado.arrayBuffer();
     await shareOrDownload(_pdfBlobGerado,nomeBase+".pdf","application/pdf");
     // Restaurar fotos originais (qualidade máxima) ANTES do ZIP — a recompressão só serve para o PDF
     fotosPendentes=_backupFotos;
@@ -7534,11 +7521,7 @@ window.finalizarVistoria=async()=>{
     if(_vDocComprov&&!window._modoRegerar){
       (async()=>{
         try{
-          // Reconstrói o Blob a partir dos bytes capturados antes do share sheet
-          // (ver comentário em _pdfBytesParaDrive lá em cima). Não usar _pdfBlobGerado
-          // aqui: no iPhone ele pode ter sido consumido pelo navigator.share e estar vazio.
-          const pdfBlobDrive=new Blob([_pdfBytesParaDrive],{type:"application/pdf"});
-          await gdrive_uploadVistoria(_vDocComprov,pdfBlobDrive,_backupFotos,nomeBase);
+          await gdrive_uploadVistoria(_vDocComprov,_pdfBlobGerado,_backupFotos,nomeBase);
         }catch(eg){console.error("GDrive auto-upload:",eg);}
       })();
     }
@@ -7571,6 +7554,11 @@ window.marcarAusentePassivelRetorno=async()=>{
     try{localStorage.setItem("lastResponsavel"+(new Date().toISOString().slice(0,10)),JSON.stringify(ultimoResponsavel));}catch(e){}
   }
   let btnSalvarAusente=null;
+  // setStatus local: atualiza o texto do botão pra mostrar progresso ao usuário.
+  // A função setStatus do finalizarVistoria não é acessível aqui (escopo diferente),
+  // então precisamos de uma definição própria. Sem ela → "setStatus is not defined"
+  // e o registro de ausência falha antes de salvar no Firestore.
+  const setStatus=t=>{if(btnSalvarAusente)btnSalvarAusente.textContent=t||"⏳ Ausente — Passível de Retorno";};
   // Botão da tela vai mostrar progresso para o usuário não tocar duas vezes
   try{
     btnSalvarAusente=document.querySelector("button[onclick=\"marcarAusentePassivelRetorno()\"]");
@@ -9966,13 +9954,6 @@ async function _gdrive_buscarFotosEmPastaColetor(token,coletorFolderId,vDoc,onPr
       if(meta.patologias)foto.patologias=meta.patologias;
       if(meta.combos)foto.combos=meta.combos;
       if(meta.comodo)foto.comodo=meta.comodo;
-      // CRÍTICO: legenda e combinacoes precisam ser restauradas pra o PDF regenerado
-      // ter as patologias corretas. `combinacoes` alimenta o checklist (linhas 1158,
-      // 1216, 6770, 7094) e as manifestações patológicas. `legenda` é o texto exibido
-      // na legenda da foto (linha 7038 etc.) — sem ela cai em f.tipo ("Vista"/"Detalhe").
-      // Ambas são salvas no metadata.json (linhas 9751-9752) mas não estavam sendo lidas.
-      if(meta.legenda)foto.legenda=meta.legenda;
-      if(meta.combinacoes)foto.combinacoes=meta.combinacoes;
       fotos.push(foto);
     }catch(ef){console.warn("GDrive download foto:",f.name,ef);}
   }
