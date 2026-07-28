@@ -7541,7 +7541,13 @@ window.finalizarVistoria=async()=>{
 // retorna pra Pendentes. NÃO gera PDF. Na próxima visita o cadastrador retoma de onde parou.
 // Quando o ausente vira definitivo (sem mais retorno), aí sim a finalizarVistoria gera o PDF.
 window.marcarAusentePassivelRetorno=async()=>{
+  // Guard anti-reentrada: impede que toques repetidos criem documentos duplicados.
+  // Sem isso, se o backup de fotos falhar (mostra alert), o botão fica habilitado
+  // e o cadastrador toca de novo achando que não salvou → addDoc cria outro documento.
+  if(window._salvandoAusente)return;
+  window._salvandoAusente=true;
   if(!currentVistoria){
+    window._salvandoAusente=false;
     return alert("Sessão da vistoria foi perdida. Volte para a tela anterior e reinicie.");
   }
   const totalFotos=Object.keys(fotosPendentes).length;
@@ -7602,6 +7608,11 @@ window.marcarAusentePassivelRetorno=async()=>{
       }
       return await addDoc(collection(db,"vistorias"),vDoc);
     })();
+    // CRÍTICO: marcar o ID logo após o primeiro save. Se o backup de fotos falhar
+    // e o cadastrador de alguma forma conseguir re-executar a função (ex: bug no guard),
+    // o _retornoId garante que o updateDoc (linha 7600) será usado em vez de addDoc,
+    // evitando documentos duplicados no Firestore.
+    if(!currentVistoria._retornoId)currentVistoria._retornoId=vRef.id;
     // Fotos local-only no IndexedDB (chave = ID da vistoria) para retomar na próxima visita
     try{
       const fotosLocais=Object.values(fotosPendentes).map(f=>({
@@ -7663,6 +7674,7 @@ window.marcarAusentePassivelRetorno=async()=>{
     console.error("marcarAusentePassivelRetorno:",e);
     alert("Erro ao registrar ausência: "+(e.message||"desconhecido"));
   } finally {
+    window._salvandoAusente=false;
     if(btnSalvarAusente){btnSalvarAusente.disabled=false;btnSalvarAusente.textContent="⏳ Ausente — Passível de Retorno";}
   }
 };
