@@ -1181,18 +1181,225 @@ function _agruparPatologiasPorAmbiente(fotosObj){
 }
 
 // Texto da Conclusão automática do Laudo Completo.
+// ============================================================================
+// NOVA GERAÇÃO DE CONCLUSÃO — segue orientações profissionais:
+// 1. Divide manifestações em SETORES: Área Externa vs Parte Interna
+// 2. Dentro de cada setor, agrupa por ELEMENTO CONSTRUTIVO (Parede, Piso, Teto, Esquadrias...)
+//    em vez de listar cômodo por cômodo
+// 3. Aplica dicionário de substituição pra plural/forma técnica
+//    (Trinca→trincas, Umidade→marcas de umidade, Danificado[Piso]→trechos danificados etc.)
+// 4. Preposições de gênero corretas ("na garagem", "na área de serviço")
+// 5. Alternância de conectores/verbos evita repetição de "foram observadas"
+// ============================================================================
+
+// Ambientes considerados de área externa (classificação por prefixo de nome).
+const _AMBIENTES_EXTERNOS_SET=new Set([
+  "fachada","calçada","calcada","garagem","quintal","corredor externo",
+  "varanda","jardim","piscina","churrasqueira","estacionamento","muro",
+  "portão","portao","edícula","edicula","área externa","area externa"
+]);
+
+// Mapa ambiente → {prep (preposição "em+artigo"), art (artigo definido)}.
+// Chaves em lowercase. Pra ambientes com sufixo numérico ("Dormitório 02"), usa match
+// por prefixo. Casos sem entry caem no fallback heurístico.
+const _AMBIENTE_INFO_MAP={
+  "fachada":{prep:"na",art:"a"},"calçada":{prep:"na",art:"a"},"calcada":{prep:"na",art:"a"},
+  "garagem":{prep:"na",art:"a"},"quintal":{prep:"no",art:"o"},
+  "corredor externo":{prep:"no",art:"o"},"corredor interno":{prep:"no",art:"o"},
+  "varanda":{prep:"na",art:"a"},"jardim":{prep:"no",art:"o"},"muro":{prep:"no",art:"o"},
+  "sala":{prep:"na",art:"a"},"cozinha":{prep:"na",art:"a"},
+  "banheiro":{prep:"no",art:"o"},"banheiro 01":{prep:"no",art:"o"},"banheiro 02":{prep:"no",art:"o"},"banheiro 03":{prep:"no",art:"o"},
+  "dormitório":{prep:"no",art:"o"},"dormitorio":{prep:"no",art:"o"},
+  "dormitório 01":{prep:"no",art:"o"},"dormitório 02":{prep:"no",art:"o"},"dormitório 03":{prep:"no",art:"o"},"dormitório 04":{prep:"no",art:"o"},
+  "dormitorio 01":{prep:"no",art:"o"},"dormitorio 02":{prep:"no",art:"o"},"dormitorio 03":{prep:"no",art:"o"},
+  "área de serviço":{prep:"na",art:"a"},"area de serviço":{prep:"na",art:"a"},"area de servico":{prep:"na",art:"a"},
+  "lavanderia":{prep:"na",art:"a"},"despensa":{prep:"na",art:"a"},
+  "escritório":{prep:"no",art:"o"},"escritorio":{prep:"no",art:"o"},
+  "hall":{prep:"no",art:"o"},"copa":{prep:"na",art:"a"},"closet":{prep:"no",art:"o"},
+  "suíte":{prep:"na",art:"a"},"suite":{prep:"na",art:"a"},
+  "piscina":{prep:"na",art:"a"},"churrasqueira":{prep:"na",art:"a"},
+  "estacionamento":{prep:"no",art:"o"},"portão":{prep:"no",art:"o"},"portao":{prep:"no",art:"o"},
+  "edícula":{prep:"na",art:"a"},"edicula":{prep:"na",art:"a"}
+};
+
+function _infoAmbiente(amb){
+  const k=(amb||"").toLowerCase().trim();
+  if(_AMBIENTE_INFO_MAP[k])return _AMBIENTE_INFO_MAP[k];
+  // Match por prefixo — chaves mais longas primeiro (ex: "banheiro 02" antes de "banheiro")
+  const chaves=Object.keys(_AMBIENTE_INFO_MAP).sort((a,b)=>b.length-a.length);
+  for(const c of chaves){if(k.startsWith(c))return _AMBIENTE_INFO_MAP[c];}
+  // Fallback heurístico melhorado (aceita "ã" como feminino)
+  const ehFem=k.endsWith("a")||k.endsWith("ã");
+  return {prep:ehFem?"na":"no",art:ehFem?"a":"o"};
+}
+
+// Contração "de+artigo" ("de+a=da", "de+o=do"). Usado em "as paredes DA garagem".
+function _contrDe(amb){return _infoAmbiente(amb).art==="a"?"da":"do";}
+
+function _classificarSetorAmbiente(amb){
+  const k=(amb||"").toLowerCase().trim();
+  if(_AMBIENTES_EXTERNOS_SET.has(k))return "externa";
+  // Match por prefixo (ex: "Fachada Lateral" → externa)
+  for(const e of _AMBIENTES_EXTERNOS_SET){if(k.startsWith(e))return "externa";}
+  return "interna";
+}
+
+// Dicionário de substituição bruto→formal.
+// Chave = nome do subitem (após _singularizarPat). Valor = forma plural/técnica.
+const _PAT_FORMAL={
+  "Trinca":"trincas","Fissura":"fissuras","Rachadura":"rachaduras",
+  "Umidade":"marcas de umidade","Infiltração":"infiltrações",
+  "Eflorescência":"eflorescências","Segregação":"pontos de segregação",
+  "Armadura Exposta":"armadura exposta","Oxidação":"pontos de oxidação",
+  "Recalque":"recalques","Solapamento":"solapamentos",
+  "Deformado":"deformações","Deformação":"deformações",
+  "Trincado":"trincamentos","Quebrado":"partes quebradas","Faltando":"partes faltantes",
+  "Vazamento":"vazamentos","Em Reparo":"trechos em reparo",
+  "Telha Quebrada":"telhas quebradas","Telha Faltando":"telhas faltando",
+  "Madeira Danificada":"madeiramento danificado",
+  "Desplacamento":"desplacamento",
+  "Desplacamento de Pintura":"desplacamento de pintura",
+  "Desplacamento de Revestimento":"desplacamento de revestimento",
+  "Outros":"outras manifestações"
+};
+
+// "Danificado" é polissêmico — o termo formal depende do elemento em contexto.
+function _substPatologia(pat,contextoElem){
+  const p=_singularizarPat(pat);
+  if(p==="Danificado"){
+    if(contextoElem==="Piso"||contextoElem==="Teto"||contextoElem==="Forro"||contextoElem==="Telhados")return "trechos danificados";
+    if(contextoElem==="Esquadrias")return "esquadrias danificadas";
+    if(contextoElem==="Portas")return "portas danificadas";
+    if(contextoElem==="Vidros")return "vidros danificados";
+    if(contextoElem==="Estruturas"||contextoElem==="Estr. Metálicas")return "elementos estruturais danificados";
+    return "trechos danificados";
+  }
+  return _PAT_FORMAL[p]||p.toLowerCase();
+}
+
+function _juntarLista(itens,conj){
+  const c=conj||"e";
+  if(!itens.length)return "";
+  if(itens.length===1)return itens[0];
+  if(itens.length===2)return itens.join(" "+c+" ");
+  return itens.slice(0,-1).join(", ")+" "+c+" "+itens[itens.length-1];
+}
+function _formatAmbArtigo(ambs){return _juntarLista(ambs.map(a=>_infoAmbiente(a).art+" "+a.toLowerCase()));}
+function _formatAmbPrep(ambs){return _juntarLista(ambs.map(a=>_infoAmbiente(a).prep+" "+a.toLowerCase()));}
+function _formatAmbContrDe(ambs){return _juntarLista(ambs.map(a=>_contrDe(a)+" "+a.toLowerCase()));}
+
+function _formatPatologias(pats,contextoElem){
+  const seen=new Set(),out=[];
+  pats.forEach(p=>{
+    const s=_substPatologia(p,contextoElem);
+    if(!seen.has(s)){seen.add(s);out.push(s);}
+  });
+  return _juntarLista(out);
+}
+
+// Alguns elementos são agrupados no mesmo bucket de descrição:
+// Forro/Telhados → Teto (evita frases separadas redundantes)
+function _bucketElem(elem){
+  if(elem==="Forro"||elem==="Telhados")return "Teto";
+  return elem;
+}
+
+// Produz frase minúscula (sem ponto final) para um bucket num setor.
+// Se singleAmb=true, usa forma específica ("no piso da garagem" vs "nos pisos").
+function _fraseElementoSetor(bucket,dados,setor){
+  const singleAmb=dados.ambs.length===1;
+  const patsStr=_formatPatologias(dados.pats,bucket);
+  switch(bucket){
+    case "Parede":
+      if(singleAmb)return "foram registradas "+patsStr+" nas paredes "+_contrDe(dados.ambs[0])+" "+dados.ambs[0].toLowerCase();
+      return "foram registradas "+patsStr+" nas paredes de alvenaria";
+    case "Piso":
+      if(singleAmb)return "verificaram-se "+patsStr+" no piso "+_contrDe(dados.ambs[0])+" "+dados.ambs[0].toLowerCase();
+      return setor==="externa"
+        ?"nos pisos externos, verificaram-se "+patsStr
+        :"nos pisos, verificaram-se "+patsStr;
+    case "Teto":
+      if(singleAmb)return "no teto "+_contrDe(dados.ambs[0])+" "+dados.ambs[0].toLowerCase()+", observaram-se "+patsStr;
+      return "nos tetos "+_formatAmbContrDe(dados.ambs)+", observaram-se "+patsStr;
+    case "Estruturas":
+    case "Estr. Metálicas":
+      return "nas estruturas "+_formatAmbContrDe(dados.ambs)+", constatou-se "+patsStr;
+    case "Esquadrias":
+      return "identificaram-se "+patsStr+" "+_formatAmbPrep(dados.ambs);
+    case "Portas":
+      return "identificaram-se "+patsStr+" "+_formatAmbPrep(dados.ambs);
+    case "Vidros":
+      return "verificaram-se "+patsStr+" "+_formatAmbPrep(dados.ambs);
+    case "Inst. Hidráulicas":
+      return "as instalações hidráulicas "+_formatAmbContrDe(dados.ambs)+" apresentam "+patsStr;
+    case "Outros":
+      return "adicionalmente, identificaram-se "+patsStr+" "+_formatAmbPrep(dados.ambs);
+    default:
+      return "em "+bucket.toLowerCase()+" "+_formatAmbPrep(dados.ambs)+", observou-se "+patsStr;
+  }
+}
+
+function _capPrimeira(s){return s?s.charAt(0).toUpperCase()+s.slice(1):s;}
+
+// Constrói o parágrafo completo de um setor.
+function _prosaSetor(setor,dados){
+  // Ordem canônica dos elementos na descrição
+  const ordem=["Estruturas","Parede","Piso","Teto","Estr. Metálicas","Esquadrias","Portas","Vidros","Inst. Hidráulicas","Outros"];
+  const partes=[];
+  ordem.forEach(bucket=>{if(dados.elementos[bucket])partes.push(_fraseElementoSetor(bucket,dados.elementos[bucket],setor));});
+  if(!partes.length)return "";
+  const opening=setor==="externa"
+    ?"Na área externa, abrangendo "+_formatAmbArtigo(dados.ambientes)+", "
+    :"Na parte interna do imóvel, compreendendo "+_formatAmbArtigo(dados.ambientes)+", ";
+  // Primeira parte é anexada à abertura (minúscula); demais viram frases separadas
+  let prosa=opening+partes[0]+".";
+  for(let i=1;i<partes.length;i++){prosa+=" "+_capPrimeira(partes[i])+".";}
+  return prosa;
+}
+
+function _addPatAoBucket(setorData,elem,pats,amb){
+  const bucket=_bucketElem(elem);
+  if(!setorData.elementos[bucket])setorData.elementos[bucket]={pats:[],patsSet:new Set(),ambs:[],ambsSet:new Set()};
+  const b=setorData.elementos[bucket];
+  if(!b.ambsSet.has(amb)){b.ambsSet.add(amb);b.ambs.push(amb);}
+  (pats||[]).forEach(p=>{
+    const norm=_singularizarPat(p);
+    if(!b.patsSet.has(norm)){b.patsSet.add(norm);b.pats.push(norm);}
+  });
+}
+
 function gerarConclusaoAutomatica(){
   if(!currentVistoria)return "";
   const ocupacao=(currentVistoria.ocupacao||"residencial").toLowerCase();
   const estado=(currentVistoria.estado||"regular").toLowerCase();
   let texto="A edificação é um imóvel "+ocupacao+", apresentando grau de conservação "+estado+".";
-  const grupos=_agruparPatologiasPorAmbiente(fotosPendentes);
-  grupos.forEach(g=>{
-    const prep=_preposicaoAmbiente(g.ambiente);
-    texto+=" "+prep+" "+g.ambiente.toLowerCase()+", foram observadas "+g.descricao+".";
+  // Agrupar patologias por setor → elemento → {pats, ambs}
+  const setores={
+    externa:{ambientes:[],ambientesSet:new Set(),elementos:{}},
+    interna:{ambientes:[],ambientesSet:new Set(),elementos:{}}
+  };
+  Object.values(fotosPendentes||{}).forEach(f=>{
+    if(!f||!f.combinacoes||!f.combinacoes.length)return;
+    const amb=f.ambiente||"Outros";
+    const setor=_classificarSetorAmbiente(amb);
+    const s=setores[setor];
+    if(!s.ambientesSet.has(amb)){s.ambientesSet.add(amb);s.ambientes.push(amb);}
+    f.combinacoes.forEach(c=>{
+      if(c.modo==="agrupada"&&c.listaInternal){
+        c.listaInternal.forEach(sub=>{if(sub.elemento&&sub.pats)_addPatAoBucket(s,sub.elemento,sub.pats,amb);});
+        return;
+      }
+      const elem=c.elemento||c.parte;
+      if(!elem||!c.pats)return;
+      _addPatAoBucket(s,elem,c.pats,amb);
+    });
   });
+  const paragrafos=[];
+  if(setores.externa.ambientes.length){const p=_prosaSetor("externa",setores.externa);if(p)paragrafos.push(p);}
+  if(setores.interna.ambientes.length){const p=_prosaSetor("interna",setores.interna);if(p)paragrafos.push(p);}
+  if(paragrafos.length)texto+="\n\n"+paragrafos.join("\n\n");
   const extra=(currentVistoria.observacoesConclusao||"").trim();
-  if(extra)texto+=" "+extra;
+  if(extra)texto+="\n\n"+extra;
   return texto;
 }
 
@@ -7026,17 +7233,20 @@ window.finalizarVistoria=async()=>{
 
       if(isP&&pF.length>0){
         // Pg1: faixa 1 = fachada (largura total), faixas 2-3 = pares
-        // Calcular alturas para preencher PGB exatamente
-        // 3 faixas: F01H + LEGH + 2*(FPH + LEGH) = PGB - _Y0foto
-        // F01H = (PGB-_Y0foto - 3*LEGH) * 0.4  FPH = (PGB-_Y0foto - 3*LEGH) * 0.3
         const totalH=PGB-_Y0foto;
         const totalImgH=totalH-3*LEGH;
-        const F01H=Math.floor(totalImgH*0.40);
-        const FPH=Math.floor(totalImgH*0.30);
-
-        // Faixa 1: Fachada largura total
+        // Hoist getImgDims: precisamos das dimensões da fachada ANTES de calcular F01H
+        // pra evitar "cabeçalho fantasma" (caixa muito maior que a foto centralizada dentro).
         const f0=pF[0];
         const dims=await getImgDims(f0.dataUrl);
+        // F01H alvo = altura da foto se esticada até CW (limita a caixa ao tamanho real)
+        const F01H_naturalCW=Math.floor(dims.h*(CW-3)/dims.w)+3;
+        // F01H final = min(40% proporcional, altura natural). Piso 40mm pra não sumir.
+        const F01H=Math.max(40,Math.min(Math.floor(totalImgH*0.40),F01H_naturalCW));
+        // FPH absorve o resto — pares ficam maiores quando fachada é curta
+        const FPH=Math.floor((totalImgH-F01H)/2);
+
+        // Faixa 1: Fachada largura total
         const sc=Math.min((CW-3)/dims.w,(F01H-3)/dims.h);
         const fw=Math.round(dims.w*sc),fh=Math.round(dims.h*sc);
         const xo=Math.round((CW-fw)/2),yo=Math.round((F01H-fh)/2);
