@@ -4973,6 +4973,18 @@ function _normalizarLegenda(leg){
   return leg;
 }
 
+// Retorna a legenda a ser renderizada no PDF para uma foto.
+// PRIORIZA combinações — protege vistorias antigas do Completo que foram salvas com
+// legenda hardcoded "Detalhe" ou "Vista" (quando o Completo não gerava legenda detalhada).
+// Se a foto tem combinações patológicas, deriva a legenda delas na hora ("Parede: Trinca").
+// Caso contrário (foto Vista sem patologia), usa a legenda salva ou o fallback.
+function _legendaFotoParaPDF(f,fallbackFinal){
+  if(f&&f.combinacoes&&f.combinacoes.length){
+    return unificarLegendasCombos(f.combinacoes);
+  }
+  return _normalizarLegenda(f.legenda||f.tipo||fallbackFinal||"Vista");
+}
+
 function gerarLegendaCombo(c){
   // Normaliza nomes ANTES de qualquer renderização
   const patsNorm=_normalizarPatLista(c.pats||[]);
@@ -7039,7 +7051,7 @@ window.finalizarVistoria=async()=>{
         pdf.setFont("helvetica","bold");pdf.setFontSize(9);
         pdf.text(f0.numero||"Foto 01",ML+CW/2,y+F01H+3,{align:"center"});
         pdf.setFont("helvetica","normal");pdf.setFontSize(8.5);
-        pdf.text(_normalizarLegenda(f0.legenda||f0.tipo||f0.ambiente||"Fachada"),ML+CW/2,y+F01H+6.8,{align:"center"});
+        pdf.text(_legendaFotoParaPDF(f0,f0.ambiente||"Fachada"),ML+CW/2,y+F01H+6.8,{align:"center"});
         fotoNum++;
         y+=F01H+LEGH;
 
@@ -7687,7 +7699,7 @@ async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
     pdf.setFont("helvetica","bold");pdf.setFontSize(8);
     pdf.text("Foto "+String(fotoNum).padStart(2,"0"),fx+FPL/2,y+FPH+3.2,{align:"center"});
     pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);
-    const leg1=pdf.splitTextToSize(_normalizarLegenda(f.legenda||f.tipo||"Vista"),FPL-2);
+    const leg1=pdf.splitTextToSize(_legendaFotoParaPDF(f),FPL-2);
     pdf.text(leg1[0],fx+FPL/2,y+FPH+6.8,{align:"center"});
   } else {
     pdf.setDrawColor(0,0,0);pdf.setLineWidth(LW);
@@ -7707,7 +7719,7 @@ async function pdfPar(pdf,fotos,startIdx,count,ML,y,CW,FPL,FPR,FPH,fotoNum){
       pdf.setFont("helvetica","bold");pdf.setFontSize(8);
       pdf.text("Foto "+String(fotoNum+k).padStart(2,"0"),fx+fw_k/2,y+FPH+3.2,{align:"center"});
       pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);
-      const legTxt=pdf.splitTextToSize(_normalizarLegenda(f.legenda||f.tipo||"Vista"),fw_k-2);
+      const legTxt=pdf.splitTextToSize(_legendaFotoParaPDF(f),fw_k-2);
       pdf.text(legTxt[0],fx+fw_k/2,y+FPH+6.8,{align:"center"});
     }
   }
