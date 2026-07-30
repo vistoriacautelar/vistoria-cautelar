@@ -1138,26 +1138,14 @@ function _singularizarPat(s){
 }
 
 // Preposição para iniciar frase com nome do ambiente (Na cozinha, No banheiro, ...).
-// Mapa explícito de gênero dos ambientes. A heurística anterior (última letra = 'a' → feminino)
-// falhava com nomes compostos: "Área de serviço" terminava em 'o' e virava "No Área de serviço".
-// Aqui listamos os femininos; tudo que não está no set é tratado como masculino.
-const _AMBIENTES_FEMININOS=new Set([
-  "fachada","calçada","garagem","área de serviço","sala","cozinha",
-  "varanda","sacada","escada","lavanderia","suíte","despensa",
-  "churrasqueira","edícula","piscina","cobertura","laje","marquise",
-  "mureta","cisterna","quadra","entrada"
-]);
 function _preposicaoAmbiente(amb){
-  if(!amb)return "No";
+  if(!amb)return "Em";
   const limpo=amb.toLowerCase().trim();
-  // Plural simples: "Dormitórios" → checar "dormitório"
-  const base=limpo.endsWith("s")&&!limpo.endsWith("ês")?limpo.slice(0,-1):limpo;
-  // Checar o nome completo e também a primeira palavra (pra "área de serviço" → "área")
-  const primeira=base.split(/\s/)[0];
-  const ehFem=_AMBIENTES_FEMININOS.has(base)||_AMBIENTES_FEMININOS.has(primeira)||_AMBIENTES_FEMININOS.has(limpo);
   const ehPlural=limpo.endsWith("s")&&!limpo.endsWith("ês");
-  if(ehPlural)return ehFem?"nas":"nos";
-  return ehFem?"na":"no";
+  const ultima=limpo.charAt(limpo.length-(ehPlural?2:1));
+  const ehFem=ultima==="a";
+  if(ehPlural)return ehFem?"Nas":"Nos";
+  return ehFem?"Na":"No";
 }
 
 // Agrupa patologias por ambiente, deduplica. Formato de fotosObj: {fid:{ambiente,combinacoes:[{elemento,pats}]}}
@@ -1193,58 +1181,20 @@ function _agruparPatologiasPorAmbiente(fotosObj){
 }
 
 // Texto da Conclusão automática do Laudo Completo.
-// Gera parágrafos com variação frasal pra não soar mecânico.
 function gerarConclusaoAutomatica(){
   if(!currentVistoria)return "";
   const ocupacao=(currentVistoria.ocupacao||"residencial").toLowerCase();
   const estado=(currentVistoria.estado||"regular").toLowerCase();
+  let texto="A edificação é um imóvel "+ocupacao+", apresentando grau de conservação "+estado+".";
   const grupos=_agruparPatologiasPorAmbiente(fotosPendentes);
-
-  // --- Parágrafo de abertura ---
-  let texto="Com base na vistoria cautelar realizada, constatou-se que a edificação trata-se de um imóvel de uso "+ocupacao;
-  texto+=", cujo estado geral de conservação foi classificado como "+estado+".";
-
-  // --- Corpo: patologias por ambiente, fraseamento variado ---
-  if(grupos.length>0){
-    // Frase de transição
-    texto+=" Durante a inspeção, foram identificadas as seguintes manifestações patológicas:";
-    // Modelos de frase (rotacionados pra evitar repetição)
-    const modelos=[
-      (prep,amb,desc)=>" "+_ucfirst(prep)+" "+amb+", foram identificadas manifestações de "+desc,
-      (prep,amb,desc)=>" "+_ucfirst(prep)+" "+amb+", constatou-se a ocorrência de "+desc,
-      (prep,amb,desc)=>" "+_ucfirst(prep)+" "+amb+", verificou-se a presença de "+desc,
-      (prep,amb,desc)=>" "+_ucfirst(prep)+" "+amb+", observou-se "+desc
-    ];
-    grupos.forEach((g,i)=>{
-      const prep=_preposicaoAmbiente(g.ambiente);
-      const amb=g.ambiente.toLowerCase();
-      const modelo=modelos[i%modelos.length];
-      texto+=modelo(prep,amb,g.descricao)+".";
-    });
-  } else {
-    texto+=" Durante a inspeção visual, não foram identificadas manifestações patológicas aparentes nos ambientes vistoriados.";
-  }
-
-  // --- Parágrafo de recomendação ---
-  if(grupos.length>0){
-    if(estado==="precário"||estado==="ruim"){
-      texto+=" Diante das manifestações identificadas, recomenda-se a execução imediata dos reparos necessários, com acompanhamento técnico qualificado, a fim de preservar a integridade estrutural e a segurança dos ocupantes.";
-    } else if(estado==="regular"){
-      texto+=" Recomenda-se o acompanhamento periódico das manifestações identificadas e a execução dos reparos pertinentes, a fim de evitar o agravamento das anomalias e preservar as condições de habitabilidade do imóvel.";
-    } else {
-      texto+=" Embora o estado geral de conservação seja satisfatório, recomenda-se o monitoramento das manifestações pontuais identificadas, visando à manutenção preventiva do imóvel.";
-    }
-  }
-
-  // --- Observações extras do vistoriador ---
+  grupos.forEach(g=>{
+    const prep=_preposicaoAmbiente(g.ambiente);
+    texto+=" "+prep+" "+g.ambiente.toLowerCase()+", foram observadas "+g.descricao+".";
+  });
   const extra=(currentVistoria.observacoesConclusao||"").trim();
   if(extra)texto+=" "+extra;
   return texto;
 }
-
-// Capitaliza primeira letra (helper pra conclusão)
-function _ucfirst(s){return s?s.charAt(0).toUpperCase()+s.slice(1):"";}
-
 
 // Mapeia ELEMENTO (nome) → LINHA da tabela de "Lista de Verificação" do Anexo I.
 const _CHECKLIST_ELEM_MAP={
@@ -5416,11 +5366,10 @@ function salvarFotoFinal(dataUrl,patologias,combinacoes){
   const id=Date.now().toString();const num=Object.keys(fotosPendentes).length+1;
   const tipoLaudo=(currentVistoria&&currentVistoria.tipoLaudo)||"simplificado";
   let legenda=fotoAtualTipo;
-  if(combinacoes&&combinacoes.length&&tipoLaudo!=="completo"){
-    // No simplificado: legenda detalhada por combinação
+  if(combinacoes&&combinacoes.length){
+    // Legenda detalhada por combinação — IGUAL em ambos os tipos de laudo
     legenda=unificarLegendasCombos(combinacoes);
   }
-  // No modo completo: legenda da foto = "Vista" (sem patologia) ou "Detalhe" (com); código já está marcado na imagem.
   // Corrigir orientação EXIF (iOS) e depois comprimir
   corrigirOrientacaoFoto(dataUrl).then(dataUrlFixed=>comprimirFoto(dataUrlFixed)).then(async dataUrlComp=>{
     fotosPendentes[id]={id,dataUrl:dataUrlComp,ambiente:fotoAtualAmbiente,tipo:fotoAtualTipo,legenda,numero:"Foto "+String(num).padStart(2,"0"),patologias:patologias||[],combinacoes:combinacoes||[],timestamp:new Date().toISOString()};
@@ -7051,19 +7000,24 @@ window.finalizarVistoria=async()=>{
       const isP=pagFotos[pg].isPrimeira;
       const locais=[...new Set(pF.map(f=>f.ambiente))];
       // Cabeçalho: enxuto no completo (Local: Ambiente | Data:), completo no simplificado
+      // _Y0foto: Y inicial real das fotos — depende da altura do cabeçalho:
+      //   Completo: 8mm (barra Local|Data)   Simplificado: actualHDR (~47mm)
+      let _Y0foto;
       if(_tipoLaudoPDF==="completo"){
         _pdfHeaderFotosCompleto(pdf,ML,MT,CW,locais.join(" / "),currentVistoria.data||"");
+        _Y0foto=MT+8;
       }else{
         pdfHeader(pdf,ML,PW,CW,currentVistoria,locais.join(" / "),logoSrc,HDR,MT,logoPrep);
+        _Y0foto=Y0;
       }
-      let y=Y0;
+      let y=_Y0foto;
 
       if(isP&&pF.length>0){
         // Pg1: faixa 1 = fachada (largura total), faixas 2-3 = pares
         // Calcular alturas para preencher PGB exatamente
-        // 3 faixas: F01H + LEGH + 2*(FPH + LEGH) = PGB - Y0
-        // F01H = (PGB-Y0 - 3*LEGH) * 0.4  FPH = (PGB-Y0 - 3*LEGH) * 0.3
-        const totalH=PGB-Y0;
+        // 3 faixas: F01H + LEGH + 2*(FPH + LEGH) = PGB - _Y0foto
+        // F01H = (PGB-_Y0foto - 3*LEGH) * 0.4  FPH = (PGB-_Y0foto - 3*LEGH) * 0.3
+        const totalH=PGB-_Y0foto;
         const totalImgH=totalH-3*LEGH;
         const F01H=Math.floor(totalImgH*0.40);
         const FPH=Math.floor(totalImgH*0.30);
@@ -7100,7 +7054,7 @@ window.finalizarVistoria=async()=>{
         }
       } else {
         // Pg2+: 3 faixas de par, altura igual dividindo o espaço disponível
-        const totalH=PGB-Y0;
+        const totalH=PGB-_Y0foto;
         const FPH=Math.floor((totalH-3*LEGH)/3);
         for(let i=0;i<pF.length;i+=2){
           const count=Math.min(2,pF.length-i);
@@ -7591,13 +7545,7 @@ window.finalizarVistoria=async()=>{
 // retorna pra Pendentes. NÃO gera PDF. Na próxima visita o cadastrador retoma de onde parou.
 // Quando o ausente vira definitivo (sem mais retorno), aí sim a finalizarVistoria gera o PDF.
 window.marcarAusentePassivelRetorno=async()=>{
-  // Guard anti-reentrada: impede que toques repetidos criem documentos duplicados.
-  // Sem isso, se o backup de fotos falhar (mostra alert), o botão fica habilitado
-  // e o cadastrador toca de novo achando que não salvou → addDoc cria outro documento.
-  if(window._salvandoAusente)return;
-  window._salvandoAusente=true;
   if(!currentVistoria){
-    window._salvandoAusente=false;
     return alert("Sessão da vistoria foi perdida. Volte para a tela anterior e reinicie.");
   }
   const totalFotos=Object.keys(fotosPendentes).length;
@@ -7610,11 +7558,6 @@ window.marcarAusentePassivelRetorno=async()=>{
     try{localStorage.setItem("lastResponsavel"+(new Date().toISOString().slice(0,10)),JSON.stringify(ultimoResponsavel));}catch(e){}
   }
   let btnSalvarAusente=null;
-  // setStatus local: atualiza o texto do botão pra mostrar progresso ao usuário.
-  // A função setStatus do finalizarVistoria não é acessível aqui (escopo diferente),
-  // então precisamos de uma definição própria. Sem ela → "setStatus is not defined"
-  // e o registro de ausência falha antes de salvar no Firestore.
-  const setStatus=t=>{if(btnSalvarAusente)btnSalvarAusente.textContent=t||"⏳ Ausente — Passível de Retorno";};
   // Botão da tela vai mostrar progresso para o usuário não tocar duas vezes
   try{
     btnSalvarAusente=document.querySelector("button[onclick=\"marcarAusentePassivelRetorno()\"]");
@@ -7658,11 +7601,6 @@ window.marcarAusentePassivelRetorno=async()=>{
       }
       return await addDoc(collection(db,"vistorias"),vDoc);
     })();
-    // CRÍTICO: marcar o ID logo após o primeiro save. Se o backup de fotos falhar
-    // e o cadastrador de alguma forma conseguir re-executar a função (ex: bug no guard),
-    // o _retornoId garante que o updateDoc (linha 7600) será usado em vez de addDoc,
-    // evitando documentos duplicados no Firestore.
-    if(!currentVistoria._retornoId)currentVistoria._retornoId=vRef.id;
     // Fotos local-only no IndexedDB (chave = ID da vistoria) para retomar na próxima visita
     try{
       const fotosLocais=Object.values(fotosPendentes).map(f=>({
@@ -7724,7 +7662,6 @@ window.marcarAusentePassivelRetorno=async()=>{
     console.error("marcarAusentePassivelRetorno:",e);
     alert("Erro ao registrar ausência: "+(e.message||"desconhecido"));
   } finally {
-    window._salvandoAusente=false;
     if(btnSalvarAusente){btnSalvarAusente.disabled=false;btnSalvarAusente.textContent="⏳ Ausente — Passível de Retorno";}
   }
 };
