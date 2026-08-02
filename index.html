@@ -3909,22 +3909,49 @@ window.iniciarComoAusente=async()=>{
 // Detecta o bairro via Nominatim (OpenStreetMap, sem chave) e guarda as coordenadas
 // pra reuso no mapa do PDF (Laudo Completo). Em SP, o "bairro oficial" às vezes vem
 // como "suburb" e às vezes como "neighbourhood" — por isso tentamos múltiplos campos.
+// Último bairro detectado com sucesso — usado como fallback quando GPS/Nominatim falha
+window._ultimaDeteccaoBairro=null;
+
 window.detectarBairroPorGPS=async()=>{
   const btn=document.getElementById("nv-detectar-bairro-btn");
   if(!navigator.geolocation){alert("Seu navegador não suporta geolocalização.");return;}
-  if(btn){btn.disabled=true;btn.textContent="Buscando...";}
+  if(btn){btn.disabled=true;btn.textContent="Buscando GPS...";}
   let lat=null,lon=null;
-  // ETAPA 1: obter GPS (separada da rede pra dar erro específico)
+  // ETAPA 1: obter GPS — tenta 2 estratégias:
+  //   1ª) Alta precisão com timeout de 8s (GPS físico)
+  //   2ª) Se falhar, tenta com enableHighAccuracy=false (rede/Wi-Fi, mais rápido)
+  const tentarGPS=(highAcc,timeout)=>new Promise((resolve,reject)=>{
+    navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:highAcc,timeout,maximumAge:30000});
+  });
   try{
-    const pos=await new Promise((resolve,reject)=>{
-      navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
-    });
+    let pos;
+    try{
+      pos=await tentarGPS(true,8000);
+    }catch(e1){
+      // GPS físico falhou — tenta via rede (menos preciso, mas funciona)
+      if(btn)btn.textContent="Buscando via rede...";
+      try{
+        pos=await tentarGPS(false,6000);
+      }catch(e2){
+        throw e1; // usa o erro original pra mensagem mais informativa
+      }
+    }
     lat=pos.coords.latitude;lon=pos.coords.longitude;
-    // Sempre salva as coordenadas — usadas pelo mapa do PDF do Laudo Completo,
-    // mesmo se o reverse geocoding (Nominatim) falhar.
     window._coordenadasGPSAtuais={lat,lon};
   }catch(eGPS){
     if(btn){btn.disabled=false;btn.textContent="📍 Detectar";}
+    // Se tem detecção anterior, oferece reutilizar
+    if(window._ultimaDeteccaoBairro){
+      const ub=window._ultimaDeteccaoBairro;
+      const usar=confirm("GPS não respondeu.\n\nUsar o bairro da última detecção?\n\n"+
+        "Bairro: "+ub.bairro+"\n"+
+        (ub.cidade?"Cidade: "+ub.cidade+"\n":"")+
+        (ub.cep?"CEP: "+ub.cep:""));
+      if(usar){
+        _aplicarDeteccaoBairro(ub);
+        return;
+      }
+    }
     const msg=eGPS.code===1?"Permissão de localização negada. Habilite no Ajustes › Safari/Chrome › Localização.":
               eGPS.code===2?"Localização indisponível. Verifique se o GPS está ligado.":
               eGPS.code===3?"Tempo esgotado ao buscar localização. Tente em local mais aberto.":
@@ -3932,7 +3959,8 @@ window.detectarBairroPorGPS=async()=>{
     alert(msg);
     return;
   }
-  // ETAPA 2: reverse geocoding via Nominatim (com retry pra sinal oscilante)
+  // ETAPA 2: reverse geocoding via Nominatim (com retry e throttle)
+  if(btn)btn.textContent="Detectando bairro...";
   try{
     const url=`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&accept-language=pt-BR`;
     let resp=null;
@@ -3942,36 +3970,67 @@ window.detectarBairroPorGPS=async()=>{
         if(btn&&tentativa>1){btn.textContent="Tentativa "+tentativa+"/3...";}
         resp=await fetch(url);
         if(resp.ok)break;
+        // Nominatim rate limit — espera mais tempo
+        if(resp.status===429){
+          lastErr=new Error("Rate limit Nominatim");
+          resp=null;
+          if(tentativa<3)await new Promise(r=>setTimeout(r,3000));
+          continue;
+        }
         lastErr=new Error("Servidor respondeu "+resp.status);
         resp=null;
       }catch(ef){lastErr=ef;resp=null;}
-      if(tentativa<3)await new Promise(r=>setTimeout(r,1500));
+      if(tentativa<3)await new Promise(r=>setTimeout(r,2000));
     }
     if(!resp||!resp.ok)throw lastErr||new Error("Falha após 3 tentativas");
     const data=await resp.json();
     const a=data&&data.address||{};
     const bairro=a.suburb||a.neighbourhood||a.city_district||a.district||a.quarter||a.village||"";
-    // Salvar cidade e CEP detectados pelo GPS para uso no relatório
     const cidadeGPS=a.city||a.town||a.municipality||"";
     const ufGPS=a.state||"";
     const cepGPS=a.postcode||"";
     if(cidadeGPS)window._cidadeDetectadaGPS=cidadeGPS;
     if(ufGPS)window._ufDetectadaGPS=ufGPS;
-    if(cepGPS){const cepEl=document.getElementById("nv-cep");if(cepEl&&!cepEl.value)cepEl.value=cepGPS;}
     if(!bairro){
       alert("GPS detectado, mas não foi possível identificar o bairro automaticamente.\n\nAs coordenadas foram salvas — o mapa funcionará. Preencha o bairro manualmente.");
       return;
     }
-    document.getElementById("nv-bairro").value=bairro;
-    showToast("Bairro detectado: "+bairro,2500);
+    // Salvar detecção pra fallback futuro
+    const deteccao={bairro,cidade:cidadeGPS+(ufGPS?" - "+ufGPS:""),cep:cepGPS,lat,lon};
+    window._ultimaDeteccaoBairro=deteccao;
+    _aplicarDeteccaoBairro(deteccao);
   }catch(eNet){
     console.warn("Nominatim falhou:",eNet);
-    // GPS funcionou, só o serviço de bairro falhou. Toast discreto — não bloqueia.
+    // Se tem detecção anterior, oferece reutilizar
+    if(window._ultimaDeteccaoBairro){
+      const ub=window._ultimaDeteccaoBairro;
+      const usar=confirm("Bairro não detectado (sem resposta do servidor).\n\nUsar o bairro da última detecção?\n\n"+
+        "Bairro: "+ub.bairro+"\n"+
+        (ub.cidade?"Cidade: "+ub.cidade+"\n":"")+
+        (ub.cep?"CEP: "+ub.cep:""));
+      if(usar){
+        _aplicarDeteccaoBairro(ub);
+        return;
+      }
+    }
     showToast("📍 GPS salvo! Bairro não detectado — preencha manualmente.",4000);
   }finally{
     if(btn){btn.disabled=false;btn.textContent="📍 Detectar";}
   }
 };
+
+// Aplica detecção de bairro nos campos do formulário
+function _aplicarDeteccaoBairro(det){
+  if(det.bairro){
+    const el=document.getElementById("nv-bairro");
+    if(el)el.value=det.bairro;
+  }
+  if(det.cep){
+    const cepEl=document.getElementById("nv-cep");
+    if(cepEl&&!cepEl.value)cepEl.value=det.cep;
+  }
+  showToast("Bairro detectado: "+det.bairro,2500);
+}
 
 window.criarVistoria=async()=>{
   const cId=document.getElementById("nv-cliente").value;const colId=document.getElementById("nv-coletor").value;
@@ -4173,6 +4232,7 @@ window.editarLegendaFoto=id=>{
 function iniciarGPS(){
   if(!navigator.geolocation)return;
   const statusEl=document.getElementById("gps-status");
+  let _lastNominatimCall=0; // throttle: mínimo 30s entre chamadas Nominatim
   navigator.geolocation.watchPosition(async pos=>{
     gpsAtual={lat:pos.coords.latitude,lng:pos.coords.longitude,acc:Math.round(pos.coords.accuracy)};
     // Salva coordenadas em currentVistoria.gps pra usar no mapa do PDF do Laudo Completo.
@@ -4182,6 +4242,11 @@ function iniciarGPS(){
       currentVistoria.gps={lat:gpsAtual.lat,lng:gpsAtual.lng,lon:gpsAtual.lng};
     }
     if(statusEl)statusEl.textContent="GPS: "+gpsAtual.lat.toFixed(5)+"S "+Math.abs(gpsAtual.lng).toFixed(5)+"W";
+    // Throttle: Nominatim tem rate limit de 1 req/s, mas vamos chamar no máximo a cada 30s
+    // pra não esgotar quota e causar falhas no "Detectar bairro" manual.
+    const agora=Date.now();
+    if(agora-_lastNominatimCall<30000)return;
+    _lastNominatimCall=agora;
     try{
       const r=await fetch("https://nominatim.openstreetmap.org/reverse?format=json&lat="+gpsAtual.lat+"&lon="+gpsAtual.lng+"&addressdetails=1");
       const d=await r.json();const a=d.address||{};
