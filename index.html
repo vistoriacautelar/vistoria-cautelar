@@ -940,7 +940,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 // O arquivo sw.js precisa estar no MESMO diretório que este index.html.
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>{
-    navigator.serviceWorker.register("sw.js",{scope:"./"})
+    navigator.serviceWorker.register("sw.js",{scope:"./",updateViaCache:"none"})
       .then(reg=>{
         console.log("[PWA] Service Worker registrado:",reg.scope);
         // FORÇAR verificação de atualização a cada abertura do app.
@@ -948,6 +948,7 @@ if("serviceWorker" in navigator){
         // reg.update() força o browser a buscar o sw.js no servidor AGORA.
         // Se o CACHE_VERSION mudou, o novo SW instala, skipWaiting ativa, e na próxima
         // navegação (ou reload) o app já está atualizado.
+        // updateViaCache:"none" garante que o browser NUNCA use HTTP cache pro sw.js.
         reg.update().catch(()=>{});
         reg.addEventListener("updatefound",()=>{
           const newSW=reg.installing;
