@@ -3659,10 +3659,14 @@ window.abrirRetorno=async(id,v)=>{
     +"Deseja retomar a vistoria neste imóvel agora?\n"
     +"As fotos anteriores serão carregadas e você pode adicionar mais."))return;
   // Restaurar estado para continuar a vistoria
+  const agora=new Date();
   currentVistoria={
     ...v,
     _retornoId:id, // marca que veio de pendente — usado na finalização para atualizar o doc original
     visitas:visitas+1,
+    // Atualiza data para a visita atual (não a primeira visita)
+    data:agora.toLocaleDateString("pt-BR"),
+    dataCompleta:agora.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}),
     status:"em_andamento", // CRÍTICO: sem isso, o status herdado do Firestore é "ausente",
                            // e salvarRascunhoUrgente/salvarRascunhoImediato REJEITAM saves
                            // para status !== "em_andamento". Fotos novas se perdem no reload.
@@ -7040,11 +7044,12 @@ window.enviarComprovanteVistoria=async(vistoriaId,vData,ev,opts)=>{
     // Reconstruir ambientes utilizados COM PATOLOGIA IDENTIFICADA a partir das fotos do IndexedDB
     const conclusaoLinhas=[];
     let ambUtilizados=[];
+    let fotosLocaisArr=null;
     try{
-      const fotosLocais=await localBuscarFotos(vistoriaId);
-      if(fotosLocais&&fotosLocais.length){
+      fotosLocaisArr=await localBuscarFotos(vistoriaId);
+      if(fotosLocaisArr&&fotosLocaisArr.length){
         const ambComPat=new Set();
-        fotosLocais.forEach(f=>{
+        fotosLocaisArr.forEach(f=>{
           if(!f||!f.ambiente||!f.combinacoes||!f.combinacoes.length)return;
           const temPat=f.combinacoes.some(c=>{
             if(c.modo==="completo")return !!(c.codigo&&c.subs&&c.subs.length);
@@ -7053,18 +7058,26 @@ window.enviarComprovanteVistoria=async(vistoriaId,vData,ev,opts)=>{
           });
           if(temPat)ambComPat.add(f.ambiente);
         });
-        fotosLocais.forEach(f=>{if(f&&f.ambiente&&ambComPat.has(f.ambiente)&&!ambUtilizados.includes(f.ambiente))ambUtilizados.push(f.ambiente);});
+        fotosLocaisArr.forEach(f=>{if(f&&f.ambiente&&ambComPat.has(f.ambiente)&&!ambUtilizados.includes(f.ambiente))ambUtilizados.push(f.ambiente);});
+        // Reconstrói checklist do vData a partir das fotos locais reais
+        // (o checklist no Firestore pode estar desatualizado — ausente retomada, etc.)
+        const fotosObj={};
+        fotosLocaisArr.forEach((f,i)=>{if(f)fotosObj["f"+i]=f;});
+        vData.checklist=_reconstruirChecklistDeFotos(fotosObj);
       }
     }catch(e){}
     // FALLBACK: se localBuscarFotos não encontrou fotos (ID diferente, ausente retomada, etc.),
     // tenta derivar ambientes com patologia a partir do checklist salvo no Firestore.
     if(!ambUtilizados.length){
+      // Se currentVistoria tem checklist reconstruído, usa ele
+      if(currentVistoria&&currentVistoria.checklist&&Object.keys(currentVistoria.checklist).length){
+        vData.checklist=currentVistoria.checklist;
+      }
       const ck=vData.checklist||{};
       Object.keys(ck).forEach(amb=>{
         if(!amb||amb==="Outros")return;
         const cols=ck[amb];
         if(!cols||typeof cols!=="object")return;
-        // Checa se algum elemento desse ambiente tem patologias registradas
         const temPat=Object.values(cols).some(pats=>Array.isArray(pats)&&pats.length>0);
         if(temPat&&!ambUtilizados.includes(amb))ambUtilizados.push(amb);
       });
