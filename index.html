@@ -7034,6 +7034,19 @@ window.enviarComprovanteVistoria=async(vistoriaId,vData,ev,opts)=>{
         fotosLocais.forEach(f=>{if(f&&f.ambiente&&ambComPat.has(f.ambiente)&&!ambUtilizados.includes(f.ambiente))ambUtilizados.push(f.ambiente);});
       }
     }catch(e){}
+    // FALLBACK: se localBuscarFotos não encontrou fotos (ID diferente, ausente retomada, etc.),
+    // tenta derivar ambientes com patologia a partir do checklist salvo no Firestore.
+    if(!ambUtilizados.length){
+      const ck=vData.checklist||{};
+      Object.keys(ck).forEach(amb=>{
+        if(!amb||amb==="Outros")return;
+        const cols=ck[amb];
+        if(!cols||typeof cols!=="object")return;
+        // Checa se algum elemento desse ambiente tem patologias registradas
+        const temPat=Object.values(cols).some(pats=>Array.isArray(pats)&&pats.length>0);
+        if(temPat&&!ambUtilizados.includes(amb))ambUtilizados.push(amb);
+      });
+    }
     if(btn)btn.textContent="Gerando PDF...";
     blobGerado=await gerarComprovanteBlob(vData,conclusaoLinhas,assinaturaResp,assinaturaTec,vData.ambientesExtras||[],ambUtilizados);
     // Baixar o PDF local APENAS no modo manual (botão "Enviar Comprovante" do histórico).
