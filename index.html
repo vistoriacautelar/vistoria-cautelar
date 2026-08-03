@@ -1372,6 +1372,37 @@ function calcularChecklistDanos(fotosObj){
   return out;
 }
 
+// Reconstrói currentVistoria.checklist a partir das fotos reais em fotosObj.
+// Garante que o checklist sempre reflita as fotos, mesmo se o estado
+// incremental ficou desatualizado (rascunho restaurado, reload, ausente retomada, etc.).
+function _reconstruirChecklistDeFotos(fotosObj){
+  const ck={};
+  const colDoElem=(elem)=>ELEMENTO_TO_COL[elem]||(PATOLOGIAS_COMPLETO_MAP[elem]&&PATOLOGIAS_COMPLETO_MAP[elem].col)||null;
+  Object.values(fotosObj||{}).forEach(f=>{
+    if(!f||!f.combinacoes||!f.combinacoes.length)return;
+    const amb=f.ambiente||"Outros";
+    if(!ck[amb])ck[amb]={};
+    f.combinacoes.forEach(c=>{
+      if(c.modo==="agrupada"&&c.listaInternal){
+        c.listaInternal.forEach(sub=>{
+          const col=colDoElem(sub.elemento);if(!col)return;
+          if(!ck[amb][col])ck[amb][col]=[];
+          (sub.pats||[]).forEach(p=>{if(!ck[amb][col].includes(p))ck[amb][col].push(p);});
+        });
+      } else if(c.modo==="completo"&&c.subs){
+        const col=colDoElem(c.elemento);if(!col)return;
+        if(!ck[amb][col])ck[amb][col]=[];
+        c.subs.forEach(s=>{const p=typeof s==="string"?s:(s&&s.t);if(p&&!ck[amb][col].includes(p))ck[amb][col].push(p);});
+      } else if(c.elemento&&c.pats){
+        const col=colDoElem(c.elemento);if(!col)return;
+        if(!ck[amb][col])ck[amb][col]=[];
+        c.pats.forEach(p=>{if(!ck[amb][col].includes(p))ck[amb][col].push(p);});
+      }
+    });
+  });
+  return ck;
+}
+
 let currentUser=null,currentRole=null,currentUserData=null;
 let currentVistoria=null,fotosPendentes={};
 let fotoAtualBlob=null,fotoAtualTipo=null,fotoAtualAmbiente=null;
@@ -6610,6 +6641,8 @@ async function regeRarPDF(data){
         combinacoes:f.combinacoes||[]
       };
     });
+    // Reconstrói checklist a partir das fotos restauradas (cobre ausente retomada, Drive, etc.)
+    currentVistoria.checklist=_reconstruirChecklistDeFotos(fotosPendentes);
     // Assinaturas: a do responsável vem do Firestore; a do técnico vem do perfil
     assinaturaData=data.assinaturaResp||null;
     assinaturaTecnico=(currentUserData&&currentUserData.assinatura)||data.assinaturaTecnico||null;
@@ -7560,6 +7593,8 @@ window.finalizarVistoria=async()=>{
     }
     // Salvar Firebase (sem fotos — fotos vão para IndexedDB local-only) + download
     // OBS: assinaturaResp gravada no Firestore (necessária para regerar comprovante depois).
+    // Reconstrói checklist a partir das fotos reais (protege ausente retomada, rascunho, etc.)
+    currentVistoria.checklist=_reconstruirChecklistDeFotos(fotosPendentes);
     const vDoc={clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,coletorNome:currentVistoria.coletorNome,responsavel:currentVistoria.responsavel,endereco:currentVistoria.endereco,ocupacao:currentVistoria.ocupacao,tipo:currentVistoria.tipo,tipoLaudo:currentVistoria.tipoLaudo||"simplificado",estado:currentVistoria.estado,idade:currentVistoria.idade,data:currentVistoria.data,dataCompleta:currentVistoria.dataCompleta,userId:currentUser.uid,checklist:currentVistoria.checklist,ambientesExtras:ambientesExtras||[],observacoes:currentVistoria.observacoes,totalFotos:Object.keys(fotosPendentes).length,status:currentVistoria.statusVistoria||"concluida",pendente_retorno:isPendente,visitas:currentVistoria.visitas||1,criadoEm:serverTimestamp(),assinaturaResp:assinaturaData||null,identificacao:currentVistoria.identificacao||null,gps:currentVistoria.gps||null,terreno:currentVistoria.terreno||null,padrao:currentVistoria.padrao||null};
     // data_finalizacao: gravada apenas quando a vistoria está sendo finalizada (não pendente).
     // Esse campo serve à coluna "Data da vistoria" da planilha do cliente e nunca deve ser
@@ -7794,6 +7829,8 @@ window.marcarAusentePassivelRetorno=async()=>{
     // Salvar GPS para uso futuro no mapa do PDF
     if(gpsAtual&&!currentVistoria.gps)currentVistoria.gps={lat:gpsAtual.lat,lng:gpsAtual.lng};
     // Salvar no Firestore SEM PDF, SEM checklist completo, SEM comprovante.
+    // Reconstrói checklist a partir das fotos reais
+    currentVistoria.checklist=_reconstruirChecklistDeFotos(fotosPendentes);
     const vDoc={
       clienteId:currentVistoria.clienteId,coletorId:currentVistoria.coletorId,
       clienteNome:currentVistoria.clienteNome,clienteRRT:currentVistoria.clienteRRT,
