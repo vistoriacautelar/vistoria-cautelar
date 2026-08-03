@@ -6730,6 +6730,27 @@ async function gerarComprovanteBlob(data,conclusaoLinhas,assinaturaResp,assinatu
   const ambTotal=(ambientesUtilizadosArr&&ambientesUtilizadosArr.length)
     ? ambientesUtilizadosArr.slice()
     : [...AMBIENTES,...(ambientesExtrasArr||[])];
+
+  // === SEM PATOLOGIAS: exibe mensagem formal em vez de tabela vazia ===
+  if(!ambTotal.length||(ambientesUtilizadosArr&&!ambientesUtilizadosArr.length)){
+    pdf.setFont("helvetica","normal");pdf.setFontSize(9.5);
+    const msgSemPat=[
+      "Não foram identificadas patologias aparentes no imóvel durante a realização da vistoria cautelar.",
+      "",
+      "Na data da inspeção, os elementos vistoriados apresentavam-se em condições visuais regulares, sem evidências de fissuras, trincas, recalques, infiltrações ou outras manifestações patológicas aparentes relacionadas aos itens inspecionados. O presente registro reflete exclusivamente as condições observadas no momento da vistoria."
+    ].join("\n");
+    const linhasSemPat=pdf.splitTextToSize(msgSemPat,CKCW-12);
+    const blocoSemPatH=linhasSemPat.length*5+12;
+    pdf.setFillColor(245,250,245);
+    pdf.roundedRect(CKML+2,yc+4,CKCW-4,blocoSemPatH,2,2,"F");
+    pdf.setDrawColor(160,200,160);pdf.setLineWidth(0.3);
+    pdf.roundedRect(CKML+2,yc+4,CKCW-4,blocoSemPatH,2,2,"S");
+    pdf.setTextColor(30,60,30);
+    pdf.text(linhasSemPat,CKML+8,yc+12);
+    pdf.setTextColor(0,0,0);
+    yc+=blocoSemPatH+10;
+  } else {
+  // === COM PATOLOGIAS: tabela normal ===
   const colsH=["Local","Estrutura","Parede e muro","Cobertura e teto","Porta e esquadria","Piso e calçamento"];
   const colWRaw=[26,30,31,31,30,37];
   const cwSum=colWRaw.reduce((a,b)=>a+b,0);
@@ -6802,6 +6823,7 @@ async function gerarComprovanteBlob(data,conclusaoLinhas,assinaturaResp,assinatu
     });
     yc+=rowH;
   });
+  } // fim do else (com patologias)
   // === PÁGINA FINAL: CONCLUSÃO + ASSINATURA ===
   pdf.addPage();
   const FLPW=210,FLPH=297,FLML=12.7,FLMT=12.7,FLMR=12.7,FLMB=12.7;
