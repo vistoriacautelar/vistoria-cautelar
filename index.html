@@ -6647,7 +6647,19 @@ async function regeRarPDF(data){
       };
     });
     // Reconstrói checklist a partir das fotos restauradas (cobre ausente retomada, Drive, etc.)
-    currentVistoria.checklist=_reconstruirChecklistDeFotos(fotosPendentes);
+    const ckReconstruido=_reconstruirChecklistDeFotos(fotosPendentes);
+    // Se o checklist reconstruído ficou vazio (fotos antigas sem combinacoes gravado),
+    // preserva o checklist do Firestore como fallback — melhor do que nada.
+    const ckTemDados=Object.values(ckReconstruido).some(amb=>
+      amb&&typeof amb==="object"&&Object.values(amb).some(pats=>Array.isArray(pats)&&pats.length>0)
+    );
+    if(ckTemDados){
+      currentVistoria.checklist=ckReconstruido;
+    } else if(data.checklist&&Object.keys(data.checklist).length){
+      currentVistoria.checklist=data.checklist;
+    } else {
+      currentVistoria.checklist=ckReconstruido;
+    }
     // Assinaturas: a do responsável vem do Firestore; a do técnico vem do perfil
     assinaturaData=data.assinaturaResp||null;
     assinaturaTecnico=(currentUserData&&currentUserData.assinatura)||data.assinaturaTecnico||null;
@@ -7399,8 +7411,10 @@ window.finalizarVistoria=async()=>{
     pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.2);pdf.rect(CKML,yc,CKCW,7,"S");yc+=9;
 
     // Checklist: SÓ os cômodos que tiveram PATOLOGIA identificada (não basta ter foto).
-    // Um cômodo só com foto "Vista" sem patologia não aparece no checklist.
-    // Ordenado pela 1ª aparição da foto da vistoria.
+    // IMPORTANTE: reconstrói checklist direto de fotosPendentes AQUI, no momento da renderização,
+    // pra garantir que usa os mesmos dados que as Manifestações Patológicas. Protege contra
+    // checklist desatualizado no Firestore, ausente retomada, fotos antigas sem combinacoes, etc.
+    currentVistoria.checklist=_reconstruirChecklistDeFotos(fotosPendentes);
     const ambientesComPatologia=new Set();
     Object.values(fotosPendentes).forEach(f=>{
       if(!f||!f.ambiente)return;
