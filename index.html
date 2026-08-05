@@ -6417,6 +6417,29 @@ function abrirDetalheVistoria(id,data){
   // ou no Firestore (vistorias antigas com fotosBase64).
   const btnEdit=document.createElement("button");btnEdit.className="btn";btnEdit.style.cssText="background:#fff7ed;color:#c2410c;border:1px solid #c2410c;margin-bottom:8px";btnEdit.textContent="Editar Fotos";btnEdit.onclick=()=>abrirEditorFotos(id,data);c.appendChild(btnEdit);
   const btnComprov=document.createElement("button");btnComprov.className="btn";btnComprov.style.cssText="background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;margin-bottom:8px";btnComprov.textContent="Enviar Comprovante";btnComprov.onclick=(ev)=>enviarComprovanteVistoria(id,data,ev);c.appendChild(btnComprov);
+  // Botão alternar tipo de laudo (Completo ↔ Simplificado)
+  const tipoAtual=data.tipoLaudo||"simplificado";
+  const btnTipo=document.createElement("button");btnTipo.className="btn";
+  btnTipo.style.cssText="background:#f0f4ff;color:#3b5bdb;border:1px solid #748ffc;margin-bottom:8px";
+  btnTipo.textContent=tipoAtual==="completo"?"Converter para Simplificado":"Converter para Completo";
+  btnTipo.onclick=async()=>{
+    const novoTipo=tipoAtual==="completo"?"simplificado":"completo";
+    const msg=tipoAtual==="completo"
+      ?"Converter de Completo para Simplificado?\n\nO PDF será gerado no formato simplificado na próxima vez."
+      :"Converter de Simplificado para Completo?\n\nO PDF será gerado no formato completo na próxima vez.";
+    if(!confirm(msg))return;
+    btnTipo.textContent="Salvando...";btnTipo.disabled=true;
+    try{
+      await updateDoc(doc(db,"vistorias",id),{tipoLaudo:novoTipo});
+      data.tipoLaudo=novoTipo;
+      showToast("Tipo alterado para "+novoTipo+"! Gere o PDF novamente.",3000);
+      // Atualiza o botão
+      btnTipo.textContent=novoTipo==="completo"?"Converter para Simplificado":"Converter para Completo";
+    }catch(e){
+      alert("Erro ao alterar tipo: "+(e.message||e));
+    }finally{btnTipo.disabled=false;}
+  };
+  c.appendChild(btnTipo);
   const btnPDF=document.createElement("button");btnPDF.className="btn primary";btnPDF.textContent="Gerar PDF Novamente";btnPDF.onclick=async()=>{
     // Tenta enriquecer data com fotos do IndexedDB antes de chamar regeRarPDF
     let fotos=null;
