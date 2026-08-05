@@ -2987,6 +2987,23 @@ window.abrirEditorFotos=async(id,data)=>{
     // Tenta também o fallback do Firestore (vistorias antigas que salvavam fotos no doc)
     if(data&&data.fotosBase64&&data.fotosBase64.length)fotos=data.fotosBase64;
   }
+  // FALLBACK: busca do Google Drive se não encontrou localmente
+  if(!fotos||!fotos.length){
+    const driveOk=await gdrive_isConnectedAsync();
+    if(driveOk){
+      try{
+        showToast("Buscando fotos no Drive...",3000);
+        const drFotos=await gdrive_buscarFotosVistoria(data,(prog)=>{
+          showToast("Baixando foto "+prog.atual+"/"+prog.total+"...",2000);
+        });
+        if(drFotos&&drFotos.length){
+          fotos=drFotos;
+          // Salva no IndexedDB local pra não precisar baixar de novo
+          try{await localSalvarFotos(id,fotos);}catch(_){}
+        }
+      }catch(eg){console.warn("GDrive fallback editor:",eg);}
+    }
+  }
   if(!fotos||!fotos.length){
     alert("Não há fotos disponíveis para edição.\n\nPossíveis causas:\n"
       +"• Vistoria foi feita ANTES da atualização que salva fotos localmente (vistorias antigas).\n"
@@ -3174,6 +3191,10 @@ window.efEditarSeta=gi=>{
     canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
     const ctx=canvas.getContext("2d");ctx.drawImage(img,0,0);
     setasDesenhadas=[];atualizarCanvasPreview();
+  };
+  img.onerror=()=>{
+    alert("Não foi possível carregar esta foto para edição.\n\nA imagem pode estar corrompida ou em formato incompatível.");
+    overlay.style.display="none";
   };
   img.src=f.dataUrl;
   // Sobrescrever confirmarSetas para salvar de volta
