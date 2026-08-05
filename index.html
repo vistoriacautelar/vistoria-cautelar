@@ -3073,7 +3073,8 @@ function renderEditorFotos(){
       const img=document.createElement("img");img.src=f.dataUrl;img.loading="lazy";
       const lbl=document.createElement("div");lbl.className="photo-label";
       lbl.style.cssText="display:flex;align-items:center;gap:4px;padding:2px 4px;flex-wrap:wrap";
-      lbl.innerHTML='<span style="flex:1;font-size:10px;overflow:hidden;text-overflow:ellipsis">'+(f.legenda||f.tipo||"Vista")+'</span>'
+      lbl.innerHTML='<span onclick="efEditarLegenda('+gi+')" style="flex:1;font-size:10px;overflow:hidden;text-overflow:ellipsis;cursor:pointer;text-decoration:underline dotted" title="Toque para editar legenda">'+(f.legenda||f.tipo||"Vista")+'</span>'
+        +'<button onclick="efEditarLegenda('+gi+')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:1px" title="Editar legenda">🏷️</button>'
         +'<button onclick="efEditarSeta('+gi+')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:1px" title="Editar seta">✏️</button>'
         +'<button onclick="efSubstituir('+gi+',\''+amb+'\')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:1px" title="Substituir">🔄</button>'
         +'<button onclick="efExcluir('+gi+')" style="background:none;border:none;font-size:14px;cursor:pointer;padding:1px;color:#e44" title="Excluir">✕</button>';
@@ -3087,6 +3088,31 @@ window.efExcluir=gi=>{
   if(!confirm("Excluir esta foto?"))return;
   _efFotos.splice(gi,1);
   _efRenumerar();
+  renderEditorFotos();
+};
+
+window.efEditarLegenda=gi=>{
+  const f=_efFotos[gi];if(!f)return;
+  const atual=f.legenda||f.tipo||"Vista";
+  const nova=prompt("Editar legenda da foto:\n\nExemplos: Parede: Trinca, Piso: Danificado, Vista",atual);
+  if(nova===null)return; // cancelou
+  const txt=nova.trim()||atual;
+  _efFotos[gi].legenda=txt;
+  // Se mudou o elemento principal (ex: "Teto" → "Piso"), atualiza combinacoes também
+  // pra manter consistência entre legenda e dados de patologia
+  if(f.combinacoes&&f.combinacoes.length){
+    f.combinacoes.forEach(c=>{
+      // Tenta extrair o elemento do novo texto (antes dos ":")
+      const m=txt.match(/^([^:]+):/);
+      if(m){
+        const novoElem=m[1].trim();
+        // Só atualiza se o combo tinha um elemento diferente
+        if(c.elemento&&c.elemento!==novoElem){
+          c.elemento=novoElem;
+        }
+      }
+    });
+  }
   renderEditorFotos();
 };
 
