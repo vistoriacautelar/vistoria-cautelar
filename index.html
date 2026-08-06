@@ -4315,7 +4315,9 @@ window.editarLegendaFoto=id=>{
 function iniciarGPS(){
   if(!navigator.geolocation)return;
   const statusEl=document.getElementById("gps-status");
-  let _lastNominatimCall=0; // throttle: mínimo 30s entre chamadas Nominatim
+  // RESET: limpa endereço da vistoria anterior pra não contaminar o carimbo das fotos
+  enderecoLinhas=[];
+  let _lastNominatimCall=0; // throttle: mínimo 10s entre chamadas Nominatim
   navigator.geolocation.watchPosition(async pos=>{
     gpsAtual={lat:pos.coords.latitude,lng:pos.coords.longitude,acc:Math.round(pos.coords.accuracy)};
     // Salva coordenadas em currentVistoria.gps pra usar no mapa do PDF do Laudo Completo.
@@ -4325,10 +4327,10 @@ function iniciarGPS(){
       currentVistoria.gps={lat:gpsAtual.lat,lng:gpsAtual.lng,lon:gpsAtual.lng};
     }
     if(statusEl)statusEl.textContent="GPS: "+gpsAtual.lat.toFixed(5)+"S "+Math.abs(gpsAtual.lng).toFixed(5)+"W";
-    // Throttle: Nominatim tem rate limit de 1 req/s, mas vamos chamar no máximo a cada 30s
-    // pra não esgotar quota e causar falhas no "Detectar bairro" manual.
+    // Throttle: Nominatim tem rate limit de 1 req/s, mas vamos chamar no máximo a cada 10s.
+    // A primeira chamada é imediata (_lastNominatimCall=0) pra preencher o endereço rápido.
     const agora=Date.now();
-    if(agora-_lastNominatimCall<30000)return;
+    if(agora-_lastNominatimCall<10000)return;
     _lastNominatimCall=agora;
     try{
       const r=await fetch("https://nominatim.openstreetmap.org/reverse?format=json&lat="+gpsAtual.lat+"&lon="+gpsAtual.lng+"&addressdetails=1");
