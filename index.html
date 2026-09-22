@@ -798,12 +798,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 
 <!-- MODAIS ADMIN -->
 <div id="modal-prestador" class="modal-bg" style="display:none" onclick="closeModalBg(event,'modal-prestador')">
-  <div class="modal"><h3>Cadastrar Prestador</h3>
+  <div class="modal"><h3 id="mp-titulo">Cadastrar Prestador</h3>
+    <input type="hidden" id="mp-edit-id" value="">
     <div class="field"><label>Nome *</label><input type="text" id="mp-nome"></div>
     <div class="field"><label>CNPJ</label><input type="text" id="mp-cnpj" placeholder="00.000.000/0001-00"></div>
     <div class="field"><label>Endereco</label><input type="text" id="mp-end"></div>
     <div class="field"><label>E-mail</label><input type="email" id="mp-email"></div>
+    <div class="field"><label>Responsável Técnico</label><input type="text" id="mp-rt-nome" placeholder="Nome do responsável técnico"></div>
+    <div class="field"><label>CREA/CAU</label><input type="text" id="mp-rt-registro" placeholder="Ex: CAU Nº A12345-6"></div>
     <div class="field"><label>Logo</label><input type="file" id="mp-logo-file" accept="image/*" onchange="previewLogoUpload(event)"><img id="mp-logo-preview" style="display:none;width:80px;height:80px;object-fit:contain;border:1px solid #e5e5e5;border-radius:8px;margin-top:6px"></div>
+    <div class="field"><label>Clientes vinculados</label><div id="mp-clientes-lista" style="max-height:150px;overflow-y:auto;border:1px solid #e5e5e5;border-radius:8px;padding:8px;font-size:13px"></div></div>
     <div class="field" style="display:flex;align-items:center;gap:10px"><input type="checkbox" id="mp-default" style="width:18px;height:18px"><label for="mp-default" style="margin:0;font-size:14px">Prestador padrao</label></div>
     <div class="grid2" style="margin-top:8px"><button class="btn" onclick="closeModal('modal-prestador')">Cancelar</button><button class="btn primary" onclick="salvarPrestador()">Salvar</button></div>
   </div>
@@ -1421,7 +1425,7 @@ let _fotoSetasAcumuladas=[];
 // dataUrl da foto ORIGINAL sem nenhuma marcação (para re-renderização limpa)
 let _fotoOriginalBlob=null;
 let sigCanvas=null,sigCtx=null,sigDrawing=false,assinaturaData=null,assinaturaTecnico=null;
-let prestadorDefault=null,ambientesExtras=[],ultimoResponsavel=null,logoB64Upload=null;
+let prestadorDefault=null,_prestadorAtivo=null,ambientesExtras=[],ultimoResponsavel=null,logoB64Upload=null;
 let gpsAtual=null,enderecoLinhas=[];
 let deviceOrientation=0;
 let vistoriaDetalheId=null,vistoriaDetalheData=null;
@@ -2788,8 +2792,119 @@ window.previewLogoUpload=e=>{const file=e.target.files[0];if(!file)return;const 
 
 function mkLI(av,title,sub,act){const d=document.createElement("div");d.className="list-item";d.innerHTML=av+'<div class="info"><div class="title">'+title+'</div><div class="sub">'+sub+'</div></div>'+act;return d;}
 
-async function loadPrestadores(){const snap=await getDocs(collection(db,"prestadores"));const el=document.getElementById("lista-prestadores");el.innerHTML="";if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhum prestador</p>';return;}const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));docs.forEach(p=>{const av=p.logo?'<div class="avatar" style="background:#fce7f3"><img src="'+p.logo+'" style="width:36px;height:36px;object-fit:contain;border-radius:50%"></div>':'<div class="avatar" style="background:#fce7f3;color:#9d174d">'+p.nome.charAt(0)+"</div>";const def=p.isDefault?'<span class="badge ok">Padrao</span>':'<button class="btn small" onclick="event.stopPropagation();setDefaultPrestador(\''+p.id+'\')" style="color:#007aff;border-color:#007aff;font-size:11px">Padrao</button>';const del='<button class="btn small danger" onclick="event.stopPropagation();deletarPrestador(\''+p.id+'\')">Excluir</button>';el.appendChild(mkLI(av,p.nome+(p.isDefault?" (Padrao)":""),p.cnpj||"","<div style='display:flex;gap:6px;flex-shrink:0'>"+def+del+"</div>"));});}
-window.salvarPrestador=async()=>{const nome=document.getElementById("mp-nome").value.trim();if(!nome)return alert("Informe o nome");const isDefault=document.getElementById("mp-default").checked;const data={nome,cnpj:document.getElementById("mp-cnpj").value.trim(),endereco:document.getElementById("mp-end").value.trim(),email:document.getElementById("mp-email").value.trim(),isDefault,criadoEm:serverTimestamp()};if(logoB64Upload)data.logo=logoB64Upload;if(isDefault){const q=query(collection(db,"prestadores"),where("isDefault","==",true));const s=await getDocs(q);for(const d of s.docs)await updateDoc(doc(db,"prestadores",d.id),{isDefault:false});}await addDoc(collection(db,"prestadores"),data);closeModal("modal-prestador");["mp-nome","mp-cnpj","mp-end","mp-email"].forEach(id=>document.getElementById(id).value="");document.getElementById("mp-default").checked=false;document.getElementById("mp-logo-file").value="";document.getElementById("mp-logo-preview").style.display="none";logoB64Upload=null;await loadPrestadorDefault();loadPrestadores();};
+async function loadPrestadores(){const snap=await getDocs(collection(db,"prestadores"));const el=document.getElementById("lista-prestadores");el.innerHTML="";if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhum prestador</p>';return;}const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));docs.forEach(p=>{const av=p.logo?'<div class="avatar" style="background:#fce7f3"><img src="'+p.logo+'" style="width:36px;height:36px;object-fit:contain;border-radius:50%"></div>':'<div class="avatar" style="background:#fce7f3;color:#9d174d">'+p.nome.charAt(0)+"</div>";const def=p.isDefault?'<span class="badge ok">Padrao</span>':'<button class="btn small" onclick="event.stopPropagation();setDefaultPrestador(\''+p.id+'\')" style="color:#007aff;border-color:#007aff;font-size:11px">Padrao</button>';const edt='<button class="btn small" onclick="event.stopPropagation();editarPrestador(\''+p.id+'\')" style="color:#f59e0b;border-color:#f59e0b;font-size:11px">Editar</button>';const del='<button class="btn small danger" onclick="event.stopPropagation();deletarPrestador(\''+p.id+'\')">Excluir</button>';const sub=(p.cnpj||"")+(p.responsavelTecnico?" | RT: "+p.responsavelTecnico:"")+(p.clienteIds&&p.clienteIds.length?" | "+p.clienteIds.length+" cliente(s)":"");el.appendChild(mkLI(av,p.nome+(p.isDefault?" (Padrao)":""),sub,"<div style='display:flex;gap:6px;flex-shrink:0'>"+edt+def+del+"</div>"));});}
+
+// Popula checkboxes de clientes no modal do prestador
+async function _populateClientesCheckboxes(selectedIds){
+  if(!_cacheClientes){const snap=await getDocs(collection(db,"clientes"));_cacheClientes=[];snap.forEach(d=>_cacheClientes.push({id:d.id,...d.data()}));_cacheClientes.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));}
+  const el=document.getElementById("mp-clientes-lista");
+  if(!el)return;
+  const sel=selectedIds||[];
+  if(!_cacheClientes.length){el.innerHTML='<span style="color:#aaa">Nenhum cliente cadastrado</span>';return;}
+  el.innerHTML=_cacheClientes.map(c=>'<label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer"><input type="checkbox" class="mp-cli-cb" value="'+c.id+'"'+(sel.includes(c.id)?" checked":"")+' style="width:16px;height:16px"> '+c.nome+'</label>').join("");
+}
+
+// Abre modal para editar prestador existente
+window.editarPrestador=async(id)=>{
+  try{
+    const snap=await getDoc(doc(db,"prestadores",id));
+    if(!snap.exists())return alert("Prestador não encontrado.");
+    const p=snap.data();
+    document.getElementById("mp-titulo").textContent="Editar Prestador";
+    document.getElementById("mp-edit-id").value=id;
+    document.getElementById("mp-nome").value=p.nome||"";
+    document.getElementById("mp-cnpj").value=p.cnpj||"";
+    document.getElementById("mp-end").value=p.endereco||"";
+    document.getElementById("mp-email").value=p.email||"";
+    document.getElementById("mp-rt-nome").value=p.responsavelTecnico||"";
+    document.getElementById("mp-rt-registro").value=p.registroProfissional||"";
+    document.getElementById("mp-default").checked=!!p.isDefault;
+    if(p.logo){document.getElementById("mp-logo-preview").src=p.logo;document.getElementById("mp-logo-preview").style.display="block";logoB64Upload=null;}
+    else{document.getElementById("mp-logo-preview").style.display="none";}
+    await _populateClientesCheckboxes(p.clienteIds||[]);
+    showModal("modal-prestador");
+  }catch(e){alert("Erro ao carregar prestador: "+(e.message||e));}
+};
+
+window.salvarPrestador=async()=>{
+  const nome=document.getElementById("mp-nome").value.trim();
+  if(!nome)return alert("Informe o nome");
+  const editId=document.getElementById("mp-edit-id").value;
+  const isDefault=document.getElementById("mp-default").checked;
+  // Coletar clientes selecionados
+  const clienteIds=Array.from(document.querySelectorAll(".mp-cli-cb:checked")).map(cb=>cb.value);
+  const data={
+    nome,
+    cnpj:document.getElementById("mp-cnpj").value.trim(),
+    endereco:document.getElementById("mp-end").value.trim(),
+    email:document.getElementById("mp-email").value.trim(),
+    responsavelTecnico:document.getElementById("mp-rt-nome").value.trim(),
+    registroProfissional:document.getElementById("mp-rt-registro").value.trim(),
+    clienteIds,
+    isDefault
+  };
+  if(logoB64Upload)data.logo=logoB64Upload;
+  try{
+    if(isDefault){
+      const q=query(collection(db,"prestadores"),where("isDefault","==",true));
+      const s=await getDocs(q);
+      for(const d of s.docs){if(d.id!==editId)await updateDoc(doc(db,"prestadores",d.id),{isDefault:false});}
+    }
+    if(editId){
+      // Modo edição
+      await updateDoc(doc(db,"prestadores",editId),data);
+      showToast("Prestador atualizado!");
+    }else{
+      // Modo criação
+      data.criadoEm=serverTimestamp();
+      await addDoc(collection(db,"prestadores"),data);
+      showToast("Prestador cadastrado!");
+    }
+    closeModal("modal-prestador");
+    _limparModalPrestador();
+    await loadPrestadorDefault();
+    loadPrestadores();
+  }catch(e){
+    console.error("salvarPrestador:",e);
+    alert("Erro ao salvar prestador: "+(e.message||e));
+  }
+};
+
+function _limparModalPrestador(){
+  document.getElementById("mp-edit-id").value="";
+  document.getElementById("mp-titulo").textContent="Cadastrar Prestador";
+  ["mp-nome","mp-cnpj","mp-end","mp-email","mp-rt-nome","mp-rt-registro"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("mp-default").checked=false;
+  document.getElementById("mp-logo-file").value="";
+  document.getElementById("mp-logo-preview").style.display="none";
+  const el=document.getElementById("mp-clientes-lista");if(el)el.innerHTML="";
+  logoB64Upload=null;
+}
+
+// Ao abrir modal de novo prestador, popular checkboxes de clientes
+const _origShowModalPrestador=window.showModal;
+window.showModal=function(id){
+  if(id==="modal-prestador"&&!document.getElementById("mp-edit-id").value){
+    _limparModalPrestador();
+    _populateClientesCheckboxes([]);
+  }
+  _origShowModalPrestador(id);
+};
+
+// Busca prestador vinculado a um clienteId. Retorna o doc ou null.
+async function getPrestadorByClienteId(clienteId){
+  if(!clienteId)return null;
+  try{
+    const snap=await getDocs(collection(db,"prestadores"));
+    let found=null;
+    snap.forEach(d=>{
+      const p=d.data();
+      if(p.clienteIds&&p.clienteIds.includes(clienteId)){found={id:d.id,...p};}
+    });
+    return found;
+  }catch(e){console.warn("getPrestadorByClienteId:",e);return null;}
+}
+
 window.setDefaultPrestador=async id=>{const q=query(collection(db,"prestadores"),where("isDefault","==",true));const s=await getDocs(q);for(const d of s.docs)await updateDoc(doc(db,"prestadores",d.id),{isDefault:false});await updateDoc(doc(db,"prestadores",id),{isDefault:true});await loadPrestadorDefault();loadPrestadores();};
 window.deletarPrestador=async id=>{if(!confirm("Excluir?"))return;await deleteDoc(doc(db,"prestadores",id));loadPrestadores();};
 
@@ -4151,6 +4266,9 @@ window.criarVistoria=async()=>{
   if(window._coordenadasGPSAtuais){
     currentVistoria.gps={lat:window._coordenadasGPSAtuais.lat,lng:window._coordenadasGPSAtuais.lon,lon:window._coordenadasGPSAtuais.lon};
   }
+  // Busca prestador vinculado ao cliente (prioridade sobre o padrão)
+  try{_prestadorAtivo=await getPrestadorByClienteId(cId);}catch(e){_prestadorAtivo=null;}
+  if(!_prestadorAtivo)_prestadorAtivo=prestadorDefault;
   // RESET DEFENSIVO: limpa TODAS as variáveis globais que poderiam vazar de uma vistoria
   // anterior. Crítico após "Gerar PDF Novamente" ou banner pós-finalização — caminhos onde
   // _bkFotosPendentes do regeRarPDF poderia ter deixado lixo se houvesse erro.
@@ -4737,8 +4855,9 @@ window.tirarFoto=async()=>{
     ctx.fillText(line,Math.round(fs*0.3),outH-boxH+Math.round(fs*0.1)+i*lineH);
     ctx.shadowBlur=0;
   });
-  // Logo proporcional - sem distorcao
-  const logoSrc=prestadorDefault&&prestadorDefault.logo?prestadorDefault.logo:LOGO_CONST;
+  // Logo proporcional - sem distorcao (prestador vinculado tem prioridade)
+  const _lpAtivo=_prestadorAtivo||prestadorDefault;
+  const logoSrc=_lpAtivo&&_lpAtivo.logo?_lpAtivo.logo:LOGO_CONST;
   const doLogo=src=>{
     if(src&&src.length>50){
       const li=new Image();
@@ -6764,7 +6883,10 @@ async function gerarComprovanteBlob(data,conclusaoLinhas,assinaturaResp,assinatu
   const PW=210,PH=297;
   const ML=12.7,MT=12.7,MR=12.7,MB=12.7;
   const CW=PW-ML-MR;
-  const prest=prestadorDefault||{nome:"CNRP ARQUITETURA E CONSTRUÇÕES LTDA.",cnpj:"22.121.094/0001-90",endereco:"Av. Marechal Eurico Gaspar Dutra, nº 1292 | Santana | São Paulo – SP | CEP 02239-010",email:"ronaldopinto@rbarquitetura.com"};
+  // Prestador vinculado ao cliente tem prioridade sobre o padrão
+  let _compPrestVinc=null;
+  try{_compPrestVinc=await getPrestadorByClienteId(data.clienteId);}catch(e){}
+  const prest=_compPrestVinc||prestadorDefault||{nome:"CNRP ARQUITETURA E CONSTRUÇÕES LTDA.",cnpj:"22.121.094/0001-90",endereco:"Av. Marechal Eurico Gaspar Dutra, nº 1292 | Santana | São Paulo – SP | CEP 02239-010",email:"ronaldopinto@rbarquitetura.com"};
   // === PÁGINA 1: CHECKLIST ===
   const CKH=PH,CKML=ML,CKMR=MR,CKMB=MB;
   const CKCW=PW-CKML-CKMR;
@@ -6997,8 +7119,8 @@ async function gerarComprovanteBlob(data,conclusaoLinhas,assinaturaResp,assinatu
   pdf.setFontSize(9);pdf.setFont("helvetica","normal");
   pdf.text(data.responsavel&&data.responsavel.nome||"",sigXL+sigW/2,yf+5,{align:"center"});
   pdf.text("Responsável pelo Imóvel",sigXL+sigW/2,yf+9.5,{align:"center"});
-  pdf.text((currentUserData&&currentUserData.nome)||data.responsavelTecnico||"Responsavel Tecnico",sigXR+sigW/2,yf+5,{align:"center"});
-  pdf.text("Responsável Técnico",sigXR+sigW/2,yf+9.5,{align:"center"});
+  pdf.text((prest&&prest.responsavelTecnico)||(currentUserData&&currentUserData.nome)||data.responsavelTecnico||"Responsavel Tecnico",sigXR+sigW/2,yf+5,{align:"center"});
+  pdf.text((prest&&prest.registroProfissional)||"Responsável Técnico",sigXR+sigW/2,yf+9.5,{align:"center"});
   // Rodapé
   pdfFooter(pdf,FLPW,FLPH,FLML,FLMR,FLMB,prest);
   return pdf.output("blob");
@@ -7351,7 +7473,10 @@ window.finalizarVistoria=async()=>{
     const PGB=PH-MB-14; // limite útil (reserva rodapé)
 
     const fotos=Object.values(fotosPendentes);
-    const prest=prestadorDefault||{nome:"CNRP ARQUITETURA E CONSTRUÇÕES LTDA.",cnpj:"22.121.094/0001-90",endereco:"Av. Marechal Eurico Gaspar Dutra, nº 1292 | Santana | São Paulo – SP | CEP 02239-010",email:"ronaldopinto@rbarquitetura.com"};
+    // Prestador vinculado ao cliente tem prioridade sobre o padrão
+    let _prestVinculado=null;
+    try{_prestVinculado=await getPrestadorByClienteId(currentVistoria.clienteId);}catch(e){console.warn("Erro ao buscar prestador vinculado:",e);}
+    const prest=_prestVinculado||prestadorDefault||{nome:"CNRP ARQUITETURA E CONSTRUÇÕES LTDA.",cnpj:"22.121.094/0001-90",endereco:"Av. Marechal Eurico Gaspar Dutra, nº 1292 | Santana | São Paulo – SP | CEP 02239-010",email:"ronaldopinto@rbarquitetura.com"};
     const logoSrc=prest.logo||LOGO_CONST;
     const logoPrep=await prepLogoForPDF(logoSrc,45,15);
 
@@ -7703,8 +7828,8 @@ window.finalizarVistoria=async()=>{
     pdf.setFontSize(9);pdf.setFont("helvetica","normal");
     pdf.text(currentVistoria.responsavel.nome,sigXL+sigW/2,yf+5,{align:"center"});
     pdf.text("Responsável pelo Imóvel",sigXL+sigW/2,yf+9.5,{align:"center"});
-    pdf.text(currentUserData&&currentUserData.nome||"Responsavel Tecnico",sigXR+sigW/2,yf+5,{align:"center"});
-    pdf.text("Responsável Técnico",sigXR+sigW/2,yf+9.5,{align:"center"});
+    pdf.text((prest&&prest.responsavelTecnico)||(currentUserData&&currentUserData.nome)||"Responsavel Tecnico",sigXR+sigW/2,yf+5,{align:"center"});
+    pdf.text((prest&&prest.registroProfissional)||"Responsável Técnico",sigXR+sigW/2,yf+9.5,{align:"center"});
     pdfFooter(pdf,FLPW,FLPH,FLML,FLMR,FLMB,prest);
     } // === fim do bloco simplificado (checklist + conclusão) ===
 
@@ -9329,10 +9454,10 @@ async function gerarPDFCompletoPaginasContexto(pdf,v,prest,logoPrep,PW,PH,ML,MT,
   pdf.line(xRight,sigY,xRight+colSig,sigY);
   pdf.setFont("helvetica","bold");pdf.setFontSize(9);
   pdf.text(r.nome||"",xLeft+colSig/2,sigY+5,{align:"center"});
-  pdf.text("RONALDO PINTO",xRight+colSig/2,sigY+5,{align:"center"});
+  pdf.text((prest&&prest.responsavelTecnico)||"RONALDO PINTO",xRight+colSig/2,sigY+5,{align:"center"});
   pdf.setFont("helvetica","normal");pdf.setFontSize(8);
   pdf.text("Responsável pelo Imóvel",xLeft+colSig/2,sigY+9,{align:"center"});
-  pdf.text("CAU Nº A56568-7",xRight+colSig/2,sigY+9,{align:"center"});
+  pdf.text((prest&&prest.registroProfissional)||"CAU Nº A56568-7",xRight+colSig/2,sigY+9,{align:"center"});
   pdf.text("Responsável Técnico",xRight+colSig/2,sigY+13,{align:"center"});
   _pdfRodapeCompleto(pdf,prest,PW,PH,ML,MR,MB,5,"X");
 
