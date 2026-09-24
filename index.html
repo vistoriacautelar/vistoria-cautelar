@@ -4321,8 +4321,11 @@ window.criarVistoria=async()=>{
     currentVistoria.gps={lat:window._coordenadasGPSAtuais.lat,lng:window._coordenadasGPSAtuais.lon,lon:window._coordenadasGPSAtuais.lon};
   }
   // Busca prestador vinculado ao cliente (prioridade sobre o padrão)
-  try{_prestadorAtivo=await getPrestadorByClienteId(cId);}catch(e){_prestadorAtivo=null;}
-  if(!_prestadorAtivo)_prestadorAtivo=prestadorDefault;
+  // _prestadorVinculadoReal: prestador realmente vinculado ao cliente (pode ser null)
+  // _prestadorAtivo: prestador para dados gerais (nome, CNPJ etc), com fallback para default
+  let _prestadorVinculadoReal=null;
+  try{_prestadorVinculadoReal=await getPrestadorByClienteId(cId);}catch(e){}
+  _prestadorAtivo=_prestadorVinculadoReal||prestadorDefault;
   // RESET DEFENSIVO: limpa TODAS as variáveis globais que poderiam vazar de uma vistoria
   // anterior. Crítico após "Gerar PDF Novamente" ou banner pós-finalização — caminhos onde
   // _bkFotosPendentes do regeRarPDF poderia ter deixado lixo se houvesse erro.
@@ -4909,9 +4912,10 @@ window.tirarFoto=async()=>{
     ctx.fillText(line,Math.round(fs*0.3),outH-boxH+Math.round(fs*0.1)+i*lineH);
     ctx.shadowBlur=0;
   });
-  // Logo proporcional - sem distorcao (prestador vinculado tem prioridade)
-  const _lpAtivo=_prestadorAtivo||prestadorDefault;
-  const logoSrc=_lpAtivo&&_lpAtivo.logo?_lpAtivo.logo:null;
+  // Logo proporcional - sem distorcao (SOMENTE prestador vinculado ao cliente)
+  // Se o prestador vinculado não tem logo, NÃO usa logo do default (são empresas distintas)
+  const _lpVinc=(typeof _prestadorVinculadoReal!=="undefined")?_prestadorVinculadoReal:_prestadorAtivo;
+  const logoSrc=_lpVinc&&_lpVinc.logo?_lpVinc.logo:null;
   const doLogo=src=>{
     if(src&&src.length>50){
       const li=new Image();
@@ -7531,7 +7535,8 @@ window.finalizarVistoria=async()=>{
     let _prestVinculado=null;
     try{_prestVinculado=await getPrestadorByClienteId(currentVistoria.clienteId);}catch(e){console.warn("Erro ao buscar prestador vinculado:",e);}
     const prest=_prestVinculado||prestadorDefault||{nome:"CNRP ARQUITETURA E CONSTRUÇÕES LTDA.",cnpj:"22.121.094/0001-90",endereco:"Av. Marechal Eurico Gaspar Dutra, nº 1292 | Santana | São Paulo – SP | CEP 02239-010",email:"ronaldopinto@rbarquitetura.com"};
-    const logoSrc=prest.logo||null;
+    // Logo: SOMENTE do prestador vinculado ao cliente. Se caiu no default, sem logo.
+    const logoSrc=(_prestVinculado&&_prestVinculado.logo)?_prestVinculado.logo:null;
     const logoPrep=await prepLogoForPDF(logoSrc,45,15);
 
     // === LAUDO COMPLETO: gera páginas 1-8 (capa, dados, metodologia, conclusão,
@@ -9043,12 +9048,12 @@ function _pdfAnexoI(pdf,ML,MT,MR,CW,PW,PH,MB,v){
   const linhaH=6;
   pdf.rect(ML,y,CW,linhaH,"S");
   pdf.setFont("helvetica","normal");pdf.setFontSize(9);
-  pdf.text("Rua: "+(e.rua||""),ML+2,y+4);
+  pdfTextFit(pdf,"Rua: "+(e.rua||""),ML+2,y+4,CW*0.7-4);
   pdf.text("Nº "+(e.num||""),ML+CW*0.7,y+4);
   y+=linhaH;
   pdf.rect(ML,y,CW,linhaH,"S");
-  pdf.text("Bairro: "+(e.bairro||""),ML+2,y+4);
-  pdf.text("Complemento: "+(e.comp||""),ML+CW*0.5,y+4);
+  pdfTextFit(pdf,"Bairro: "+(e.bairro||""),ML+2,y+4,CW*0.5-4);
+  pdfTextFit(pdf,"Complemento: "+(e.comp||""),ML+CW*0.5,y+4,CW*0.5-4);
   y+=linhaH+4;
 
   // === 1.0 INFORMAÇÕES GERAIS — TABELA com 3 colunas e cabeçalho ===
@@ -9222,7 +9227,7 @@ function _pdfAnexoI(pdf,ML,MT,MR,CW,PW,PH,MB,v){
     pdf.text(l.label,ML+2,y+4.7);
     pdf.setFont("helvetica","normal");
     if(l.render)l.render(y+4.7);
-    else pdf.text(l.texto||"",ML+coluna1W+2,y+4.7);
+    else pdfTextFit(pdf,l.texto||"",ML+coluna1W+2,y+4.7,CW-coluna1W-4);
     y+=linhaH2;
   });
   y+=4;
@@ -9586,16 +9591,28 @@ async function baixarMapaOSM(lat,lon,larguraPx,alturaPx){
     ref.forEach(r=>{if(r)ctx.drawImage(r.img,r.px,r.py);});
   }catch(e){console.warn("Erro nas camadas Esri:",e);}
   const cx=TILE+xPx,cy=TILE+yPx;
-  ctx.beginPath();ctx.ellipse(cx,cy+3,14,6,0,0,Math.PI*2);
-  ctx.fillStyle="rgba(0,0,0,0.5)";ctx.fill();
-  ctx.beginPath();ctx.arc(cx,cy-22,16,0,Math.PI*2);
-  ctx.fillStyle="#dc2626";ctx.fill();
-  ctx.strokeStyle="#fff";ctx.lineWidth=3;ctx.stroke();
+  // Pin estilo Google Maps — gota invertida proporcional à imagem
+  const baseRef=Math.min(canvasFinal.width,canvasFinal.height);
+  const pinH=Math.round(baseRef*0.08); // altura total do pin
+  const pinR=Math.round(pinH*0.38);    // raio do círculo superior (~38% da altura)
+  const innerR=Math.round(pinR*0.42);  // círculo branco interno
+  const tipY=cy+2;                     // ponta inferior do pin
+  const centerY=tipY-pinH+pinR;        // centro do círculo
+  // Sombra suave no chão
+  ctx.beginPath();ctx.ellipse(cx,tipY+3,pinR*0.7,pinR*0.25,0,0,Math.PI*2);
+  ctx.fillStyle="rgba(0,0,0,0.45)";ctx.fill();
+  // Corpo do pin: arco superior + curvas até a ponta
   ctx.beginPath();
-  ctx.moveTo(cx-11,cy-15);ctx.lineTo(cx+11,cy-15);ctx.lineTo(cx,cy);ctx.closePath();
+  const startAngle=Math.PI-Math.asin((pinR*0.55)/pinR);
+  const endAngle=Math.asin((pinR*0.55)/pinR);
+  ctx.arc(cx,centerY,pinR,startAngle,endAngle);
+  ctx.quadraticCurveTo(cx+pinR*0.2,tipY-pinH*0.18,cx,tipY);
+  ctx.quadraticCurveTo(cx-pinR*0.2,tipY-pinH*0.18,cx-Math.sin(startAngle-Math.PI)*pinR,centerY-Math.cos(startAngle-Math.PI)*pinR);
+  ctx.closePath();
   ctx.fillStyle="#dc2626";ctx.fill();
-  ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.stroke();
-  ctx.beginPath();ctx.arc(cx,cy-22,5.5,0,Math.PI*2);
+  ctx.strokeStyle="#fff";ctx.lineWidth=Math.max(2,Math.round(pinR*0.15));ctx.stroke();
+  // Círculo branco interno
+  ctx.beginPath();ctx.arc(cx,centerY,innerR,0,Math.PI*2);
   ctx.fillStyle="#fff";ctx.fill();
   ctx.fillStyle="rgba(0,0,0,0.6)";
   ctx.fillRect(canvasFinal.width-140,canvasFinal.height-16,138,14);
@@ -9615,6 +9632,18 @@ async function baixarMapaOSM(lat,lon,larguraPx,alturaPx){
 async function baixarMapaSatelite(lat,lng,zoom){
   const r=await baixarMapaOSM(lat,lng);
   return r?r.dataUrl:null;
+}
+
+// Escreve texto no PDF encolhendo a fonte se necessário para caber na largura máxima
+function pdfTextFit(pdf,text,x,y,maxW,opts){
+  if(!text)return;
+  const origSize=pdf.getFontSize();
+  const minSize=5.5;
+  let sz=origSize;
+  while(sz>minSize&&pdf.getTextWidth(text)>maxW){sz-=0.5;pdf.setFontSize(sz);}
+  if(pdf.getTextWidth(text)>maxW){text=text.substring(0,Math.floor(text.length*(maxW/pdf.getTextWidth(text))))+"…";}
+  pdf.text(text,x,y,opts||{});
+  if(sz!==origSize)pdf.setFontSize(origSize);
 }
 
 function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
@@ -9680,7 +9709,7 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
   // === R5: Nome ===
   pdf.setFontSize(7.5);
   const nomL="Nome:  ";pdf.setFont("helvetica","bold");pdf.text(nomL,ML+1.5,cy(lY3,h5));
-  pdf.setFont("helvetica","normal");pdf.text(v.responsavel&&v.responsavel.nome||"--",ML+1.5+pdf.getTextWidth(nomL),cy(lY3,h5));
+  pdf.setFont("helvetica","normal");pdfTextFit(pdf,v.responsavel&&v.responsavel.nome||"--",ML+1.5+pdf.getTextWidth(nomL),cy(lY3,h5),CW-3-pdf.getTextWidth(nomL));
   pdf.line(ML,lY4,ML+CW,lY4);
 
   // === R6: CPF/RG | Contato ===
@@ -9697,7 +9726,7 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
   // === R7: Endereço | Nº | Compl. ===
   const endL="Endereço:  ",nL="Nº:  ",cL="Compl.:  ";
   pdf.setFont("helvetica","bold");pdf.text(endL,ML+1.5,cy(lY5,h7));
-  pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.rua||"",ML+1.5+pdf.getTextWidth(endL),cy(lY5,h7));
+  pdf.setFont("helvetica","normal");pdfTextFit(pdf,v.endereco&&v.endereco.rua||"",ML+1.5+pdf.getTextWidth(endL),cy(lY5,h7),CW*(7/12)-3-pdf.getTextWidth(endL));
   pdf.setFont("helvetica","bold");pdf.text(nL,ML+CW*(7/12)+1.5,cy(lY5,h7));
   pdf.setFont("helvetica","normal");pdf.text(v.endereco&&v.endereco.num||"",ML+CW*(7/12)+1.5+pdf.getTextWidth(nL),cy(lY5,h7));
   pdf.setFont("helvetica","bold");pdf.text(cL,ML+CW*(9.3/12)+1.5,cy(lY5,h7));
@@ -9723,14 +9752,14 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
   const colL="Coletor:  ";
   pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
   pdf.text(colL,ML+1.5,cy(lY6,h8));
-  pdf.setFont("helvetica","normal");pdf.text(v.coletorNome||"",ML+1.5+pdf.getTextWidth(colL),cy(lY6,h8));
+  pdf.setFont("helvetica","normal");pdfTextFit(pdf,v.coletorNome||"",ML+1.5+pdf.getTextWidth(colL),cy(lY6,h8),CW*(3/12)-3-pdf.getTextWidth(colL));
   // Tipo de Ocupação — célula 2
   if(v.ocupacao){
     const ocupL="Ocupação:  ";
     pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);
     pdf.text(ocupL,ML+CW*(3/12)+1.5,cy(lY6,h8));
     pdf.setFont("helvetica","normal");
-    pdf.text(v.ocupacao,ML+CW*(3/12)+1.5+pdf.getTextWidth(ocupL),cy(lY6,h8));
+    pdfTextFit(pdf,v.ocupacao,ML+CW*(3/12)+1.5+pdf.getTextWidth(ocupL),cy(lY6,h8),CW*(3/12)-3-pdf.getTextWidth(ocupL));
     pdf.setLineWidth(0.2);pdf.line(ML+CW*(3/12),lY6,ML+CW*(3/12),lY7);
   }
   if(v.estado){
@@ -9754,7 +9783,7 @@ function pdfHeader(pdf,ML,PW,CW,v,local,logoSrc,HDR,MT,logoPrep,showLocalBar){
   // === R9: Local | Tipo (alinhado abaixo de Estado) | Data Vistoria ===
   if(showLocalBar!==false){
     pdf.setFont("helvetica","bold");pdf.setFontSize(8);
-    pdf.text("Local:  "+local,ML+1.5,cy(lY7,h9));
+    pdfTextFit(pdf,"Local:  "+local,ML+1.5,cy(lY7,h9),CW*(6/12)-3);
     // Divisor à esquerda do Tipo (alinhado com o divisor de Estado de Conservação em R8)
     pdf.setLineWidth(0.2);pdf.line(ML+CW*(6/12),lY7,ML+CW*(6/12),lY7+h9);
     if(v.tipo){
