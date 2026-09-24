@@ -4906,7 +4906,7 @@ window.tirarFoto=async()=>{
   });
   // Logo proporcional - sem distorcao (prestador vinculado tem prioridade)
   const _lpAtivo=_prestadorAtivo||prestadorDefault;
-  const logoSrc=_lpAtivo&&_lpAtivo.logo?_lpAtivo.logo:LOGO_CONST;
+  const logoSrc=_lpAtivo&&_lpAtivo.logo?_lpAtivo.logo:null;
   const doLogo=src=>{
     if(src&&src.length>50){
       const li=new Image();
@@ -7526,7 +7526,7 @@ window.finalizarVistoria=async()=>{
     let _prestVinculado=null;
     try{_prestVinculado=await getPrestadorByClienteId(currentVistoria.clienteId);}catch(e){console.warn("Erro ao buscar prestador vinculado:",e);}
     const prest=_prestVinculado||prestadorDefault||{nome:"CNRP ARQUITETURA E CONSTRUÇÕES LTDA.",cnpj:"22.121.094/0001-90",endereco:"Av. Marechal Eurico Gaspar Dutra, nº 1292 | Santana | São Paulo – SP | CEP 02239-010",email:"ronaldopinto@rbarquitetura.com"};
-    const logoSrc=prest.logo||LOGO_CONST;
+    const logoSrc=prest.logo||null;
     const logoPrep=await prepLogoForPDF(logoSrc,45,15);
 
     // === LAUDO COMPLETO: gera páginas 1-8 (capa, dados, metodologia, conclusão,
