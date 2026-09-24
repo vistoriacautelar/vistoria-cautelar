@@ -9591,28 +9591,31 @@ async function baixarMapaOSM(lat,lon,larguraPx,alturaPx){
     ref.forEach(r=>{if(r)ctx.drawImage(r.img,r.px,r.py);});
   }catch(e){console.warn("Erro nas camadas Esri:",e);}
   const cx=TILE+xPx,cy=TILE+yPx;
-  // Pin estilo Google Maps — gota invertida proporcional à imagem
+  // Pin estilo Google Maps — gota invertida, 100% bezier, proporcional à imagem
   const baseRef=Math.min(canvasFinal.width,canvasFinal.height);
-  const pinH=Math.round(baseRef*0.08); // altura total do pin
-  const pinR=Math.round(pinH*0.38);    // raio do círculo superior (~38% da altura)
-  const innerR=Math.round(pinR*0.42);  // círculo branco interno
-  const tipY=cy+2;                     // ponta inferior do pin
-  const centerY=tipY-pinH+pinR;        // centro do círculo
-  // Sombra suave no chão
-  ctx.beginPath();ctx.ellipse(cx,tipY+3,pinR*0.7,pinR*0.25,0,0,Math.PI*2);
-  ctx.fillStyle="rgba(0,0,0,0.45)";ctx.fill();
-  // Corpo do pin: arco superior + curvas até a ponta
+  const S=Math.round(baseRef*0.07);   // escala base (~54px em 768)
+  const tipY=cy+2;                     // ponta do pin (posição GPS)
+  const topY=tipY-S*1.8;              // topo do balão
+  const midY=tipY-S*0.95;             // "cintura" onde o balão vira ponta
+  const ctrY=tipY-S*1.35;             // centro do círculo branco
+  const r=S*0.62;                      // raio do balão
+  const ir=S*0.28;                     // raio do círculo branco interno
+  const bw=Math.max(2,Math.round(S*0.06)); // borda branca
+  // Sombra projetada
+  ctx.beginPath();ctx.ellipse(cx,tipY+Math.round(S*0.12),Math.round(S*0.35),Math.round(S*0.1),0,0,Math.PI*2);
+  ctx.fillStyle="rgba(0,0,0,0.4)";ctx.fill();
+  // Corpo: gota com bezierCurveTo (sem arc — evita deformação)
   ctx.beginPath();
-  const startAngle=Math.PI-Math.asin((pinR*0.55)/pinR);
-  const endAngle=Math.asin((pinR*0.55)/pinR);
-  ctx.arc(cx,centerY,pinR,startAngle,endAngle);
-  ctx.quadraticCurveTo(cx+pinR*0.2,tipY-pinH*0.18,cx,tipY);
-  ctx.quadraticCurveTo(cx-pinR*0.2,tipY-pinH*0.18,cx-Math.sin(startAngle-Math.PI)*pinR,centerY-Math.cos(startAngle-Math.PI)*pinR);
+  ctx.moveTo(cx,tipY);                                        // ponta inferior
+  ctx.bezierCurveTo(cx-S*0.15,midY, cx-r,ctrY+r*0.3, cx-r,ctrY);  // curva esquerda subindo
+  ctx.bezierCurveTo(cx-r,topY-r*0.1, cx-r*0.55,topY, cx,topY);      // arco superior esquerdo→topo
+  ctx.bezierCurveTo(cx+r*0.55,topY, cx+r,topY-r*0.1, cx+r,ctrY);    // arco superior topo→direita
+  ctx.bezierCurveTo(cx+r,ctrY+r*0.3, cx+S*0.15,midY, cx,tipY);      // curva direita descendo
   ctx.closePath();
   ctx.fillStyle="#dc2626";ctx.fill();
-  ctx.strokeStyle="#fff";ctx.lineWidth=Math.max(2,Math.round(pinR*0.15));ctx.stroke();
+  ctx.strokeStyle="#fff";ctx.lineWidth=bw;ctx.stroke();
   // Círculo branco interno
-  ctx.beginPath();ctx.arc(cx,centerY,innerR,0,Math.PI*2);
+  ctx.beginPath();ctx.arc(cx,ctrY,ir,0,Math.PI*2);
   ctx.fillStyle="#fff";ctx.fill();
   ctx.fillStyle="rgba(0,0,0,0.6)";
   ctx.fillRect(canvasFinal.width-140,canvasFinal.height-16,138,14);
