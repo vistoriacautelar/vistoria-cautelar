@@ -14,10 +14,10 @@
 // no index.html. Isso força todos os clientes a descartarem o cache antigo
 // no próximo carregamento.
 // ============================================================================
- 
-const CACHE_VERSION = "v20260922-1";
+
+const CACHE_VERSION = "v20260924-1";
 const CACHE_NAME = "vistoria-cautelar-" + CACHE_VERSION;
- 
+
 // Arquivos do app shell que serão cacheados na instalação.
 // Em network-first eles servem como fallback offline.
 const SHELL_FILES = [
@@ -25,7 +25,7 @@ const SHELL_FILES = [
   "./index.html",
   "./manifest.json"
 ];
- 
+
 // === INSTALAÇÃO ===
 // Baixa o shell e ativa imediatamente (skipWaiting) — não espera abas antigas.
 self.addEventListener("install", (event) => {
@@ -37,7 +37,7 @@ self.addEventListener("install", (event) => {
       .then(() => self.skipWaiting())
   );
 });
- 
+
 // === ATIVAÇÃO ===
 // Apaga caches antigos (de versões anteriores) e assume controle de todas as abas.
 self.addEventListener("activate", (event) => {
@@ -54,19 +54,19 @@ self.addEventListener("activate", (event) => {
       .then(() => self.clients.claim())
   );
 });
- 
+
 // === FETCH ===
 // NETWORK-FIRST: tenta rede primeiro, cache só como fallback.
 // Ignora requisições não-GET, requisições do Firebase/Firestore (deixa o SDK
 // tratar) e requisições cross-origin de mapas/CDN (deixa o navegador cuidar).
 self.addEventListener("fetch", (event) => {
   const req = event.request;
- 
+
   // Só intercepta GETs do MESMO domínio (PWA do app)
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
- 
+
   // Ignora chamadas a APIs externas que o app faz (Firebase, mapas, etc.)
   if (
     url.hostname.includes("googleapis.com") ||
@@ -78,7 +78,7 @@ self.addEventListener("fetch", (event) => {
   ) {
     return;
   }
- 
+
   event.respondWith(
     fetch(req)
       .then((response) => {
@@ -108,7 +108,7 @@ self.addEventListener("fetch", (event) => {
       })
   );
 });
- 
+
 // === MENSAGEM: forçar atualização imediata vinda do app ===
 // O app pode enviar `{type: "SKIP_WAITING"}` pra forçar ativação do novo SW.
 self.addEventListener("message", (event) => {
@@ -116,4 +116,3 @@ self.addEventListener("message", (event) => {
     self.skipWaiting();
   }
 });
- 

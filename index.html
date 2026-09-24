@@ -9492,7 +9492,7 @@ async function gerarPDFCompletoPaginasContexto(pdf,v,prest,logoPrep,PW,PH,ML,MT,
 // Retorna {dataUrl, w, h} ou null em caso de tainted canvas/CORS.
 async function baixarMapaOSM(lat,lon,larguraPx,alturaPx){
   if(!lat||!lon)return null;
-  const ZOOM=18;
+  const ZOOM=19;
   const n=Math.pow(2,ZOOM);
   const latRad=lat*Math.PI/180;
   const xTileF=((lon+180)/360)*n;
@@ -9532,16 +9532,16 @@ async function baixarMapaOSM(lat,lon,larguraPx,alturaPx){
     ref.forEach(r=>{if(r)ctx.drawImage(r.img,r.px,r.py);});
   }catch(e){console.warn("Erro nas camadas Esri:",e);}
   const cx=TILE+xPx,cy=TILE+yPx;
-  ctx.beginPath();ctx.ellipse(cx,cy+2,9,4,0,0,Math.PI*2);
+  ctx.beginPath();ctx.ellipse(cx,cy+3,14,6,0,0,Math.PI*2);
   ctx.fillStyle="rgba(0,0,0,0.5)";ctx.fill();
-  ctx.beginPath();ctx.arc(cx,cy-14,10,0,Math.PI*2);
+  ctx.beginPath();ctx.arc(cx,cy-22,16,0,Math.PI*2);
+  ctx.fillStyle="#dc2626";ctx.fill();
+  ctx.strokeStyle="#fff";ctx.lineWidth=3;ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx-11,cy-15);ctx.lineTo(cx+11,cy-15);ctx.lineTo(cx,cy);ctx.closePath();
   ctx.fillStyle="#dc2626";ctx.fill();
   ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(cx-7,cy-10);ctx.lineTo(cx+7,cy-10);ctx.lineTo(cx,cy);ctx.closePath();
-  ctx.fillStyle="#dc2626";ctx.fill();
-  ctx.strokeStyle="#fff";ctx.lineWidth=1.5;ctx.stroke();
-  ctx.beginPath();ctx.arc(cx,cy-14,3.5,0,Math.PI*2);
+  ctx.beginPath();ctx.arc(cx,cy-22,5.5,0,Math.PI*2);
   ctx.fillStyle="#fff";ctx.fill();
   ctx.fillStyle="rgba(0,0,0,0.6)";
   ctx.fillRect(canvasFinal.width-140,canvasFinal.height-16,138,14);
