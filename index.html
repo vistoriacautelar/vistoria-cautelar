@@ -30,8 +30,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 .card h2{font-size:11px;font-weight:600;color:#888;margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em}
 .field{margin-bottom:12px}
 .field label{font-size:13px;color:#555;display:block;margin-bottom:4px;font-weight:500}
-.field input,.field select,.field textarea{width:100%;padding:11px 13px;border:1px solid #ddd;border-radius:8px;font-size:15px;background:#fff;color:#111;appearance:none;-webkit-appearance:none}
-.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:#007aff}
+.field input:not([type=checkbox]),.field select,.field textarea{width:100%;padding:11px 13px;border:1px solid #ddd;border-radius:8px;font-size:15px;background:#fff;color:#111;appearance:none;-webkit-appearance:none}
+.field input:not([type=checkbox]):focus,.field select:focus,.field textarea:focus{outline:none;border-color:#007aff}
 .field textarea{resize:vertical;min-height:70px}
 .btn{padding:13px 20px;border-radius:10px;font-size:15px;font-weight:500;cursor:pointer;border:1px solid #ddd;background:#fff;color:#111;width:100%;text-align:center}
 .btn:active{transform:scale(.98);opacity:.8}
@@ -813,7 +813,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
   </div>
 </div>
 <div id="modal-cliente" class="modal-bg" style="display:none" onclick="closeModalBg(event,'modal-cliente')">
-  <div class="modal"><h3>Novo Cliente</h3>
+  <div class="modal"><h3 id="mc-titulo">Novo Cliente</h3>
+    <input type="hidden" id="mc-edit-id" value="">
     <div class="field"><label>Nome *</label><input type="text" id="mc-nome"></div>
     <div class="field"><label>RRT *</label><input type="text" id="mc-rrt"></div>
     <div class="field"><label>Responsavel tecnico</label><input type="text" id="mc-resp"></div>
@@ -2881,12 +2882,15 @@ function _limparModalPrestador(){
   logoB64Upload=null;
 }
 
-// Ao abrir modal de novo prestador, popular checkboxes de clientes
+// Ao abrir modal de novo prestador/cliente, limpar campos de edição
 const _origShowModalPrestador=window.showModal;
 window.showModal=function(id){
   if(id==="modal-prestador"&&!document.getElementById("mp-edit-id").value){
     _limparModalPrestador();
     _populateClientesCheckboxes([]);
+  }
+  if(id==="modal-cliente"&&!document.getElementById("mc-edit-id").value){
+    _limparModalCliente();
   }
   _origShowModalPrestador(id);
 };
@@ -2908,9 +2912,54 @@ async function getPrestadorByClienteId(clienteId){
 window.setDefaultPrestador=async id=>{const q=query(collection(db,"prestadores"),where("isDefault","==",true));const s=await getDocs(q);for(const d of s.docs)await updateDoc(doc(db,"prestadores",d.id),{isDefault:false});await updateDoc(doc(db,"prestadores",id),{isDefault:true});await loadPrestadorDefault();loadPrestadores();};
 window.deletarPrestador=async id=>{if(!confirm("Excluir?"))return;await deleteDoc(doc(db,"prestadores",id));loadPrestadores();};
 
-async function loadClientes(){const snap=await getDocs(collection(db,"clientes"));const el=document.getElementById("lista-clientes");el.innerHTML="";if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhum cliente</p>';return;}const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));docs.forEach(cl=>{const av='<div class="avatar" style="background:#ede9fe;color:#5b21b6">'+cl.nome.charAt(0)+"</div>";const act=currentRole==="master"?'<button class="btn small danger" onclick="event.stopPropagation();deletarCliente(\''+cl.id+'\')">Excluir</button>':'<span style="color:#c7c7cc;font-size:20px">&#8250;</span>';el.appendChild(mkLI(av,cl.nome,"RRT: "+cl.rrt,act));});}
-window.salvarCliente=async()=>{const n=document.getElementById("mc-nome").value.trim();const r=document.getElementById("mc-rrt").value.trim();if(!n||!r)return alert("Preencha nome e RRT");await addDoc(collection(db,"clientes"),{nome:n,rrt:r,resp:document.getElementById("mc-resp").value.trim(),criadoEm:serverTimestamp()});closeModal("modal-cliente");["mc-nome","mc-rrt","mc-resp"].forEach(id=>document.getElementById(id).value="");loadClientes();};
-window.deletarCliente=async id=>{if(!confirm("Excluir?"))return;await deleteDoc(doc(db,"clientes",id));loadClientes();};
+async function loadClientes(){const snap=await getDocs(collection(db,"clientes"));const el=document.getElementById("lista-clientes");el.innerHTML="";if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhum cliente</p>';return;}const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));docs.forEach(cl=>{const av='<div class="avatar" style="background:#ede9fe;color:#5b21b6">'+cl.nome.charAt(0)+"</div>";const edt='<button class="btn small" onclick="event.stopPropagation();editarCliente(\''+cl.id+'\')" style="color:#f59e0b;border-color:#f59e0b;font-size:11px">Editar</button>';const del=currentRole==="master"?'<button class="btn small danger" onclick="event.stopPropagation();deletarCliente(\''+cl.id+'\')">Excluir</button>':"";const act="<div style='display:flex;gap:6px;flex-shrink:0'>"+edt+del+"</div>";el.appendChild(mkLI(av,cl.nome,"RRT: "+cl.rrt+(cl.resp?" | RT: "+cl.resp:""),act));});}
+
+window.editarCliente=async(id)=>{
+  try{
+    const snap=await getDoc(doc(db,"clientes",id));
+    if(!snap.exists())return alert("Cliente não encontrado.");
+    const c=snap.data();
+    document.getElementById("mc-titulo").textContent="Editar Cliente";
+    document.getElementById("mc-edit-id").value=id;
+    document.getElementById("mc-nome").value=c.nome||"";
+    document.getElementById("mc-rrt").value=c.rrt||"";
+    document.getElementById("mc-resp").value=c.resp||"";
+    showModal("modal-cliente");
+  }catch(e){alert("Erro ao carregar cliente: "+(e.message||e));}
+};
+
+window.salvarCliente=async()=>{
+  const n=document.getElementById("mc-nome").value.trim();
+  const r=document.getElementById("mc-rrt").value.trim();
+  if(!n||!r)return alert("Preencha nome e RRT");
+  const editId=document.getElementById("mc-edit-id").value;
+  const data={nome:n,rrt:r,resp:document.getElementById("mc-resp").value.trim()};
+  try{
+    if(editId){
+      await updateDoc(doc(db,"clientes",editId),data);
+      showToast("Cliente atualizado!");
+    }else{
+      data.criadoEm=serverTimestamp();
+      await addDoc(collection(db,"clientes"),data);
+      showToast("Cliente cadastrado!");
+    }
+    closeModal("modal-cliente");
+    _limparModalCliente();
+    _cacheClientes=null;
+    loadClientes();
+  }catch(e){
+    console.error("salvarCliente:",e);
+    alert("Erro ao salvar cliente: "+(e.message||e));
+  }
+};
+
+function _limparModalCliente(){
+  document.getElementById("mc-edit-id").value="";
+  document.getElementById("mc-titulo").textContent="Novo Cliente";
+  ["mc-nome","mc-rrt","mc-resp"].forEach(id=>document.getElementById(id).value="");
+}
+
+window.deletarCliente=async id=>{if(!confirm("Excluir?"))return;await deleteDoc(doc(db,"clientes",id));_cacheClientes=null;loadClientes();};
 
 async function loadColetores(){const[snap,clSnap]=await Promise.all([getDocs(collection(db,"coletores")),getDocs(collection(db,"clientes"))]);const clMap={};clSnap.forEach(d=>clMap[d.id]=d.data().nome);const el=document.getElementById("lista-coletores");el.innerHTML="";if(snap.size===0){el.innerHTML='<p style="text-align:center;color:#aaa;padding:32px">Nenhum coletor</p>';return;}const docs=[];snap.forEach(d=>docs.push({id:d.id,...d.data()}));docs.sort((a,b)=>{const ca=clMap[a.clienteId]||"";const cb=clMap[b.clienteId]||"";return ca.localeCompare(cb,"pt-BR")||a.nome.localeCompare(b.nome,"pt-BR");});const grupos={};docs.forEach(col=>{const cn=clMap[col.clienteId]||"Sem cliente";if(!grupos[cn])grupos[cn]=[];grupos[cn].push(col);});Object.entries(grupos).forEach(([cname,cols])=>{const g=document.createElement("div");g.className="coletor-group";const t=document.createElement("div");t.className="coletor-group-title";t.textContent=cname;g.appendChild(t);cols.forEach(col=>{const av='<div class="avatar" style="background:#e0f2fe;color:#0369a1;font-size:11px">C</div>';const act=currentRole==="master"?'<button class="btn small danger" onclick="event.stopPropagation();deletarColetor(\''+col.id+'\')">Excluir</button>':'<span style="color:#c7c7cc;font-size:20px">&#8250;</span>';g.appendChild(mkLI(av,col.nome,"",act));});el.appendChild(g);});}
 window.salvarColetor=async()=>{const cId=document.getElementById("mcol-cliente").value;const n=document.getElementById("mcol-nome").value.trim();if(!cId||!n)return alert("Selecione cliente e informe nome");await addDoc(collection(db,"coletores"),{nome:n,clienteId:cId,criadoEm:serverTimestamp()});closeModal("modal-coletor");document.getElementById("mcol-nome").value="";loadColetores();};
