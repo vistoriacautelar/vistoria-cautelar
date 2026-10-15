@@ -927,6 +927,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
     <h3 style="text-align:center;margin-bottom:6px">Comprovante de Vistoria</h3>
     <p style="font-size:13px;color:#666;text-align:center;margin-bottom:14px">Peça para o responsável escanear o QR code com a câmera dele para baixar o comprovante.</p>
     <div id="qr-container" style="display:flex;justify-content:center;background:#fff;padding:16px;border-radius:10px;border:1px solid #e5e5e5;margin-bottom:12px"></div>
+    <p id="qr-status-envio" style="display:none;font-size:12px;text-align:center;padding:8px 10px;border-radius:8px;margin-bottom:10px"></p>
     <p style="font-size:11px;color:#888;text-align:center;margin-bottom:14px">Link válido por 30 dias.<br><span id="qr-link-curto" style="word-break:break-all"></span></p>
     <div class="grid2" style="margin-bottom:8px">
       <button class="btn" onclick="copiarLinkComprovante()">Copiar link</button>
@@ -1908,6 +1909,7 @@ onAuthStateChanged(auth,async user=>{
       return;
     }
     currentUser=user;
+    setTimeout(()=>comprovQueueProcess().catch(()=>{}),4000); // envia comprovantes pendentes
     const snapUser=await getDoc(doc(db,"users",user.uid));
     loadPrestadorDefault().catch(e=>console.warn("loadPrestadorDefault bg:",e));
     loadAmbientesCustom().catch(e=>console.warn("loadAmbientesCustom bg:",e));
@@ -7238,34 +7240,135 @@ async function gerarComprovanteBlob(data,conclusaoLinhas,assinaturaResp,assinatu
   return pdf.output("blob");
 }
 
-// Sobe o comprovante (Blob PDF) para o Firebase Storage e retorna a URL pública.
+// ===== COMPROVANTE COM LINK FIXO (funciona offline) =====
+// O QR Code aponta para uma página no GitHub Pages (comprovante.html?u=UID&v=VISTORIA_ID).
+// O link é montado ANTES do upload, então o QR aparece mesmo sem internet.
+// A página verifica se o PDF já está no Storage: se sim, abre; se não, mostra
+// "em processamento". O upload fica numa fila local e sobe quando houver conexão.
+// Links antigos (URL com token do Storage) continuam válidos — não são alterados.
+const COMPROV_PAGE_URL="https://vistoriacautelar.github.io/vistoria-cautelar/comprovante.html";
+function comprovantePath(uid,vistoriaId){return "comprovantes/"+uid+"/"+vistoriaId+".pdf";}
+function linkComprovanteFixo(uid,vistoriaId){
+  return COMPROV_PAGE_URL+"?u="+encodeURIComponent(uid)+"&v="+encodeURIComponent(vistoriaId);
+}
+
+// Sobe o comprovante (Blob PDF) para o Firebase Storage e retorna o LINK FIXO.
 // Path estruturado: comprovantes/{userId}/{vistoriaId}.pdf
 // Substituição automática: sobrescrever apaga a versão anterior.
-async function uploadComprovante(blob,vistoriaId){
+// uidOpt: usado pela fila offline (uid de quem gerou o comprovante).
+async function uploadComprovante(blob,vistoriaId,uidOpt){
   if(!currentUser)throw new Error("Sem usuário autenticado");
-  const path="comprovantes/"+currentUser.uid+"/"+vistoriaId+".pdf";
+  if(navigator.onLine===false)throw new Error("offline");
+  const uid=uidOpt||currentUser.uid;
+  const path=comprovantePath(uid,vistoriaId);
   const r=storageRef(fbStorage,path);
   // TIMEOUT: o Firebase Storage pode "pendurar" indefinidamente quando há erro de CORS,
   // permissão não configurada ou rede instável. Esperamos no máximo 20s pelo upload.
   const uploadPromise=uploadBytes(r,blob,{contentType:"application/pdf"});
-  const timeoutPromise=new Promise((_,rej)=>setTimeout(()=>rej(new Error("Tempo esgotado (20s) ao enviar para o Firebase Storage. Verifique se Storage está habilitado e se as Regras do Storage permitem upload.")),20000));
+  const timeoutPromise=new Promise((_,rej)=>setTimeout(()=>rej(new Error("Tempo esgotado (20s) ao enviar para o Firebase Storage.")),20000));
   await Promise.race([uploadPromise,timeoutPromise]);
-  const url=await Promise.race([
-    getDownloadURL(r),
-    new Promise((_,rej)=>setTimeout(()=>rej(new Error("Tempo esgotado ao obter URL do comprovante.")),10000))
-  ]);
-  // Registra metadados no Firestore para retomar depois sem regerar
+  const url=linkComprovanteFixo(uid,vistoriaId);
+  // Registra metadados no Firestore (sem await: com cache offline a escrita
+  // fica enfileirada e o promise só resolve quando o servidor confirma)
   try{
     const expiraEm=Date.now()+30*24*60*60*1000;
-    await updateDoc(doc(db,"vistorias",vistoriaId),{comprovanteUrl:url,comprovantePath:path,comprovanteExpira:expiraEm});
+    updateDoc(doc(db,"vistorias",vistoriaId),{comprovanteUrl:url,comprovantePath:path,comprovanteExpira:expiraEm})
+      .catch(e=>console.warn("Não consegui salvar URL do comprovante no Firestore:",e));
   }catch(e){console.warn("Não consegui salvar URL do comprovante no Firestore:",e);}
   return url;
+}
+
+// --- Fila local de comprovantes pendentes de upload (IndexedDB separado) ---
+const COMPROV_QUEUE_DB="vistoria-comprov-queue";
+const COMPROV_QUEUE_STORE="queue";
+let _comprovQueueDB=null;
+function comprovQueueDB(){
+  if(_comprovQueueDB)return Promise.resolve(_comprovQueueDB);
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open(COMPROV_QUEUE_DB,1);
+    req.onupgradeneeded=()=>{
+      const db=req.result;
+      if(!db.objectStoreNames.contains(COMPROV_QUEUE_STORE)){
+        db.createObjectStore(COMPROV_QUEUE_STORE,{keyPath:"vistoriaId"});
+      }
+    };
+    req.onsuccess=()=>{_comprovQueueDB=req.result;res(_comprovQueueDB);};
+    req.onerror=()=>rej(req.error);
+  });
+}
+async function comprovQueueAdd(vistoriaId,uid,blob){
+  try{
+    const db=await comprovQueueDB();
+    const pdfData=await blob.arrayBuffer();
+    const tx=db.transaction(COMPROV_QUEUE_STORE,"readwrite");
+    tx.objectStore(COMPROV_QUEUE_STORE).put({vistoriaId,uid,pdfData,createdAt:Date.now()});
+    await new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=rej;});
+    console.log("[Comprov Queue] Enfileirado:",vistoriaId);
+    return true;
+  }catch(e){console.warn("[Comprov Queue] Falha ao enfileirar:",e);return false;}
+}
+async function comprovQueueGetAll(){
+  try{
+    const db=await comprovQueueDB();
+    const tx=db.transaction(COMPROV_QUEUE_STORE,"readonly");
+    return await new Promise((res,rej)=>{
+      const req=tx.objectStore(COMPROV_QUEUE_STORE).getAll();
+      req.onsuccess=()=>res(req.result||[]);
+      req.onerror=()=>rej(req.error);
+    });
+  }catch(e){return [];}
+}
+async function comprovQueueRemove(vistoriaId){
+  try{
+    const db=await comprovQueueDB();
+    const tx=db.transaction(COMPROV_QUEUE_STORE,"readwrite");
+    tx.objectStore(COMPROV_QUEUE_STORE).delete(vistoriaId);
+    await new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=rej;});
+  }catch(e){}
+}
+let _comprovQueueRodando=false;
+async function comprovQueueProcess(){
+  if(_comprovQueueRodando||!currentUser||navigator.onLine===false)return;
+  _comprovQueueRodando=true;
+  try{
+    const itens=await comprovQueueGetAll();
+    if(!itens.length)return;
+    let enviados=0;
+    for(const it of itens){
+      try{
+        const blob=new Blob([it.pdfData],{type:"application/pdf"});
+        await uploadComprovante(blob,it.vistoriaId,it.uid);
+        await comprovQueueRemove(it.vistoriaId);
+        enviados++;
+      }catch(e){
+        console.warn("[Comprov Queue] Falhou, tenta depois:",it.vistoriaId,e.message||e);
+        if(/offline|Tempo esgotado|network/i.test(e.message||""))break; // sem rede: para o loop
+      }
+    }
+    if(enviados)showToast("☁️ "+enviados+" comprovante(s) pendente(s) enviado(s)",3500);
+  }finally{_comprovQueueRodando=false;}
+}
+window.addEventListener("online",()=>{setTimeout(()=>comprovQueueProcess().catch(()=>{}),2500);});
+setInterval(()=>{comprovQueueProcess().catch(()=>{});},5*60*1000);
+
+// Status de envio exibido dentro do modal do QR (só para o técnico)
+function setStatusEnvioComprovante(tipo){
+  const el=document.getElementById("qr-status-envio");
+  if(!el)return;
+  const cfg={
+    enviando:{txt:"⏳ Enviando comprovante...",bg:"#f1f5f9",cor:"#475569"},
+    ok:{txt:"✅ Comprovante enviado. O link já abre o PDF.",bg:"#ecfdf5",cor:"#065f46"},
+    fila:{txt:"📴 Sem internet — o comprovante será enviado automaticamente quando houver conexão. O QR Code já pode ser entregue.",bg:"#fffbeb",cor:"#92400e"}
+  }[tipo];
+  if(!cfg){el.style.display="none";return;}
+  el.textContent=cfg.txt;el.style.background=cfg.bg;el.style.color=cfg.cor;el.style.display="block";
 }
 
 // ===== QR CODE: gera SVG no modal e expõe o link =====
 let _ultimaUrlComprovante="";
 window.mostrarModalQRComprovante=(url)=>{
   _ultimaUrlComprovante=url;
+  setStatusEnvioComprovante(null);
   const cont=document.getElementById("qr-container");
   cont.innerHTML='<p style="text-align:center;color:#888;padding:30px">Gerando QR Code...</p>';
   // Estratégia em duas camadas:
@@ -7415,20 +7518,29 @@ window.enviarComprovanteVistoria=async(vistoriaId,vData,ev,opts)=>{
         await shareOrDownload(blobGerado,nomeArq,"application/pdf");
       }catch(eDL){console.warn("Falha download local comprovante:",eDL);}
     }
-    // Em paralelo, tentar upload pro Storage para gerar o QR Code
+    // QR Code com LINK FIXO: aparece na hora, com ou sem internet.
+    // O upload acontece depois; se falhar, vai para a fila local.
+    const _uidComprov=currentUser.uid;
+    const linkFixo=linkComprovanteFixo(_uidComprov,vistoriaId);
+    // GUARD: só exibe o modal QR se o usuário ainda está no contexto desta vistoria
+    // (evita o modal aparecer "no meio" de uma nova vistoria iniciada depois)
+    const _qrVisivel=podeMostrarQR();
+    if(_qrVisivel){
+      mostrarModalQRComprovante(linkFixo);
+      setStatusEnvioComprovante("enviando");
+    } else {
+      console.log("Comprovante gerado mas usuário saiu da vistoria — modal QR não exibido.");
+    }
     if(btn)btn.textContent="Enviando...";
     try{
-      const url=await uploadComprovante(blobGerado,vistoriaId);
-      // GUARD: só exibe o modal QR se o usuário ainda está no contexto desta vistoria
-      // (evita o modal aparecer "no meio" de uma nova vistoria iniciada durante o upload)
-      if(podeMostrarQR()){
-        mostrarModalQRComprovante(url);
-      } else {
-        console.log("Auto-comprovante concluído mas usuário saiu da vistoria — modal QR não exibido.");
-      }
+      await uploadComprovante(blobGerado,vistoriaId,_uidComprov);
+      await comprovQueueRemove(vistoriaId); // caso houvesse versão antiga na fila
+      if(_qrVisivel&&_ultimaUrlComprovante===linkFixo)setStatusEnvioComprovante("ok");
     }catch(eUp){
-      console.error("Falha upload Storage:",eUp);
-      if(!silencioso)showToast("Comprovante baixado no celular. Não foi possível gerar QR Code.",4000);
+      console.warn("Upload do comprovante adiado:",eUp.message||eUp);
+      const enf=await comprovQueueAdd(vistoriaId,_uidComprov,blobGerado);
+      if(_qrVisivel&&_ultimaUrlComprovante===linkFixo)setStatusEnvioComprovante("fila");
+      if(!enf)showToast("⚠️ Não foi possível guardar o comprovante para envio. Use 'Reenviar Comprovante' quando tiver internet.",5000);
     }
   }catch(e){
     console.error("enviarComprovanteVistoria:",e);
