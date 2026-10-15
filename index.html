@@ -941,7 +941,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <!-- ===== PWA: Service Worker + prompt de instalação ===== -->
@@ -2430,17 +2430,71 @@ window.exportarPlanilhaCliente=async()=>{
       (v.responsavel&&v.responsavel.doc)||""
     ]);
   });
-  // Gerar XLSX
+  // === Gerar XLSX formatado ===
   const wb=XLSX.utils.book_new();
-  const ws=XLSX.utils.aoa_to_sheet(rows);
-  // Larguras de coluna razoáveis
+  // Cores base (azul Sabesp)
+  const azulEscuro="003C71";
+  const azulMedio="00589B";
+  const azulClaro="D6EAF8";
+  const cinzaClaro="F2F2F2";
+  const branco="FFFFFF";
+  const pretoBorda="999999";
+  // Estilos reutilizáveis
+  const bordaFina={top:{style:"thin",color:{rgb:pretoBorda}},bottom:{style:"thin",color:{rgb:pretoBorda}},left:{style:"thin",color:{rgb:pretoBorda}},right:{style:"thin",color:{rgb:pretoBorda}}};
+  const sTitle={font:{bold:true,sz:14,color:{rgb:branco},name:"Calibri"},fill:{fgColor:{rgb:azulEscuro}},alignment:{horizontal:"center",vertical:"center",wrapText:true},border:bordaFina};
+  const sSubtitle={font:{bold:false,sz:10,color:{rgb:branco},name:"Calibri"},fill:{fgColor:{rgb:azulMedio}},alignment:{horizontal:"center",vertical:"center"},border:bordaFina};
+  const sHeader={font:{bold:true,sz:9,color:{rgb:branco},name:"Calibri"},fill:{fgColor:{rgb:azulMedio}},alignment:{horizontal:"center",vertical:"center",wrapText:true},border:bordaFina};
+  const sDataPar={font:{sz:9,name:"Calibri"},fill:{fgColor:{rgb:branco}},alignment:{vertical:"center",wrapText:true},border:bordaFina};
+  const sDataImpar={font:{sz:9,name:"Calibri"},fill:{fgColor:{rgb:cinzaClaro}},alignment:{vertical:"center",wrapText:true},border:bordaFina};
+  const sDataCenterPar={font:{sz:9,name:"Calibri"},fill:{fgColor:{rgb:branco}},alignment:{horizontal:"center",vertical:"center",wrapText:true},border:bordaFina};
+  const sDataCenterImpar={font:{sz:9,name:"Calibri"},fill:{fgColor:{rgb:cinzaClaro}},alignment:{horizontal:"center",vertical:"center",wrapText:true},border:bordaFina};
+  // Busca prestador para nome da empresa no título
+  let _prestExport=null;
+  try{if(clienteId)_prestExport=await getPrestadorByClienteId(clienteId);}catch(e){}
+  if(!_prestExport)_prestExport=prestadorDefault;
+  const empresaNome=(_prestExport&&_prestExport.nome)||"";
+  // Monta array de dados com 3 linhas extras no topo: título, subtítulo, espaço
+  const totalCols=header.length;
+  const periodoTxt=expDe.split("-").reverse().join("/")+" a "+expAte.split("-").reverse().join("/");
+  const tituloRow=new Array(totalCols).fill("");
+  tituloRow[0]="CONTROLE DE VISTORIAS — "+(clienteNome||"Todos os Clientes").toUpperCase();
+  const subtRow=new Array(totalCols).fill("");
+  subtRow[0]=(empresaNome?empresaNome+"  |  ":"")+"Período: "+periodoTxt+"  |  Total: "+docs.length+" vistorias";
+  const allRows=[tituloRow,subtRow,header,...rows.slice(1)]; // rows[0] é header, skip
+  const ws=XLSX.utils.aoa_to_sheet(allRows);
+  // Merge: título (linha 1) e subtítulo (linha 2) ocupam todas as colunas
+  ws["!merges"]=[
+    {s:{r:0,c:0},e:{r:0,c:totalCols-1}},
+    {s:{r:0+1,c:0},e:{r:0+1,c:totalCols-1}}
+  ];
+  // Larguras de coluna
   ws["!cols"]=[
     {wch:7},{wch:24},{wch:30},{wch:9},{wch:14},
     {wch:14},{wch:14},{wch:16},
-    {wch:13},{wch:13},{wch:13},
+    {wch:14},{wch:14},{wch:14},
     {wch:30},{wch:13},{wch:18},{wch:18}
   ];
-  // Título no topo do arquivo? Mantemos só os dados pra facilitar reaproveitamento pelo cliente
+  // Altura de linhas
+  ws["!rows"]=[{hpt:28},{hpt:20},{hpt:22}];
+  // Colunas que devem ter alinhamento centralizado nos dados
+  const colsCenter=new Set([0,3,5,6,8,9,10,12]);
+  // Aplicar estilos célula a célula
+  for(let R=0;R<allRows.length;R++){
+    for(let C=0;C<totalCols;C++){
+      const addr=XLSX.utils.encode_cell({r:R,c:C});
+      if(!ws[addr])ws[addr]={t:"s",v:""};
+      if(R===0){ws[addr].s=sTitle;}
+      else if(R===1){ws[addr].s=sSubtitle;}
+      else if(R===2){ws[addr].s=sHeader;}
+      else{
+        const isImpar=(R-3)%2===1;
+        if(colsCenter.has(C)){ws[addr].s=isImpar?sDataCenterImpar:sDataCenterPar;}
+        else{ws[addr].s=isImpar?sDataImpar:sDataPar;}
+      }
+    }
+  }
+  // AutoFilter nos dados (cabeçalho = row 2, dados a partir de row 3)
+  ws["!autofilter"]={ref:XLSX.utils.encode_range({s:{r:2,c:0},e:{r:allRows.length-1,c:totalCols-1}})};
   XLSX.utils.book_append_sheet(wb,ws,(clienteNome||"Controle").slice(0,30));
   // Nome do arquivo usa o período da EXPORTAÇÃO (não o do resumo)
   const de=expDe.replace(/-/g,"");
