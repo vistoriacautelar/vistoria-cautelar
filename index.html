@@ -467,6 +467,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
         <button class="btn small" id="nv-detectar-bairro-btn" onclick="detectarBairroPorGPS()" style="margin-bottom:0;white-space:nowrap;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd">📍 Detectar</button>
       </div>
       <div class="field"><label>Complemento</label><input type="text" id="nv-comp" placeholder="Casa 1, Ap 23..." maxlength="30" oninput="capitalizarInput(this)"></div>
+      <div id="nv-selo-wrap" style="display:none">
+        <div class="field" style="display:flex;gap:8px;align-items:flex-end">
+          <div style="flex:1"><label>Número do Selo <span style="color:#dc2626">*</span></label><input type="text" id="nv-selo" placeholder="Digite o número do selo" maxlength="40"></div>
+          <button class="btn small" onclick="document.getElementById('nv-selo').value='Não possui'" style="margin-bottom:0;white-space:nowrap">Não possui</button>
+        </div>
+      </div>
     </div>
     <div class="card"><h2>Tipo de laudo</h2>
       <div class="laudo-tipo-grid">
@@ -4135,7 +4141,7 @@ async function loadNovVistoriaForm(){
     nvColetor.innerHTML='<option value="">Selecione o cliente primeiro...</option>';
   }
   // Campos pessoais: limpar mas oferecer reaproveitamento
-  ["nv-nome","nv-doc","nv-tel","nv-num","nv-comp","nv-bairro"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+  ["nv-nome","nv-doc","nv-tel","nv-num","nv-comp","nv-bairro","nv-selo"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
   // Tipo de ocupação e construção: SEMPRE em branco (não persistir entre vistorias)
   document.getElementById("nv-ocupacao").value="";
   document.getElementById("nv-tipo").value="";
@@ -4180,6 +4186,9 @@ window.setTipoLaudo=(tipo)=>{
     c.classList.toggle("active",c.dataset.tipo===tipo);
   });
   window._tipoLaudoAtual=tipo;
+  // Campo Selo: só aparece no laudo Completo
+  const seloWrap=document.getElementById("nv-selo-wrap");
+  if(seloWrap)seloWrap.style.display=tipo==="completo"?"block":"none";
 };
 window.loadColetoresByCliente=async()=>{
   const cId=document.getElementById("nv-cliente").value;
@@ -4371,8 +4380,16 @@ window.criarVistoria=async()=>{
   // Source of truth: o card que está visualmente .active no DOM no momento do clique
   const activeCard=document.querySelector("#s-nova-vistoria .laudo-tipo-card.active");
   const tipoLaudo=(activeCard&&activeCard.dataset.tipo)||window._tipoLaudoAtual||localStorage.getItem("lastTipoLaudo")||"simplificado";
+  const seloNV=((document.getElementById("nv-selo")||{}).value||"").trim();
+  if(tipoLaudo==="completo"&&!seloNV){
+    alert("Preencha o número do Selo (ou toque em \"Não possui\").");
+    const se=document.getElementById("nv-selo");if(se)se.focus();
+    return;
+  }
   localStorage.setItem("lastTipoLaudo",tipoLaudo);
   currentVistoria={clienteId:cId,coletorId:colId,clienteNome:clD.nome,clienteRRT:clD.rrt,coletorNome:colD.nome,responsavel:{nome,doc:docR,tel},endereco:{rua,num,comp,bairro,cidade:window._cidadeDetectadaGPS||"",uf:window._ufDetectadaGPS||""},ocupacao:document.getElementById("nv-ocupacao").value,tipo:document.getElementById("nv-tipo").value,tipoLaudo,data:now.toLocaleDateString("pt-BR"),dataCompleta:now.toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}),userId:currentUser.uid,checklist:{},observacoes:"",estado:"",idade:"",status:"em_andamento"};
+  // Selo informado na Nova Vistoria (Completo) — pré-preenche a tela Identificação do Imóvel
+  if(tipoLaudo==="completo")currentVistoria.identificacao={selo:seloNV};
   // Se o usuário clicou "📍 Detectar bairro", aproveita as coordenadas pro mapa do PDF
   if(window._coordenadasGPSAtuais){
     currentVistoria.gps={lat:window._coordenadasGPSAtuais.lat,lng:window._coordenadasGPSAtuais.lon,lon:window._coordenadasGPSAtuais.lon};
@@ -6193,6 +6210,13 @@ window.irParaFinalizacaoConfirmado=()=>{
     currentVistoria.ocupacao=(g("rev-ocupacao")||{}).value||currentVistoria.ocupacao;
     currentVistoria.tipo=(g("rev-tipo")||{}).value||currentVistoria.tipo;
     currentVistoria.observacoes=(g("rev-obs")||{}).value||"";
+    const seloRev=g("rev-selo");
+    if(seloRev){
+      const sv=(seloRev.value||"").trim();
+      if(!sv){alert("Preencha o número do Selo (ou toque em \"Não possui\").");seloRev.focus();return;}
+      if(!currentVistoria.identificacao)currentVistoria.identificacao={};
+      currentVistoria.identificacao.selo=sv;
+    }
   }
   goTo("s-finalizacao");
 };
@@ -6239,6 +6263,12 @@ async function renderRevisao(){
   h+='<p style="margin:6px 0;font-size:13px">Tipo de laudo: <strong>'+((v.tipoLaudo||"simplificado")==="completo"?"Completo":"Simplificado")+'</strong></p>';
   h+='<div style="margin:4px 0"><label style="font-size:12px;color:#888">Ocupação</label>'+sel("rev-ocupacao",v.ocupacao,["Residencial","Comercial","Institucional","Religioso","Serviços","Outros"])+'</div>';
   h+='<div style="margin:4px 0"><label style="font-size:12px;color:#888">Tipo de construção</label>'+sel("rev-tipo",v.tipo,["Térrea","Sobrado","Galpão","Soleira Negativa","Outros"])+'</div>';
+  if((v.tipoLaudo||"simplificado")==="completo"){
+    const seloAtual=(v.identificacao&&v.identificacao.selo)||"";
+    h+='<div style="margin:4px 0"><label style="font-size:12px;color:#888">Número do Selo</label><div style="display:flex;gap:6px;align-items:center">'
+      +inp("rev-selo",seloAtual,"Número do selo","70%")
+      +'<button type="button" class="btn small" style="margin:0;white-space:nowrap;width:28%" onclick="document.getElementById(\'rev-selo\').value=\'Não possui\'">Não possui</button></div></div>';
+  }
   h+='<p style="margin:8px 0 0;font-size:12px;color:#888">Estado de conservação e idade aparente são preenchidos na próxima tela.</p>';
   h+='</div>';
   h+='<div class="card" style="margin-bottom:10px"><h2 style="margin-bottom:8px">📸 Fotos: '+totalFotos+'</h2>';
@@ -9219,8 +9249,10 @@ function _pdfAnexoI(pdf,ML,MT,MR,CW,PW,PH,MB,v){
   pdf.text("Nº "+(e.num||""),ML+CW*0.7,y+4);
   y+=linhaH;
   pdf.rect(ML,y,CW,linhaH,"S");
-  pdfTextFit(pdf,"Bairro: "+(e.bairro||""),ML+2,y+4,CW*0.5-4);
-  pdfTextFit(pdf,"Complemento: "+(e.comp||""),ML+CW*0.5,y+4,CW*0.5-4);
+  pdfTextFit(pdf,"Bairro: "+(e.bairro||""),ML+2,y+4,CW*0.4-4);
+  pdfTextFit(pdf,"Complemento: "+(e.comp||""),ML+CW*0.4,y+4,CW*0.3-3);
+  const _seloAnx=(v.identificacao&&v.identificacao.selo)||"";
+  pdfTextFit(pdf,"Selo: "+_seloAnx,ML+CW*0.7,y+4,CW*0.3-2);
   y+=linhaH+4;
 
   // === 1.0 INFORMAÇÕES GERAIS — TABELA com 3 colunas e cabeçalho ===
