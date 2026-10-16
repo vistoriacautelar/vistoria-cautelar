@@ -433,6 +433,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
     <div class="card"><h2>Dados do cliente</h2>
       <div class="field"><label>Cliente</label><select id="nv-cliente" onchange="loadColetoresByCliente()"><option value="">Selecione...</option></select></div>
       <div class="field"><label>Coletor</label><select id="nv-coletor"><option value="">Selecione o cliente primeiro...</option></select></div>
+      <div id="nv-selo-wrap" style="display:none">
+        <div class="field" style="display:flex;gap:8px;align-items:flex-end">
+          <div style="flex:1"><label>Número do Selo <span style="color:#dc2626">*</span></label><input type="text" id="nv-selo" placeholder="Digite o número do selo" maxlength="40"></div>
+          <button class="btn small" onclick="document.getElementById('nv-selo').value='Não possui'" style="margin-bottom:0;white-space:nowrap">Não possui</button>
+        </div>
+      </div>
     </div>
     <div class="card"><h2>Dados do responsavel</h2>
       <div id="nv-reaproveitar-box" style="display:none;margin-bottom:12px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px">
@@ -467,12 +473,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
         <button class="btn small" id="nv-detectar-bairro-btn" onclick="detectarBairroPorGPS()" style="margin-bottom:0;white-space:nowrap;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd">📍 Detectar</button>
       </div>
       <div class="field"><label>Complemento</label><input type="text" id="nv-comp" placeholder="Casa 1, Ap 23..." maxlength="30" oninput="capitalizarInput(this)"></div>
-      <div id="nv-selo-wrap" style="display:none">
-        <div class="field" style="display:flex;gap:8px;align-items:flex-end">
-          <div style="flex:1"><label>Número do Selo <span style="color:#dc2626">*</span></label><input type="text" id="nv-selo" placeholder="Digite o número do selo" maxlength="40"></div>
-          <button class="btn small" onclick="document.getElementById('nv-selo').value='Não possui'" style="margin-bottom:0;white-space:nowrap">Não possui</button>
-        </div>
-      </div>
     </div>
     <div class="card"><h2>Tipo de laudo</h2>
       <div class="laudo-tipo-grid">
@@ -491,6 +491,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div class="field"><label>Tipo de construção</label><select id="nv-tipo"><option value="">Selecione...</option><option>Térrea</option><option>Sobrado</option><option>Galpão</option><option>Soleira Negativa</option><option>Outros</option></select></div>
     </div>
     <button class="btn primary" onclick="criarVistoria()">Iniciar Vistoria</button>
+    <p style="text-align:center;font-size:11px;color:#aaa;margin-top:10px">Versão do app: v20261016-3</p>
     <div style="margin-top:18px;padding-top:14px;border-top:1px dashed #d4d4d8">
       <p style="font-size:12px;color:#888;text-align:center;margin-bottom:6px">Imóvel sem ninguém presente?</p>
       <button class="btn" onclick="iniciarComoAusente()" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;width:100%">⏳ Iniciar como Ausente — Passível de Retorno</button>
