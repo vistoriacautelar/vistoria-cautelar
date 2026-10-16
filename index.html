@@ -2396,7 +2396,7 @@ window.exportarPlanilhaCliente=async()=>{
     "Ordem","Frente de Serviço / Coletor","Endereço","Número","Complemento",
     "Vistoria Interna","Vistoria Externa","Tipo do Imóvel",
     "Data 1ª visita","Data 2ª visita","Data da vistoria",
-    "Nome do acompanhante da vistoria","Status","Contato","Documento"
+    "Nome do acompanhante da vistoria","Status","Contato","Documento","Observações"
   ];
   const rows=[header];
   docs.forEach((v,i)=>{
@@ -2429,7 +2429,8 @@ window.exportarPlanilhaCliente=async()=>{
       (v.responsavel&&v.responsavel.nome)||"",
       statusLabels[v.status]||v.status||"",
       (v.responsavel&&v.responsavel.tel)||"",
-      (v.responsavel&&v.responsavel.doc)||""
+      (v.responsavel&&v.responsavel.doc)||"",
+      (v.observacoes||"").toString().trim()
     ]);
   });
   // === Gerar XLSX formatado ===
@@ -2474,7 +2475,7 @@ window.exportarPlanilhaCliente=async()=>{
     {wch:7},{wch:24},{wch:30},{wch:9},{wch:14},
     {wch:14},{wch:14},{wch:16},
     {wch:14},{wch:14},{wch:14},
-    {wch:30},{wch:13},{wch:18},{wch:18}
+    {wch:30},{wch:13},{wch:18},{wch:18},{wch:45}
   ];
   // Altura de linhas
   ws["!rows"]=[{hpt:28},{hpt:20},{hpt:22}];
