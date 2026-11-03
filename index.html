@@ -491,7 +491,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div class="field"><label>Tipo de construção</label><select id="nv-tipo"><option value="">Selecione...</option><option>Térrea</option><option>Sobrado</option><option>Galpão</option><option>Soleira Negativa</option><option>Outros</option></select></div>
     </div>
     <button class="btn primary" onclick="criarVistoria()">Iniciar Vistoria</button>
-    <p style="text-align:center;font-size:11px;color:#aaa;margin-top:10px">Versão do app: v20261016-4</p>
+    <p style="text-align:center;font-size:11px;color:#aaa;margin-top:10px">Versão do app: v20261103-1</p>
     <div style="margin-top:18px;padding-top:14px;border-top:1px dashed #d4d4d8">
       <p style="font-size:12px;color:#888;text-align:center;margin-bottom:6px">Imóvel sem ninguém presente?</p>
       <button class="btn" onclick="iniciarComoAusente()" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;width:100%">⏳ Iniciar como Ausente — Passível de Retorno</button>
@@ -912,6 +912,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
     </div>
     <div class="field"><label>Ocupação</label><select id="er-ocupacao"><option value="">Selecione...</option><option>Residencial</option><option>Comercial</option><option>Institucional</option><option>Religioso</option><option>Serviços</option><option>Outros</option></select></div>
     <div class="field"><label>Coletor</label><select id="er-coletor"></select></div>
+    <div class="field" id="er-selo-wrap" style="display:none"><label>Número do Selo</label>
+      <div style="display:flex;gap:8px;align-items:center"><input type="text" id="er-selo" maxlength="40" style="flex:1"><button class="btn small" onclick="document.getElementById('er-selo').value='Não possui'" style="margin:0;white-space:nowrap;width:auto">Não possui</button></div>
+    </div>
     <div class="field"><label>Tipo de construção</label><select id="er-tipo"><option value="">Selecione...</option><option>Térrea</option><option>Sobrado</option><option>Galpão</option><option>Soleira Negativa</option><option>Outros</option></select></div>
     <div class="field"><label>Estado de Conservação</label><select id="er-estado"><option value="">Selecione...</option><option>Bom</option><option>Regular</option><option>Ruim</option><option>Péssimo</option></select></div>
     <div class="field"><label>Idade Aparente (anos)</label><input type="number" id="er-idade" placeholder="Ex: 30" min="0" max="200" inputmode="numeric"></div>
@@ -3880,6 +3883,7 @@ window.abrirEditarRespVistoria=()=>{
   document.getElementById("er-rua").value=e.rua||"";
   document.getElementById("er-num").value=e.num||"";
   document.getElementById("er-comp").value=e.comp||"";
+  _preencherSeloModalEditar(currentVistoria);
   // Esconde o campo Status (na vistoria em andamento, status é definido na finalização)
   const statusField=document.getElementById("er-status").parentElement;
   if(statusField)statusField.style.display="none";
@@ -6826,9 +6830,26 @@ window.confirmarExclusao=async()=>{
   }
 };
 
+// Campo Selo no modal "Editar Dados": aparece no laudo Completo (ou se a vistoria já tem selo)
+function _preencherSeloModalEditar(v){
+  const wrap=document.getElementById("er-selo-wrap");
+  const inp=document.getElementById("er-selo");
+  if(!wrap||!inp)return;
+  const selo=(v&&v.identificacao&&v.identificacao.selo)||"";
+  const mostra=((v&&v.tipoLaudo)==="completo")||!!selo;
+  wrap.style.display=mostra?"":"none";
+  inp.value=selo;
+}
+function _lerSeloModalEditar(){
+  const wrap=document.getElementById("er-selo-wrap");
+  if(!wrap||wrap.style.display==="none")return null; // campo não se aplica
+  return ((document.getElementById("er-selo")||{}).value||"").trim();
+}
+
 window.editarVistoriaAtual=async()=>{
   if(!vistoriaDetalheData)return;
   const v=vistoriaDetalheData;
+  _preencherSeloModalEditar(v);
   document.getElementById("er-nome").value=v.responsavel&&v.responsavel.nome||"";
   document.getElementById("er-doc").value=v.responsavel&&v.responsavel.doc||"";
   document.getElementById("er-tel").value=v.responsavel&&v.responsavel.tel||"";
@@ -6868,6 +6889,11 @@ window.salvarEdicaoResponsavel=async()=>{
   // Modo vistoria em andamento: salva em memória (currentVistoria), não no Firestore
   if(_editarRespModoVistoria){
     if(!currentVistoria)return;
+    const seloAnd=_lerSeloModalEditar();
+    if(seloAnd!==null){
+      if(!seloAnd){alert("Preencha o número do Selo (ou toque em \"Não possui\").");return;}
+      currentVistoria.identificacao={...(currentVistoria.identificacao||{}),selo:seloAnd};
+    }
     currentVistoria.responsavel={
       nome:document.getElementById("er-nome").value.trim(),
       doc:document.getElementById("er-doc").value.trim(),
@@ -6918,6 +6944,14 @@ window.salvarEdicaoResponsavel=async()=>{
     idade:document.getElementById("er-idade").value,
     status:novoStatus
   };
+  // Selo: atualiza quando o campo se aplica (laudo Completo ou vistoria que já tem selo)
+  const seloHist=_lerSeloModalEditar();
+  if(seloHist!==null){
+    if(!seloHist){alert("Preencha o número do Selo (ou toque em \"Não possui\").");return;}
+    const identAtual=vistoriaDetalheData&&vistoriaDetalheData.identificacao;
+    if(identAtual&&typeof identAtual==="object")updates["identificacao.selo"]=seloHist;
+    else updates.identificacao={selo:seloHist};
+  }
   // Coletor: atualiza se foi alterado
   const erColSel=document.getElementById("er-coletor");
   if(erColSel&&erColSel.value){
@@ -6942,7 +6976,8 @@ window.salvarEdicaoResponsavel=async()=>{
     await updateDoc(doc(db,"vistorias",vistoriaDetalheId),updates);
     // Atualizar local
     vistoriaDetalheData.responsavel={nome:updates["responsavel.nome"],doc:updates["responsavel.doc"],tel:updates["responsavel.tel"]};
-    vistoriaDetalheData.endereco={rua:updates["endereco.rua"],num:updates["endereco.num"],comp:updates["endereco.comp"]};
+    vistoriaDetalheData.endereco={...(vistoriaDetalheData.endereco||{}),rua:updates["endereco.rua"],num:updates["endereco.num"],comp:updates["endereco.comp"]};
+    if(seloHist!==null)vistoriaDetalheData.identificacao={...(vistoriaDetalheData.identificacao||{}),selo:seloHist};
     vistoriaDetalheData.ocupacao=updates.ocupacao;
     vistoriaDetalheData.tipo=updates.tipo;
     vistoriaDetalheData.estado=updates.estado;
