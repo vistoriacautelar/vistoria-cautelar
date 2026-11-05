@@ -491,7 +491,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
       <div class="field"><label>Tipo de construção</label><select id="nv-tipo"><option value="">Selecione...</option><option>Térrea</option><option>Sobrado</option><option>Galpão</option><option>Soleira Negativa</option><option>Outros</option></select></div>
     </div>
     <button class="btn primary" onclick="criarVistoria()">Iniciar Vistoria</button>
-    <p style="text-align:center;font-size:11px;color:#aaa;margin-top:10px">Versão do app: v20261103-1</p>
+    <p style="text-align:center;font-size:11px;color:#aaa;margin-top:10px">Versão do app: v20261105-1</p>
     <div style="margin-top:18px;padding-top:14px;border-top:1px dashed #d4d4d8">
       <p style="font-size:12px;color:#888;text-align:center;margin-bottom:6px">Imóvel sem ninguém presente?</p>
       <button class="btn" onclick="iniciarComoAusente()" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;width:100%">⏳ Iniciar como Ausente — Passível de Retorno</button>
@@ -818,6 +818,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;
     <div class="field"><label>E-mail</label><input type="email" id="mp-email"></div>
     <div class="field"><label>Responsável Técnico</label><input type="text" id="mp-rt-nome" placeholder="Nome do responsável técnico"></div>
     <div class="field"><label>CREA/CAU</label><input type="text" id="mp-rt-registro" placeholder="Ex: CAU Nº A12345-6"></div>
+    <div class="field"><label>Assinatura do Responsável Técnico <span style="font-weight:400;color:#888">(opcional — só para quem não assina digitalmente)</span></label>
+      <input type="file" id="mp-assin-file" accept="image/*" onchange="previewAssinRTUpload(event)">
+      <div id="mp-assin-box" style="display:none;margin-top:6px;align-items:center;gap:8px">
+        <img id="mp-assin-preview" style="max-width:180px;max-height:60px;object-fit:contain;border:1px solid #e5e5e5;border-radius:8px;background:#fff;padding:4px">
+        <button type="button" class="btn small" onclick="removerAssinRT()" style="margin:0;width:auto;color:#dc2626">Remover</button>
+      </div>
+    </div>
     <div class="field"><label>Logo</label><input type="file" id="mp-logo-file" accept="image/*" onchange="previewLogoUpload(event)"><img id="mp-logo-preview" style="display:none;width:80px;height:80px;object-fit:contain;border:1px solid #e5e5e5;border-radius:8px;margin-top:6px"></div>
     <div class="field"><label>Clientes vinculados</label><div id="mp-clientes-lista" style="max-height:150px;overflow-y:auto;border:1px solid #e5e5e5;border-radius:8px;padding:8px;font-size:13px"></div></div>
     <div class="field" style="display:flex;align-items:center;gap:10px"><input type="checkbox" id="mp-default" style="width:18px;height:18px"><label for="mp-default" style="margin:0;font-size:14px">Prestador padrao</label></div>
@@ -2876,6 +2883,61 @@ window.limparSigPerfil=()=>{const el=document.getElementById("perfil-sig");const
 window.salvarSigPerfil=async()=>{const el=document.getElementById("perfil-sig");const data=el.toDataURL("image/png");await updateDoc(doc(db,"users",currentUser.uid),{assinatura:data});currentUserData.assinatura=data;assinaturaTecnico=data;document.getElementById("perfil-sig-ok").style.display="block";showToast("Assinatura salva!");};
 window.salvarPerfil=async()=>{const nome=document.getElementById("perfil-nome").value.trim();if(!nome)return alert("Informe seu nome");await updateDoc(doc(db,"users",currentUser.uid),{nome});currentUserData.nome=nome;showToast("Perfil atualizado!");};
 window.alterarSenhaPerfil=async()=>{const nova=document.getElementById("perfil-nova-senha").value;if(nova.length<6)return alert("Minimo 6 caracteres");try{await updatePassword(currentUser,nova);showToast("Senha alterada!");document.getElementById("perfil-nova-senha").value="";}catch(e){alert("Erro: "+e.message);}};
+// Assinatura do RT do prestador (uso excepcional). undefined = não mexer; null = remover; {dataUrl,w,h} = nova
+let _assinRTUpload;
+function _mostrarAssinRT(dataUrl){
+  const box=document.getElementById("mp-assin-box"),img=document.getElementById("mp-assin-preview");
+  if(!box||!img)return;
+  if(dataUrl){img.src=dataUrl;box.style.display="flex";}else{img.removeAttribute("src");box.style.display="none";}
+}
+window.previewAssinRTUpload=e=>{
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    const im=new Image();
+    im.onload=()=>{
+      // Reduz para no máx. 800px de largura e torna o fundo claro transparente (assinatura escaneada/fotografada)
+      const sc=Math.min(1,800/im.naturalWidth);
+      const w=Math.max(1,Math.round(im.naturalWidth*sc)),h=Math.max(1,Math.round(im.naturalHeight*sc));
+      const cv=document.createElement("canvas");cv.width=w;cv.height=h;
+      const ctx=cv.getContext("2d");ctx.drawImage(im,0,0,w,h);
+      try{
+        const d=ctx.getImageData(0,0,w,h),px=d.data;
+        for(let i=0;i<px.length;i+=4){
+          const lum=0.299*px[i]+0.587*px[i+1]+0.114*px[i+2];
+          if(lum>215)px[i+3]=0;
+        }
+        ctx.putImageData(d,0,0);
+      }catch(_){}
+      const dataUrl=cv.toDataURL("image/png");
+      if(dataUrl.length>300000){alert("A imagem da assinatura ficou grande demais. Recorte a imagem deixando só a assinatura e tente de novo.");e.target.value="";return;}
+      _assinRTUpload={dataUrl,w,h};
+      _mostrarAssinRT(dataUrl);
+    };
+    im.onerror=()=>alert("Não foi possível ler essa imagem.");
+    im.src=ev.target.result;
+  };
+  r.readAsDataURL(file);
+};
+window.removerAssinRT=()=>{
+  _assinRTUpload=null;
+  const f=document.getElementById("mp-assin-file");if(f)f.value="";
+  _mostrarAssinRT(null);
+};
+// Retorna {dataUrl,w,h} da assinatura do RT do prestador, ou null
+function _assinRTDoPrestador(prest){
+  if(!prest||!prest.assinaturaRT||typeof prest.assinaturaRT!=="string"||prest.assinaturaRT.length<50)return null;
+  return {dataUrl:prest.assinaturaRT,w:prest.assinaturaRTw||300,h:prest.assinaturaRTh||100};
+}
+// Desenha a imagem dentro de uma caixa (boxW x boxH) sem distorcer, centralizada e apoiada na base
+function _pdfAssinaturaFit(pdf,img,x,y,boxW,boxH){
+  if(!img||!img.dataUrl)return;
+  const ratio=(img.w||3)/(img.h||1);
+  let w=boxW,h=w/ratio;
+  if(h>boxH){h=boxH;w=h*ratio;}
+  try{pdf.addImage(img.dataUrl,"PNG",x+(boxW-w)/2,y+(boxH-h),w,h,"","FAST");}catch(e){console.warn("Assinatura RT:",e);}
+}
+
 window.previewLogoUpload=e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{logoB64Upload=ev.target.result;const p=document.getElementById("mp-logo-preview");p.src=logoB64Upload;p.style.display="block";};r.readAsDataURL(file);};
 
 function mkLI(av,title,sub,act){const d=document.createElement("div");d.className="list-item";d.innerHTML=av+'<div class="info"><div class="title">'+title+'</div><div class="sub">'+sub+'</div></div>'+act;return d;}
@@ -2909,6 +2971,9 @@ window.editarPrestador=async(id)=>{
     document.getElementById("mp-default").checked=!!p.isDefault;
     if(p.logo){document.getElementById("mp-logo-preview").src=p.logo;document.getElementById("mp-logo-preview").style.display="block";logoB64Upload=null;}
     else{document.getElementById("mp-logo-preview").style.display="none";}
+    _assinRTUpload=undefined;
+    const fa=document.getElementById("mp-assin-file");if(fa)fa.value="";
+    _mostrarAssinRT(p.assinaturaRT||null);
     await _populateClientesCheckboxes(p.clienteIds||[]);
     showModal("modal-prestador");
   }catch(e){alert("Erro ao carregar prestador: "+(e.message||e));}
@@ -2932,6 +2997,8 @@ window.salvarPrestador=async()=>{
     isDefault
   };
   if(logoB64Upload)data.logo=logoB64Upload;
+  if(_assinRTUpload===null){data.assinaturaRT=null;data.assinaturaRTw=null;data.assinaturaRTh=null;}
+  else if(_assinRTUpload){data.assinaturaRT=_assinRTUpload.dataUrl;data.assinaturaRTw=_assinRTUpload.w;data.assinaturaRTh=_assinRTUpload.h;}
   try{
     if(isDefault){
       const q=query(collection(db,"prestadores"),where("isDefault","==",true));
@@ -2967,6 +3034,9 @@ function _limparModalPrestador(){
   document.getElementById("mp-logo-preview").style.display="none";
   const el=document.getElementById("mp-clientes-lista");if(el)el.innerHTML="";
   logoB64Upload=null;
+  _assinRTUpload=undefined;
+  const fa=document.getElementById("mp-assin-file");if(fa)fa.value="";
+  _mostrarAssinRT(null);
 }
 
 // Ao abrir modal de novo prestador/cliente, limpar campos de edição
@@ -7302,7 +7372,9 @@ async function gerarComprovanteBlob(data,conclusaoLinhas,assinaturaResp,assinatu
   pdf.text((data.endereco&&data.endereco.cidade||"São Paulo")+", "+(data.dataCompleta||data.data||""),FLML+FLCW/2,yf,{align:"center"});yf+=16;
   if(assinaturaResp&&assinaturaResp!=="RECUSOU"){try{pdf.addImage(assinaturaResp,"PNG",sigXL,yf,sigW,sigImgH);}catch(e){}}
   else if(assinaturaResp==="RECUSOU"){pdf.setFontSize(8);pdf.setFont("helvetica","italic");pdf.setTextColor(180,0,0);pdf.text("Responsável se recusou a assinar",sigXL+sigW/2,yf+sigImgH/2,{align:"center"});pdf.setTextColor(0,0,0);}
-  if(assinaturaTec){try{pdf.addImage(assinaturaTec,"PNG",sigXR,yf,sigW,sigImgH);}catch(e){}}
+  const _assinRTComp=_assinRTDoPrestador(prest);
+  if(_assinRTComp)_pdfAssinaturaFit(pdf,_assinRTComp,sigXR,yf,sigW,sigImgH);
+  else if(assinaturaTec){try{pdf.addImage(assinaturaTec,"PNG",sigXR,yf,sigW,sigImgH);}catch(e){}}
   yf+=sigImgH+3;
   pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
   pdf.line(sigXL,yf,sigXL+sigW,yf);
@@ -8122,7 +8194,9 @@ window.finalizarVistoria=async()=>{
     pdf.text((currentVistoria.endereco&&currentVistoria.endereco.cidade||"São Paulo")+", "+currentVistoria.dataCompleta,FLML+FLCW/2,yf,{align:"center"});yf+=16;
     if(assinaturaData&&assinaturaData!=="RECUSOU"){try{pdf.addImage(assinaturaData,"PNG",sigXL,yf,sigW,sigImgH);}catch(e){}}
     else if(assinaturaData==="RECUSOU"){pdf.setFontSize(8);pdf.setFont("helvetica","italic");pdf.setTextColor(180,0,0);pdf.text("Responsável se recusou a assinar",sigXL+sigW/2,yf+sigImgH/2,{align:"center"});pdf.setTextColor(0,0,0);}
-    if(assinaturaTecnico){try{pdf.addImage(assinaturaTecnico,"PNG",sigXR,yf,sigW,sigImgH);}catch(e){}}
+    const _assinRTSimp=_assinRTDoPrestador(prest);
+    if(_assinRTSimp)_pdfAssinaturaFit(pdf,_assinRTSimp,sigXR,yf,sigW,sigImgH);
+    else if(assinaturaTecnico){try{pdf.addImage(assinaturaTecnico,"PNG",sigXR,yf,sigW,sigImgH);}catch(e){}}
     yf+=sigImgH+3;
     pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
     pdf.line(sigXL,yf,sigXL+sigW,yf);
@@ -9753,6 +9827,10 @@ async function gerarPDFCompletoPaginasContexto(pdf,v,prest,logoPrep,PW,PH,ML,MT,
       pdf.addImage(assinaturaResp,"PNG",xLeft+(colSig-40)/2,sigY-14,40,14,"","FAST");
     }catch(e){console.warn("Erro ao inserir assinatura do morador:",e);}
   }
+  // Técnico — assinatura em imagem só quando o prestador tem uma cadastrada (caso excepcional);
+  // caso contrário a linha fica em branco para o certificado digital, como sempre.
+  const _assinRTCompl=_assinRTDoPrestador(prest);
+  if(_assinRTCompl)_pdfAssinaturaFit(pdf,_assinRTCompl,xRight+(colSig-50)/2,sigY-17,50,16);
   pdf.setDrawColor(0,0,0);pdf.setLineWidth(0.3);
   pdf.line(xLeft,sigY,xLeft+colSig,sigY);
   pdf.line(xRight,sigY,xRight+colSig,sigY);
